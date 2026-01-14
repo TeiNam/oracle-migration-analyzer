@@ -1480,8 +1480,6 @@ def analyze_single_file(args):
     """
     try:
         # 타겟 데이터베이스 설정
-        # 디버그: args.target 값 확인
-        # print(f"DEBUG: args.target = {args.target}, type = {type(args.target)}")
         target_db = normalize_target(args.target)
         
         # 분석기 생성

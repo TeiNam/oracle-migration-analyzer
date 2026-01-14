@@ -155,8 +155,18 @@ class ComplexityCalculator:
         # 오브젝트 타입 감지
         object_type = parser.detect_object_type()
         
-        # 기본 점수
-        base_score = PLSQL_BASE_SCORES[self.target][object_type]
+        # 기본 점수 (Enum 값으로 비교하여 순환 import 문제 회피)
+        # self.target의 value를 사용하여 PLSQL_BASE_SCORES에서 찾기
+        target_key = None
+        for key in PLSQL_BASE_SCORES.keys():
+            if key.value == self.target.value:
+                target_key = key
+                break
+        
+        if target_key is None:
+            raise ValueError(f"지원하지 않는 타겟 데이터베이스: {self.target}")
+        
+        base_score = PLSQL_BASE_SCORES[target_key][object_type]
         
         # 코드 복잡도 점수
         code_complexity = self._calculate_plsql_code_complexity(parser)
