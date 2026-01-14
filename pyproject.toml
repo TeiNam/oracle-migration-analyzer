@@ -41,6 +41,7 @@ dev = [
 
 [project.scripts]
 oracle-complexity-analyzer = "src.oracle_complexity_analyzer:main"
+statspack-analyzer = "src.statspack.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

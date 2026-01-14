@@ -1,8 +1,230 @@
-# Oracle Complexity Analyzer
+# Oracle Migration Analyzer
 
-Oracle SQL 및 PL/SQL 코드의 복잡도를 분석하여 PostgreSQL 또는 MySQL로의 마이그레이션 난이도를 0-10 척도로 평가하는 Python 기반 도구입니다.
+Oracle 데이터베이스의 마이그레이션 난이도를 분석하는 Python 기반 도구 모음입니다.
 
-## 주요 기능
+## 도구 목록
+
+### 1. Oracle Complexity Analyzer
+Oracle SQL 및 PL/SQL 코드의 복잡도를 분석하여 PostgreSQL 또는 MySQL로의 마이그레이션 난이도를 0-10 척도로 평가합니다.
+
+### 2. Statspack Analyzer
+DBCSI Statspack 결과 파일을 파싱하여 Oracle 데이터베이스의 성능 메트릭과 리소스 사용량을 분석하고, RDS for Oracle, Aurora MySQL, Aurora PostgreSQL로의 마이그레이션 난이도를 평가합니다.
+
+---
+
+## Statspack Analyzer
+
+### 주요 기능
+
+- ✅ **Statspack 파일 파싱**: DBCSI Statspack 결과 파일(.out) 자동 파싱
+- ✅ **성능 메트릭 추출**: CPU, 메모리, 디스크, IOPS, 대기 이벤트 분석
+- ✅ **Oracle 에디션 감지**: SE, SE2, EE, XE 자동 감지
+- ✅ **RAC 환경 감지**: Single Instance vs RAC 클러스터 구분
+- ✅ **캐릭터셋 분석**: AL32UTF8 변환 필요성 평가
+- ✅ **마이그레이션 난이도 계산**: 타겟 DB별 0-10 척도 난이도 평가
+- ✅ **RDS 인스턴스 추천**: 리소스 기반 r6i 인스턴스 사이즈 추천
+- ✅ **배치 파일 분석**: 여러 Statspack 파일 일괄 처리
+- ✅ **다양한 출력 형식**: JSON, Markdown 리포트 생성
+
+### 설치
+
+```bash
+# 저장소 클론
+git clone <repository-url>
+cd oracle-migration-analyzer
+
+# 가상 환경 생성 (권장)
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 의존성 설치
+pip install -r requirements.txt
+
+# 패키지 설치 (개발 모드)
+pip install -e .
+```
+
+### 사용 방법
+
+#### 단일 파일 분석
+
+```bash
+# 기본 분석 (모든 타겟 DB)
+statspack-analyzer --file sample_code/dbcsi_statspack_sample01.out
+
+# 특정 타겟 DB만 분석
+statspack-analyzer --file sample.out --target rds-oracle
+statspack-analyzer --file sample.out --target aurora-postgresql
+statspack-analyzer --file sample.out --target aurora-mysql
+
+# JSON 형식으로 출력
+statspack-analyzer --file sample.out --format json
+
+# Markdown 형식으로 출력
+statspack-analyzer --file sample.out --format markdown
+
+# 파일로 저장
+statspack-analyzer --file sample.out --output reports/my_analysis.md
+
+# 마이그레이션 분석 포함
+statspack-analyzer --file sample.out --analyze-migration
+```
+
+#### 배치 파일 분석
+
+```bash
+# 디렉토리 내 모든 .out 파일 분석
+statspack-analyzer --directory /path/to/statspack/files
+
+# 특정 타겟 DB로 배치 분석
+statspack-analyzer --directory /path/to/files --target aurora-postgresql
+
+# 결과를 Markdown으로 저장
+statspack-analyzer --directory /path/to/files --format markdown --output reports/
+```
+
+### 명령줄 옵션
+
+#### 필수 옵션 (둘 중 하나 선택)
+
+- `--file FILE`: 분석할 단일 Statspack 파일 경로
+- `--directory DIR`: 분석할 디렉토리 경로 (모든 .out 파일)
+
+#### 선택 옵션
+
+- `--format FORMAT`: 출력 형식 선택
+  - `json`: JSON 형식
+  - `markdown`: Markdown 형식 (기본값)
+
+- `--output PATH`: 출력 파일 경로 (지정하지 않으면 표준 출력)
+
+- `--target TARGET`: 타겟 데이터베이스 선택
+  - `rds-oracle`: RDS for Oracle
+  - `aurora-mysql`: Aurora MySQL 8.0
+  - `aurora-postgresql`: Aurora PostgreSQL 16
+  - `all`: 모든 타겟 (기본값)
+
+- `--analyze-migration`: 마이그레이션 난이도 분석 포함
+
+### Python API 사용
+
+```python
+from src.statspack.parser import StatspackParser
+from src.statspack.migration_analyzer import MigrationAnalyzer
+from src.statspack.result_formatter import StatspackResultFormatter
+from src.statspack.data_models import TargetDatabase
+
+# 1. Statspack 파일 파싱
+parser = StatspackParser("sample_code/dbcsi_statspack_sample01.out")
+statspack_data = parser.parse()
+
+# 2. 마이그레이션 분석
+analyzer = MigrationAnalyzer(statspack_data)
+analysis_results = analyzer.analyze()
+
+# 특정 타겟만 분석
+rds_result = analyzer.analyze(target=TargetDatabase.RDS_ORACLE)
+
+# 3. 결과 출력
+# JSON 형식
+json_output = StatspackResultFormatter.to_json(statspack_data)
+print(json_output)
+
+# Markdown 형식
+markdown_output = StatspackResultFormatter.to_markdown(
+    statspack_data, 
+    analysis_results
+)
+print(markdown_output)
+
+# 4. 파일로 저장
+with open("report.json", "w") as f:
+    f.write(json_output)
+
+with open("report.md", "w") as f:
+    f.write(markdown_output)
+```
+
+### 출력 예시
+
+#### 마이그레이션 분석 결과
+
+```markdown
+## 마이그레이션 분석 결과
+
+### RDS for Oracle
+
+- **난이도 점수**: 1.00 / 10.0
+- **난이도 레벨**: 매우 간단 (Minimal effort)
+
+**RDS 인스턴스 추천:**
+
+- **인스턴스 타입**: db.r6i.large
+- **vCPU**: 2
+- **메모리**: 16 GiB
+- **현재 CPU 사용률**: 0.01%
+- **현재 메모리 사용량**: 11.60 GB
+- **CPU 여유분**: 99.99%
+- **메모리 여유분**: 37.93%
+
+**권장사항:**
+
+- RDS for Oracle은 동일 엔진 마이그레이션으로 호환성이 높습니다.
+- 현재 버전 19.0.0.0.0에서 최신 버전으로 업그레이드를 권장합니다.
+
+### Aurora PostgreSQL 16
+
+- **난이도 점수**: 7.50 / 10.0
+- **난이도 레벨**: 매우 복잡 (Very high effort)
+
+**점수 구성 요소:**
+
+- 기본 점수 (엔진 변경): 3.00
+- PL/SQL 코드 변환: 4.00
+- Oracle 특화 기능: 0.50
+
+**권장사항:**
+
+- Aurora PostgreSQL은 Oracle과 높은 호환성을 제공합니다.
+- PL/SQL 코드를 PL/pgSQL로 변환해야 합니다.
+- 1개의 패키지를 PostgreSQL 스키마 또는 확장으로 변환해야 합니다.
+```
+
+### 마이그레이션 난이도 계산 방식
+
+#### RDS for Oracle
+
+- 기본 점수: 1.0 (동일 엔진)
+- 에디션 변경: SE → SE2 (+0.5), EE → SE2 (+3.0)
+- RAC → Single Instance: +2.0
+- 버전 업그레이드: 메이저 버전당 +0.5
+- 캐릭터셋 변환: +1.0 ~ +2.5
+
+#### Aurora PostgreSQL
+
+- 기본 점수: 3.0 (엔진 변경)
+- PL/SQL 코드: 라인 수 기반 (+0.5 ~ +5.0)
+- Oracle 특화 기능: 기능당 가중치 합산
+- 성능 최적화: CPU/IO 부하 기반 (+0.5 ~ +2.0)
+- 캐릭터셋 변환: +1.0 ~ +2.5
+
+#### Aurora MySQL
+
+- 기본 점수: 4.0 (엔진 변경 + 제약 많음)
+- PL/SQL 코드: 라인 수 기반 * 1.5
+- Oracle 특화 기능: 기능당 가중치 * 1.3
+- 성능 최적화: CPU/IO 부하 기반 (+1.0 ~ +3.0)
+- 캐릭터셋 변환: +1.0 ~ +2.5
+
+### 예제 스크립트
+
+- `example_single_file.py`: 단일 파일 분석 예제
+- `example_batch_analysis.py`: 배치 파일 분석 예제
+- `example_migration_analysis.py`: 마이그레이션 분석 예제
+
+---
+
+## Oracle Complexity Analyzer
 
 - ✅ **SQL 쿼리 복잡도 분석**: 6가지 카테고리로 구조적 복잡성 평가
 - ✅ **PL/SQL 오브젝트 분석**: Package, Procedure, Function, Trigger 등 분석
