@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-Statspack 단일 파일 분석 예제
+DBCSI 단일 파일 분석 예제
 
-이 스크립트는 단일 Statspack 파일을 파싱하고 분석하는 방법을 보여줍니다.
+이 스크립트는 단일 DBCSI 파일을 파싱하고 분석하는 방법을 보여줍니다.
 """
 
-from src.statspack.parser import StatspackParser
-from src.statspack.migration_analyzer import MigrationAnalyzer
-from src.statspack.result_formatter import StatspackResultFormatter
-from src.statspack.data_models import TargetDatabase
+from src.dbcsi.parser import StatspackParser
+from src.dbcsi.migration_analyzer import MigrationAnalyzer
+from src.dbcsi.result_formatter import StatspackResultFormatter
+from src.dbcsi.data_models import TargetDatabase
 
 
 def main():
-    # 1. Statspack 파일 파싱
+    # 1. DBCSI 파일 파싱
     print("=" * 80)
-    print("Statspack 파일 파싱 중...")
+    print("DBCSI 파일 파싱 중...")
     print("=" * 80)
     
     parser = StatspackParser("sample_code/dbcsi_statspack_sample01.out")

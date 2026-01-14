@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Statspack 마이그레이션 분석 예제
+DBCSI 마이그레이션 분석 예제
 
-이 스크립트는 Statspack 데이터를 기반으로 상세한 마이그레이션 분석을 수행하는 방법을 보여줍니다.
+이 스크립트는 DBCSI 데이터를 기반으로 상세한 마이그레이션 분석을 수행하는 방법을 보여줍니다.
 """
 
-from src.statspack.parser import StatspackParser
-from src.statspack.migration_analyzer import MigrationAnalyzer
-from src.statspack.data_models import TargetDatabase, OracleEdition
+from src.dbcsi.parser import StatspackParser
+from src.dbcsi.migration_analyzer import MigrationAnalyzer
+from src.dbcsi.data_models import TargetDatabase, OracleEdition
 
 
 def print_section(title):
@@ -18,10 +18,10 @@ def print_section(title):
 
 
 def main():
-    print_section("Statspack 마이그레이션 분석 예제")
+    print_section("DBCSI 마이그레이션 분석 예제")
     
-    # 1. Statspack 파일 파싱
-    print("\n1. Statspack 파일 파싱 중...")
+    # 1. DBCSI 파일 파싱
+    print("\n1. DBCSI 파일 파싱 중...")
     parser = StatspackParser("sample_code/dbcsi_statspack_sample01.out")
     statspack_data = parser.parse()
     print(f"   ✓ 파싱 완료: {statspack_data.os_info.db_name}")

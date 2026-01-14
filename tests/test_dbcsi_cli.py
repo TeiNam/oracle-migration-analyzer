@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from io import StringIO
 
-from src.statspack.cli import (
+from src.dbcsi.cli import (
     create_parser,
     validate_args,
     get_target_databases,
@@ -20,7 +20,7 @@ from src.statspack.cli import (
     process_directory,
     main
 )
-from src.statspack.data_models import TargetDatabase
+from src.dbcsi.data_models import TargetDatabase
 
 
 class TestCLIParser:
@@ -446,3 +446,314 @@ class TestCLIOptionCombinations:
         assert exit_code == 0
         output = fake_out.getvalue()
         assert "배치 분석 보고서" in output
+
+
+
+class TestFileTypeDetection:
+    """
+    파일 타입 자동 감지 테스트
+    
+    Property 19: 파일 타입 자동 감지
+    Validates: Requirements 16.5
+    """
+    
+    def test_detect_awr_file_with_iostat_marker(self, tmp_path):
+        """IOSTAT-FUNCTION 마커가 있는 파일은 AWR로 감지"""
+        from src.dbcsi.cli import detect_file_type
+        
+        # AWR 마커가 있는 파일 생성
+        awr_file = tmp_path / "awr_test.out"
+        awr_file.write_text("""
+~~BEGIN-OS-INFORMATION~~
+STATSPACK_MINER_VER 1.0
+~~END-OS-INFORMATION~~
+
+~~BEGIN-IOSTAT-FUNCTION~~
+SNAP_ID FUNCTION_NAME MEGABYTES_PER_S
+1 LGWR 10.5
+~~END-IOSTAT-FUNCTION~~
+        """)
+        
+        file_type = detect_file_type(str(awr_file))
+        assert file_type == "awr"
+    
+    def test_detect_awr_file_with_percent_cpu_marker(self, tmp_path):
+        """PERCENT-CPU 마커가 있는 파일은 AWR로 감지"""
+        from src.dbcsi.cli import detect_file_type
+        
+        awr_file = tmp_path / "awr_test.out"
+        awr_file.write_text("""
+~~BEGIN-OS-INFORMATION~~
+STATSPACK_MINER_VER 1.0
+~~END-OS-INFORMATION~~
+
+~~BEGIN-PERCENT-CPU~~
+METRIC ON_CPU
+99th_percentile 8
+~~END-PERCENT-CPU~~
+        """)
+        
+        file_type = detect_file_type(str(awr_file))
+        assert file_type == "awr"
+    
+    def test_detect_awr_file_with_percent_io_marker(self, tmp_path):
+        """PERCENT-IO 마커가 있는 파일은 AWR로 감지"""
+        from src.dbcsi.cli import detect_file_type
+        
+        awr_file = tmp_path / "awr_test.out"
+        awr_file.write_text("""
+~~BEGIN-OS-INFORMATION~~
+STATSPACK_MINER_VER 1.0
+~~END-OS-INFORMATION~~
+
+~~BEGIN-PERCENT-IO~~
+METRIC RW_IOPS
+99th_percentile 1000
+~~END-PERCENT-IO~~
+        """)
+        
+        file_type = detect_file_type(str(awr_file))
+        assert file_type == "awr"
+    
+    def test_detect_awr_file_with_workload_marker(self, tmp_path):
+        """WORKLOAD 마커가 있는 파일은 AWR로 감지"""
+        from src.dbcsi.cli import detect_file_type
+        
+        awr_file = tmp_path / "awr_test.out"
+        awr_file.write_text("""
+~~BEGIN-OS-INFORMATION~~
+STATSPACK_MINER_VER 1.0
+~~END-OS-INFORMATION~~
+
+~~BEGIN-WORKLOAD~~
+SAMPLESTART TOPN MODULE
+2024-01-01 1 TestModule
+~~END-WORKLOAD~~
+        """)
+        
+        file_type = detect_file_type(str(awr_file))
+        assert file_type == "awr"
+    
+    def test_detect_awr_file_with_buffer_cache_marker(self, tmp_path):
+        """BUFFER-CACHE 마커가 있는 파일은 AWR로 감지"""
+        from src.dbcsi.cli import detect_file_type
+        
+        awr_file = tmp_path / "awr_test.out"
+        awr_file.write_text("""
+~~BEGIN-OS-INFORMATION~~
+STATSPACK_MINER_VER 1.0
+~~END-OS-INFORMATION~~
+
+~~BEGIN-BUFFER-CACHE~~
+SNAP_ID INSTANCE_NUMBER HIT_RATIO
+1 1 95.5
+~~END-BUFFER-CACHE~~
+        """)
+        
+        file_type = detect_file_type(str(awr_file))
+        assert file_type == "awr"
+    
+    def test_detect_statspack_file_without_awr_markers(self, tmp_path):
+        """AWR 마커가 없는 파일은 Statspack으로 감지"""
+        from src.dbcsi.cli import detect_file_type
+        
+        statspack_file = tmp_path / "statspack_test.out"
+        statspack_file.write_text("""
+~~BEGIN-OS-INFORMATION~~
+STATSPACK_MINER_VER 1.0
+NUM_CPUS 4
+~~END-OS-INFORMATION~~
+
+~~BEGIN-MEMORY~~
+SNAP_ID INSTANCE_NUMBER SGA_GB PGA_GB TOTAL_GB
+1 1 10.0 2.0 12.0
+~~END-MEMORY~~
+
+~~BEGIN-MAIN-METRICS~~
+SNAP DUR_M END INST CPU_PER_S
+1 60 2024-01-01 1 50.0
+~~END-MAIN-METRICS~~
+        """)
+        
+        file_type = detect_file_type(str(statspack_file))
+        assert file_type == "statspack"
+    
+    def test_detect_and_parse_awr_file(self, tmp_path):
+        """AWR 파일은 AWRParser로 파싱"""
+        from src.dbcsi.cli import detect_and_parse
+        from src.dbcsi.parser import AWRParser
+        
+        awr_file = tmp_path / "awr_test.out"
+        awr_file.write_text("""
+~~BEGIN-OS-INFORMATION~~
+STATSPACK_MINER_VER 1.0
+NUM_CPUS 4
+~~END-OS-INFORMATION~~
+
+~~BEGIN-IOSTAT-FUNCTION~~
+SNAP_ID FUNCTION_NAME MEGABYTES_PER_S
+1 LGWR 10.5
+~~END-IOSTAT-FUNCTION~~
+        """)
+        
+        parser = detect_and_parse(str(awr_file))
+        assert isinstance(parser, AWRParser)
+    
+    def test_detect_and_parse_statspack_file(self, tmp_path):
+        """Statspack 파일은 StatspackParser로 파싱"""
+        from src.dbcsi.cli import detect_and_parse
+        from src.dbcsi.parser import StatspackParser, AWRParser
+        
+        statspack_file = tmp_path / "statspack_test.out"
+        statspack_file.write_text("""
+~~BEGIN-OS-INFORMATION~~
+STATSPACK_MINER_VER 1.0
+NUM_CPUS 4
+~~END-OS-INFORMATION~~
+
+~~BEGIN-MEMORY~~
+SNAP_ID INSTANCE_NUMBER SGA_GB PGA_GB TOTAL_GB
+1 1 10.0 2.0 12.0
+~~END-MEMORY~~
+        """)
+        
+        parser = detect_and_parse(str(statspack_file))
+        # AWRParser는 StatspackParser를 상속하므로 타입 체크 주의
+        assert isinstance(parser, StatspackParser)
+        assert not isinstance(parser, AWRParser)
+    
+    def test_detect_file_type_with_latin1_encoding(self, tmp_path):
+        """Latin-1 인코딩 파일도 올바르게 감지"""
+        from src.dbcsi.cli import detect_file_type
+        
+        awr_file = tmp_path / "awr_latin1.out"
+        # Latin-1 특수 문자 포함
+        content = """
+~~BEGIN-OS-INFORMATION~~
+STATSPACK_MINER_VER 1.0
+~~END-OS-INFORMATION~~
+
+~~BEGIN-IOSTAT-FUNCTION~~
+SNAP_ID FUNCTION_NAME MEGABYTES_PER_S
+1 LGWR 10.5
+~~END-IOSTAT-FUNCTION~~
+        """
+        awr_file.write_bytes(content.encode('latin-1'))
+        
+        file_type = detect_file_type(str(awr_file))
+        assert file_type == "awr"
+    
+    def test_detect_file_type_handles_read_error(self, tmp_path):
+        """파일 읽기 오류 시 기본값(statspack) 반환"""
+        from src.dbcsi.cli import detect_file_type
+        
+        # 존재하지 않는 파일
+        nonexistent_file = tmp_path / "nonexistent.out"
+        
+        file_type = detect_file_type(str(nonexistent_file))
+        assert file_type == "statspack"
+
+
+
+class TestNewCLIOptions:
+    """새로운 CLI 옵션 테스트 (AWR 관련)"""
+    
+    def test_parser_detailed_option(self):
+        """--detailed 옵션 파싱 테스트"""
+        parser = create_parser()
+        
+        # 플래그 없음
+        args = parser.parse_args(['--file', 'test.out'])
+        assert args.detailed is False
+        
+        # 플래그 있음
+        args = parser.parse_args(['--file', 'test.out', '--detailed'])
+        assert args.detailed is True
+    
+    def test_parser_compare_option(self):
+        """--compare 옵션 파싱 테스트"""
+        parser = create_parser()
+        
+        args = parser.parse_args(['--compare', 'file1.out', 'file2.out'])
+        assert args.compare == ['file1.out', 'file2.out']
+        assert args.file is None
+        assert args.directory is None
+    
+    def test_parser_percentile_option(self):
+        """--percentile 옵션 파싱 테스트"""
+        parser = create_parser()
+        
+        # 기본값
+        args = parser.parse_args(['--file', 'test.out'])
+        assert args.percentile == '99'
+        
+        # P95
+        args = parser.parse_args(['--file', 'test.out', '--percentile', '95'])
+        assert args.percentile == '95'
+        
+        # P90
+        args = parser.parse_args(['--file', 'test.out', '--percentile', '90'])
+        assert args.percentile == '90'
+        
+        # Median
+        args = parser.parse_args(['--file', 'test.out', '--percentile', 'median'])
+        assert args.percentile == 'median'
+        
+        # Average
+        args = parser.parse_args(['--file', 'test.out', '--percentile', 'average'])
+        assert args.percentile == 'average'
+    
+    def test_parser_language_option(self):
+        """--language 옵션 파싱 테스트"""
+        parser = create_parser()
+        
+        # 기본값 (한국어)
+        args = parser.parse_args(['--file', 'test.out'])
+        assert args.language == 'ko'
+        
+        # 영어
+        args = parser.parse_args(['--file', 'test.out', '--language', 'en'])
+        assert args.language == 'en'
+        
+        # 한국어 명시
+        args = parser.parse_args(['--file', 'test.out', '--language', 'ko'])
+        assert args.language == 'ko'
+    
+    def test_parser_compare_mutually_exclusive(self):
+        """--compare는 --file, --directory와 상호 배타적"""
+        parser = create_parser()
+        
+        # --compare와 --file 동시 사용 불가
+        with pytest.raises(SystemExit):
+            parser.parse_args(['--compare', 'file1.out', 'file2.out', '--file', 'test.out'])
+        
+        # --compare와 --directory 동시 사용 불가
+        with pytest.raises(SystemExit):
+            parser.parse_args(['--compare', 'file1.out', 'file2.out', '--directory', './data'])
+    
+    def test_validate_compare_files(self, tmp_path):
+        """--compare 파일 검증 테스트"""
+        # 두 파일 모두 존재
+        file1 = tmp_path / "file1.out"
+        file2 = tmp_path / "file2.out"
+        file1.write_text("test1")
+        file2.write_text("test2")
+        
+        parser = create_parser()
+        args = parser.parse_args(['--compare', str(file1), str(file2)])
+        
+        # 예외 발생하지 않아야 함
+        validate_args(args)
+    
+    def test_validate_compare_nonexistent_file(self, tmp_path):
+        """--compare 존재하지 않는 파일 검증"""
+        file1 = tmp_path / "file1.out"
+        file1.write_text("test1")
+        
+        parser = create_parser()
+        args = parser.parse_args(['--compare', str(file1), 'nonexistent.out'])
+        
+        with pytest.raises(SystemExit) as exc_info:
+            validate_args(args)
+        
+        assert exc_info.value.code == 1

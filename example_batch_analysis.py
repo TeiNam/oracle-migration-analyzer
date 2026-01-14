@@ -6,8 +6,8 @@ Statspack 배치 파일 분석 예제
 """
 
 import os
-from src.statspack.batch_analyzer import StatspackBatchAnalyzer
-from src.statspack.data_models import TargetDatabase
+from src.dbcsi.batch_analyzer import StatspackBatchAnalyzer
+from src.dbcsi.data_models import TargetDatabase
 
 
 def main():

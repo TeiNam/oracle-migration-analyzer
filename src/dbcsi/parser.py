@@ -178,8 +178,11 @@ class StatspackParser:
                 stat_name = parts[0]
                 stat_value = parts[1] if len(parts) == 2 else ""
                 
-                # 타입 변환 시도
-                converted_value = self._convert_value(stat_value)
+                # 타입 변환 시도 (DB_NAME은 항상 문자열로 유지)
+                if stat_name == "DB_NAME":
+                    converted_value = stat_value.strip()
+                else:
+                    converted_value = self._convert_value(stat_value)
                 os_info[stat_name] = converted_value
         
         return os_info
@@ -841,3 +844,500 @@ class StatspackParser:
         )
         
         return statspack_data
+
+
+class AWRParser(StatspackParser):
+    """
+    AWR 파일 파서 - Statspack 파서를 확장
+    
+    AWR 특화 섹션(IOSTAT-FUNCTION, PERCENT-CPU, PERCENT-IO, WORKLOAD, BUFFER-CACHE)을
+    추가로 파싱하여 더 상세한 성능 분석을 제공합니다.
+    """
+    
+    def __init__(self, filepath: str):
+        """
+        AWR 파서 초기화
+        
+        Args:
+            filepath: AWR 파일 경로 (.out 파일)
+            
+        Raises:
+            FileNotFoundError: 파일이 존재하지 않는 경우
+        """
+        super().__init__(filepath)
+        logger.info(f"Initialized AWRParser for file: {filepath}")
+    
+    def parse(self):
+        """
+        전체 파일을 파싱하여 AWRData 반환
+        
+        Returns:
+            AWRData: 파싱된 AWR 데이터 (Statspack 데이터 포함)
+            
+        Raises:
+            StatspackParseError: 파싱 실패 시
+        """
+        from .data_models import AWRData
+        
+        # 기본 Statspack 섹션 파싱
+        statspack_data = super().parse()
+        
+        # 파일 읽기
+        lines = self._read_file()
+        
+        # AWR 특화 섹션 파싱
+        iostat_functions = self._parse_iostat_function(lines)
+        percentile_cpu = self._parse_percentile_cpu(lines)
+        percentile_io = self._parse_percentile_io(lines)
+        workload_profiles = self._parse_workload(lines)
+        buffer_cache_stats = self._parse_buffer_cache(lines)
+        
+        # AWRData 객체 생성
+        awr_data = AWRData(
+            os_info=statspack_data.os_info,
+            memory_metrics=statspack_data.memory_metrics,
+            disk_sizes=statspack_data.disk_sizes,
+            main_metrics=statspack_data.main_metrics,
+            wait_events=statspack_data.wait_events,
+            system_stats=statspack_data.system_stats,
+            features=statspack_data.features,
+            sga_advice=statspack_data.sga_advice,
+            iostat_functions=iostat_functions,
+            percentile_cpu=percentile_cpu,
+            percentile_io=percentile_io,
+            workload_profiles=workload_profiles,
+            buffer_cache_stats=buffer_cache_stats
+        )
+        
+        logger.info(f"AWR parsing complete. AWR-specific sections found: {awr_data.is_awr()}")
+        
+        return awr_data
+    
+    def _parse_iostat_function(self, lines: List[str]) -> List:
+        """
+        IOSTAT-FUNCTION 섹션 파싱
+        
+        함수별 I/O 통계를 파싱합니다.
+        
+        Args:
+            lines: 파일의 전체 라인 리스트
+            
+        Returns:
+            IOStatFunction 객체 리스트
+        """
+        from .data_models import IOStatFunction
+        
+        section_lines = self._extract_section(lines, "IOSTAT-FUNCTION")
+        iostat_functions = []
+        data_started = False
+        
+        for line in section_lines:
+            stripped = line.strip()
+            
+            # 헤더 구분선 확인
+            if stripped.startswith('---'):
+                data_started = True
+                continue
+            
+            # 헤더 라인 건너뛰기
+            if not data_started:
+                continue
+            
+            # 빈 라인 건너뛰기
+            if not stripped:
+                continue
+            
+            # 데이터 라인 파싱
+            parts = stripped.split()
+            
+            if len(parts) >= 3:
+                try:
+                    snap_id = int(parts[0])
+                    # FUNCTION_NAME은 여러 단어일 수 있음 (예: "Direct Writes")
+                    # 마지막 필드는 megabytes_per_s
+                    megabytes_per_s = float(parts[-1])
+                    # 나머지는 function_name
+                    function_name = ' '.join(parts[1:-1])
+                    
+                    iostat_functions.append(IOStatFunction(
+                        snap_id=snap_id,
+                        function_name=function_name,
+                        megabytes_per_s=megabytes_per_s
+                    ))
+                except (ValueError, IndexError) as e:
+                    logger.warning(f"Failed to parse IOSTAT-FUNCTION line: {stripped} - {e}")
+                    continue
+        
+        logger.info(f"Parsed {len(iostat_functions)} IOSTAT-FUNCTION records")
+        return iostat_functions
+    
+    def _parse_percentile_cpu(self, lines: List[str]) -> dict:
+        """
+        PERCENT-CPU 섹션 파싱
+        
+        CPU 백분위수 통계를 파싱합니다.
+        
+        Args:
+            lines: 파일의 전체 라인 리스트
+            
+        Returns:
+            백분위수별 PercentileCPU 객체 딕셔너리 (key: metric name)
+        """
+        from .data_models import PercentileCPU
+        
+        section_lines = self._extract_section(lines, "PERCENT-CPU")
+        percentile_cpu = {}
+        data_started = False
+        
+        for line in section_lines:
+            stripped = line.strip()
+            
+            # 헤더 구분선 확인
+            if stripped.startswith('---'):
+                data_started = True
+                continue
+            
+            # 헤더 라인 건너뛰기
+            if not data_started:
+                continue
+            
+            # 빈 라인 건너뛰기
+            if not stripped:
+                continue
+            
+            # 데이터 라인 파싱
+            parts = stripped.split()
+            
+            # 최소 14개 필드 필요 (날짜와 시간이 분리되어 있음)
+            if len(parts) < 14:
+                logger.warning(f"Not enough fields in PERCENT-CPU line: {len(parts)} < 14")
+                continue
+            
+            try:
+                # DBID는 건너뛰기 (parts[0])
+                # ORDER_BY는 건너뛰기 (parts[1])
+                metric = parts[2]
+                
+                # INSTANCE_NUMBER는 선택적 (빈 값일 수 있음)
+                # parts[3]이 숫자인지 확인
+                try:
+                    instance_number = int(parts[3])
+                    field_offset = 4  # INSTANCE_NUMBER가 있으면 4번째 인덱스부터 시작
+                except ValueError:
+                    # INSTANCE_NUMBER가 없으면 parts[3]이 ON_CPU
+                    instance_number = None
+                    field_offset = 3  # INSTANCE_NUMBER가 없으면 3번째 인덱스부터 시작
+                
+                # 나머지 필드 파싱
+                on_cpu = int(parts[field_offset])
+                on_cpu_and_resmgr = int(parts[field_offset + 1])
+                resmgr_cpu_quantum = int(parts[field_offset + 2])
+                # 날짜와 시간 필드를 합침
+                begin_interval = f"{parts[field_offset + 3]} {parts[field_offset + 4]}"
+                end_interval = f"{parts[field_offset + 5]} {parts[field_offset + 6]}"
+                snap_shots = int(parts[field_offset + 7])
+                days = float(parts[field_offset + 8])
+                avg_snaps_per_day = float(parts[field_offset + 9])
+                
+                # 인스턴스별 또는 전체 DB 레벨로 키 생성
+                key = f"{metric}_{instance_number}" if instance_number else metric
+                
+                # 중복 키 처리: 인스턴스별 데이터가 있으면 전체 DB 레벨 데이터는 무시
+                if key not in percentile_cpu:
+                    percentile_cpu[key] = PercentileCPU(
+                        metric=metric,
+                        instance_number=instance_number,
+                        on_cpu=on_cpu,
+                        on_cpu_and_resmgr=on_cpu_and_resmgr,
+                        resmgr_cpu_quantum=resmgr_cpu_quantum,
+                        begin_interval=begin_interval,
+                        end_interval=end_interval,
+                        snap_shots=snap_shots,
+                        days=days,
+                        avg_snaps_per_day=avg_snaps_per_day
+                    )
+            except (ValueError, IndexError) as e:
+                logger.warning(f"Failed to parse PERCENT-CPU line: {stripped} - {e}")
+                continue
+        
+        logger.info(f"Parsed {len(percentile_cpu)} PERCENT-CPU records")
+        return percentile_cpu
+    
+    def _parse_percentile_io(self, lines: List[str]) -> dict:
+        """
+        PERCENT-IO 섹션 파싱
+        
+        I/O 백분위수 통계를 파싱합니다.
+        
+        Args:
+            lines: 파일의 전체 라인 리스트
+            
+        Returns:
+            백분위수별 PercentileIO 객체 딕셔너리 (key: metric name)
+        """
+        from .data_models import PercentileIO
+        
+        section_lines = self._extract_section(lines, "PERCENT-IO")
+        percentile_io = {}
+        data_started = False
+        
+        for line in section_lines:
+            stripped = line.strip()
+            
+            # 헤더 구분선 확인
+            if stripped.startswith('---'):
+                data_started = True
+                continue
+            
+            # 헤더 라인 건너뛰기
+            if not data_started:
+                continue
+            
+            # 빈 라인 건너뛰기
+            if not stripped:
+                continue
+            
+            # 데이터 라인 파싱
+            parts = stripped.split()
+            
+            if len(parts) >= 14:
+                try:
+                    # DBID는 건너뛰기
+                    metric = parts[1]
+                    
+                    # INSTANCE_NUMBER는 선택적 (빈 값일 수 있음)
+                    try:
+                        instance_number = int(parts[2])
+                    except ValueError:
+                        instance_number = None
+                    
+                    rw_iops = int(parts[3])
+                    r_iops = int(parts[4])
+                    w_iops = int(parts[5])
+                    rw_mbps = int(parts[6])
+                    r_mbps = int(parts[7])
+                    w_mbps = int(parts[8])
+                    begin_interval = parts[9]
+                    end_interval = parts[10]
+                    snap_shots = int(parts[11])
+                    days = float(parts[12])
+                    avg_snaps_per_day = float(parts[13])
+                    
+                    # 인스턴스별 또는 전체 DB 레벨로 키 생성
+                    key = f"{metric}_{instance_number}" if instance_number else metric
+                    
+                    # 중복 키 처리: 인스턴스별 데이터가 있으면 전체 DB 레벨 데이터는 무시
+                    if key not in percentile_io:
+                        percentile_io[key] = PercentileIO(
+                            metric=metric,
+                            instance_number=instance_number,
+                            rw_iops=rw_iops,
+                            r_iops=r_iops,
+                            w_iops=w_iops,
+                            rw_mbps=rw_mbps,
+                            r_mbps=r_mbps,
+                            w_mbps=w_mbps,
+                            begin_interval=begin_interval,
+                            end_interval=end_interval,
+                            snap_shots=snap_shots,
+                            days=days,
+                            avg_snaps_per_day=avg_snaps_per_day
+                        )
+                except (ValueError, IndexError) as e:
+                    logger.warning(f"Failed to parse PERCENT-IO line: {stripped} - {e}")
+                    continue
+        
+        logger.info(f"Parsed {len(percentile_io)} PERCENT-IO records")
+        return percentile_io
+    
+    def _parse_workload(self, lines: List[str]) -> List:
+        """
+        WORKLOAD 섹션 파싱
+        
+        시간대별 워크로드 프로파일을 파싱합니다.
+        
+        Args:
+            lines: 파일의 전체 라인 리스트
+            
+        Returns:
+            WorkloadProfile 객체 리스트
+        """
+        from .data_models import WorkloadProfile
+        
+        section_lines = self._extract_section(lines, "WORKLOAD")
+        workload_profiles = []
+        data_started = False
+        
+        for line in section_lines:
+            stripped = line.strip()
+            
+            # 헤더 구분선 확인
+            if stripped.startswith('---'):
+                data_started = True
+                continue
+            
+            # 헤더 라인 건너뛰기
+            if not data_started:
+                continue
+            
+            # 빈 라인 건너뛰기
+            if not stripped:
+                continue
+            
+            # 데이터 라인 파싱 - 고정 폭 필드 사용
+            # 실제 AWR 파일 형식:
+            # SAMPLESTART (23자) TOPN (15자) MODULE (64자) PROGRAM (64자) EVENT (64자) + 나머지 숫자 필드들
+            
+            try:
+                # 원본 라인이 충분히 긴지 확인
+                if len(line) < 235:
+                    logger.warning(f"WORKLOAD line too short: {len(line)} chars")
+                    continue
+                
+                # 고정 위치에서 필드 추출
+                sample_start = line[0:23].strip()  # "11-1월 -26 00:00:00"
+                topn_str = line[23:39].strip()
+                module = line[39:104].strip()
+                program = line[104:169].strip()
+                event = line[169:234].strip()
+                
+                # 나머지 숫자 필드들은 공백으로 분리
+                remaining = line[234:].strip()
+                if not remaining:
+                    logger.warning(f"No numeric fields found in WORKLOAD line")
+                    continue
+                
+                parts = remaining.split()
+                
+                # 최소 14개의 숫자 필드가 필요
+                if len(parts) < 14:
+                    logger.warning(f"Not enough numeric fields: {len(parts)} < 14")
+                    continue
+                
+                # 숫자 필드 파싱 (순서대로)
+                total_dbtime_sum = int(parts[0])
+                aas_comp = float(parts[1])
+                aas_contribution_pct = float(parts[2])
+                tot_contributions = int(parts[3])
+                session_type = parts[4]  # 문자열 필드
+                wait_class = parts[5] if len(parts) > 5 else ""  # 문자열 필드 (선택적)
+                
+                # wait_class가 있는 경우와 없는 경우 처리
+                if wait_class and not wait_class[0].isdigit():
+                    # wait_class가 문자열인 경우
+                    offset = 6
+                else:
+                    # wait_class가 없거나 숫자인 경우
+                    wait_class = ""
+                    offset = 5
+                
+                # 나머지 숫자 필드들
+                if len(parts) < offset + 10:
+                    logger.warning(f"Not enough numeric fields after wait_class: {len(parts)} < {offset + 10}")
+                    continue
+                
+                delta_read_io_requests = int(parts[offset])
+                delta_write_io_requests = int(parts[offset + 1])
+                delta_read_io_bytes = int(parts[offset + 2])
+                delta_write_io_bytes = int(parts[offset + 3])
+                rior_pct = float(parts[offset + 4])
+                wior_pct = float(parts[offset + 5])
+                riob_pct = float(parts[offset + 6])
+                wiob_pct = float(parts[offset + 7])
+                rior_tot = int(parts[offset + 8])
+                wior_tot = int(parts[offset + 9])
+                riob_tot = int(parts[offset + 10])
+                wiob_tot = int(parts[offset + 11])
+                
+                topn = int(topn_str)
+                
+                workload_profiles.append(WorkloadProfile(
+                    sample_start=sample_start,
+                    topn=topn,
+                    module=module,
+                    program=program,
+                    event=event,
+                    total_dbtime_sum=total_dbtime_sum,
+                    aas_comp=aas_comp,
+                    aas_contribution_pct=aas_contribution_pct,
+                    tot_contributions=tot_contributions,
+                    session_type=session_type,
+                    wait_class=wait_class,
+                    delta_read_io_requests=delta_read_io_requests,
+                    delta_write_io_requests=delta_write_io_requests,
+                    delta_read_io_bytes=delta_read_io_bytes,
+                    delta_write_io_bytes=delta_write_io_bytes
+                ))
+            except (ValueError, IndexError) as e:
+                logger.warning(f"Failed to parse WORKLOAD line: {stripped} - {e}")
+                continue
+        
+        logger.info(f"Parsed {len(workload_profiles)} WORKLOAD records")
+        return workload_profiles
+    
+    def _parse_buffer_cache(self, lines: List[str]) -> List:
+        """
+        BUFFER-CACHE 섹션 파싱
+        
+        버퍼 캐시 통계를 파싱합니다.
+        
+        Args:
+            lines: 파일의 전체 라인 리스트
+            
+        Returns:
+            BufferCacheStats 객체 리스트
+        """
+        from .data_models import BufferCacheStats
+        
+        section_lines = self._extract_section(lines, "BUFFER-CACHE")
+        buffer_cache_stats = []
+        data_started = False
+        
+        for line in section_lines:
+            stripped = line.strip()
+            
+            # 헤더 구분선 확인
+            if stripped.startswith('---'):
+                data_started = True
+                continue
+            
+            # 헤더 라인 건너뛰기
+            if not data_started:
+                continue
+            
+            # 빈 라인 건너뛰기
+            if not stripped:
+                continue
+            
+            # 데이터 라인 파싱
+            parts = stripped.split()
+            
+            if len(parts) >= 9:
+                try:
+                    snap_id = int(parts[0])
+                    instance_number = int(parts[1])
+                    block_size = int(parts[2])
+                    db_cache_gb = float(parts[3])
+                    dsk_reads = int(parts[4])
+                    block_gets = int(parts[5])
+                    consistent = int(parts[6])
+                    buf_got_gb = float(parts[7])
+                    hit_ratio = float(parts[8])
+                    
+                    buffer_cache_stats.append(BufferCacheStats(
+                        snap_id=snap_id,
+                        instance_number=instance_number,
+                        block_size=block_size,
+                        db_cache_gb=db_cache_gb,
+                        dsk_reads=dsk_reads,
+                        block_gets=block_gets,
+                        consistent=consistent,
+                        buf_got_gb=buf_got_gb,
+                        hit_ratio=hit_ratio
+                    ))
+                except (ValueError, IndexError) as e:
+                    logger.warning(f"Failed to parse BUFFER-CACHE line: {stripped} - {e}")
+                    continue
+        
+        logger.info(f"Parsed {len(buffer_cache_stats)} BUFFER-CACHE records")
+        return buffer_cache_stats

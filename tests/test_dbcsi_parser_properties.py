@@ -9,7 +9,7 @@ import tempfile
 import os
 from pathlib import Path
 from hypothesis import given, strategies as st, settings, assume
-from src.statspack.parser import (
+from src.dbcsi.parser import (
     StatspackParser,
     StatspackParseError,
     StatspackFileError,

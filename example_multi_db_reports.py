@@ -4,8 +4,8 @@
 폴더 구조: reports/YYYYMMDD/{db_name}/
 """
 
-from src.statspack.data_models import StatspackData, OSInformation
-from src.statspack.result_formatter import StatspackResultFormatter
+from src.dbcsi.data_models import StatspackData, OSInformation
+from src.dbcsi.result_formatter import StatspackResultFormatter
 
 
 def main():

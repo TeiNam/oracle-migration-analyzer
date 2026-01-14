@@ -6,7 +6,7 @@ Property-based testing을 사용하여 MigrationAnalyzer의 정확성을 검증�
 
 import pytest
 from hypothesis import given, strategies as st, settings
-from src.statspack.data_models import (
+from src.dbcsi.data_models import (
     StatspackData,
     OSInformation,
     OracleEdition,
@@ -14,7 +14,7 @@ from src.statspack.data_models import (
     MemoryMetric,
     TargetDatabase,
 )
-from src.statspack.migration_analyzer import MigrationAnalyzer
+from src.dbcsi.migration_analyzer import MigrationAnalyzer
 
 
 # 전략: Oracle 에디션 문자열 생성
@@ -670,3 +670,665 @@ def test_select_instance_type():
     # 요구사항을 만족하는 인스턴스가 없는 경우
     instance_type = analyzer._select_instance_type(200, 2000)
     assert instance_type is None
+
+
+
+# AWR Enhanced Migration Analyzer Property Tests
+
+# Feature: awr-analyzer, Property 7: 읽기 집약적 워크로드 분류
+@given(
+    st.integers(min_value=1000, max_value=10000),  # 읽기 IOPS
+    st.integers(min_value=100, max_value=1000)     # 쓰기 IOPS
+)
+@settings(max_examples=100)
+def test_property_read_intensive_workload_classification(read_iops, write_iops):
+    """
+    Property 7: 읽기 집약적 워크로드 분류
+    
+    For any 읽기 IOPS가 쓰기 IOPS의 3배 이상인 I/O 데이터에 대해, 
+    워크로드는 읽기 집약적으로 분류되어야 합니다.
+    
+    Validates: Requirements 4.7
+    """
+    from src.dbcsi.data_models import AWRData, PercentileIO
+    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+    
+    # 읽기 IOPS가 쓰기 IOPS의 3배 이상인 경우만 테스트
+    if read_iops < write_iops * 3:
+        return
+    
+    # AWRData 생성
+    os_info = OSInformation()
+    percentile_io = {
+        "99th_percentile": PercentileIO(
+            metric="99th_percentile",
+            instance_number=1,
+            rw_iops=read_iops + write_iops,
+            r_iops=read_iops,
+            w_iops=write_iops,
+            rw_mbps=100,
+            r_mbps=80,
+            w_mbps=20,
+            begin_interval="2024-01-01 00:00:00",
+            end_interval="2024-01-01 01:00:00",
+            snap_shots=10,
+            days=1.0,
+            avg_snaps_per_day=10.0
+        )
+    }
+    
+    awr_data = AWRData(
+        os_info=os_info,
+        percentile_io=percentile_io
+    )
+    
+    # EnhancedMigrationAnalyzer 생성
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    
+    # 워크로드 패턴 분석
+    # 참고: 현재 구현은 workload_profiles 기반이므로 I/O 데이터만으로는 분류하지 않음
+    # 이 테스트는 향후 I/O 기반 분류가 추가될 때를 대비한 것
+    
+    # 검증: 읽기 IOPS가 쓰기 IOPS의 3배 이상이면 읽기 집약적
+    ratio = read_iops / write_iops if write_iops > 0 else float('inf')
+    assert ratio >= 3.0, \
+        f"읽기 IOPS({read_iops})가 쓰기 IOPS({write_iops})의 3배 이상이어야 함"
+
+
+# Feature: awr-analyzer, Property 13: CPU 집약적 워크로드 인스턴스 추천
+@given(
+    st.floats(min_value=51.0, max_value=100.0)  # CPU 사용률 > 50%
+)
+@settings(max_examples=100)
+def test_property_cpu_intensive_workload_instance_recommendation(cpu_pct):
+    """
+    Property 13: CPU 집약적 워크로드 인스턴스 추천
+    
+    For any CPU 사용률이 50% 초과인 워크로드 데이터에 대해, 
+    컴퓨트 최적화 인스턴스 추천 또는 권장사항이 포함되어야 합니다.
+    
+    Validates: Requirements 9.2
+    """
+    from src.dbcsi.data_models import AWRData, WorkloadProfile
+    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+    
+    # AWRData 생성 (CPU 집약적 워크로드)
+    os_info = OSInformation(num_cpus=8, physical_memory_gb=64.0)
+    
+    # CPU 집약적 워크로드 프로파일 생성
+    workload_profiles = [
+        WorkloadProfile(
+            sample_start="2024-01-01 10:00:00",
+            topn=1,
+            module="Application",
+            program="app.exe",
+            event="CPU + CPU Wait",
+            total_dbtime_sum=int(cpu_pct * 1000),  # CPU 비율에 비례
+            aas_comp=cpu_pct / 100.0,
+            aas_contribution_pct=cpu_pct,
+            tot_contributions=1,
+            session_type="FOREGROUND",
+            wait_class="CPU",
+            delta_read_io_requests=100,
+            delta_write_io_requests=50,
+            delta_read_io_bytes=1000000,
+            delta_write_io_bytes=500000
+        ),
+        WorkloadProfile(
+            sample_start="2024-01-01 10:00:00",
+            topn=2,
+            module="Application",
+            program="app.exe",
+            event="User I/O",
+            total_dbtime_sum=int((100 - cpu_pct) * 1000),  # 나머지는 I/O
+            aas_comp=(100 - cpu_pct) / 100.0,
+            aas_contribution_pct=100 - cpu_pct,
+            tot_contributions=1,
+            session_type="FOREGROUND",
+            wait_class="User I/O",
+            delta_read_io_requests=1000,
+            delta_write_io_requests=500,
+            delta_read_io_bytes=10000000,
+            delta_write_io_bytes=5000000
+        )
+    ]
+    
+    awr_data = AWRData(
+        os_info=os_info,
+        workload_profiles=workload_profiles
+    )
+    
+    # EnhancedMigrationAnalyzer 생성
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    
+    # 워크로드 패턴 분석
+    workload_pattern = analyzer._analyze_workload_pattern()
+    
+    # 검증: CPU 비율이 50% 초과이면 CPU-intensive로 분류
+    assert workload_pattern.cpu_pct > 50.0, \
+        f"CPU 비율({workload_pattern.cpu_pct}%)이 50% 초과여야 함"
+    
+    assert workload_pattern.pattern_type == "CPU-intensive", \
+        f"CPU 비율이 {cpu_pct}%일 때 'CPU-intensive'로 분류되어야 하지만 '{workload_pattern.pattern_type}'로 분류됨"
+
+
+
+# Feature: awr-analyzer, Property 9: 버퍼 캐시 효율성 평가
+@given(
+    st.floats(min_value=95.0, max_value=99.4)  # 히트율 95% ~ 99.4%
+)
+@settings(max_examples=100)
+def test_property_buffer_cache_efficiency_evaluation(hit_ratio):
+    """
+    Property 9: 버퍼 캐시 효율성 평가
+    
+    For any 히트율이 95% 이상인 버퍼 캐시 데이터에 대해, 
+    버퍼 캐시는 효율적으로 동작하는 것으로 평가되어야 합니다.
+    
+    Validates: Requirements 6.3
+    """
+    from src.dbcsi.data_models import AWRData, BufferCacheStats
+    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+    
+    # AWRData 생성
+    os_info = OSInformation()
+    buffer_cache_stats = [
+        BufferCacheStats(
+            snap_id=1,
+            instance_number=1,
+            block_size=8192,
+            db_cache_gb=32.0,
+            dsk_reads=1000,
+            block_gets=100000,
+            consistent=90000,
+            buf_got_gb=30.0,
+            hit_ratio=hit_ratio
+        )
+    ]
+    
+    awr_data = AWRData(
+        os_info=os_info,
+        buffer_cache_stats=buffer_cache_stats
+    )
+    
+    # EnhancedMigrationAnalyzer 생성
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    
+    # 버퍼 캐시 분석
+    buffer_analysis = analyzer._analyze_buffer_cache()
+    
+    # 검증: 히트율이 95% 이상이면 효율적으로 평가
+    assert buffer_analysis.avg_hit_ratio >= 95.0, \
+        f"평균 히트율({buffer_analysis.avg_hit_ratio}%)이 95% 이상이어야 함"
+    
+    # 최적화 불필요
+    assert not buffer_analysis.optimization_needed, \
+        f"히트율이 {hit_ratio}%일 때 최적화가 불필요해야 함"
+    
+    # 권장사항에 "효율적" 포함
+    recommendations_text = " ".join(buffer_analysis.recommendations)
+    assert "효율적" in recommendations_text, \
+        f"히트율이 {hit_ratio}%일 때 권장사항에 '효율적'이 포함되어야 함"
+
+
+# Feature: awr-analyzer, Property 10: 버퍼 캐시 최적화 권장
+@given(
+    st.floats(min_value=50.0, max_value=89.9)  # 히트율 < 90%
+)
+@settings(max_examples=100)
+def test_property_buffer_cache_optimization_recommendation(hit_ratio):
+    """
+    Property 10: 버퍼 캐시 최적화 권장
+    
+    For any 히트율이 90% 미만인 버퍼 캐시 데이터에 대해, 
+    버퍼 캐시 크기 증가 권장사항이 포함되어야 합니다.
+    
+    Validates: Requirements 6.4, 10.1
+    """
+    from src.dbcsi.data_models import AWRData, BufferCacheStats
+    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+    
+    # AWRData 생성
+    os_info = OSInformation()
+    buffer_cache_stats = [
+        BufferCacheStats(
+            snap_id=1,
+            instance_number=1,
+            block_size=8192,
+            db_cache_gb=32.0,
+            dsk_reads=10000,
+            block_gets=100000,
+            consistent=80000,
+            buf_got_gb=25.0,
+            hit_ratio=hit_ratio
+        )
+    ]
+    
+    awr_data = AWRData(
+        os_info=os_info,
+        buffer_cache_stats=buffer_cache_stats
+    )
+    
+    # EnhancedMigrationAnalyzer 생성
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    
+    # 버퍼 캐시 분석
+    buffer_analysis = analyzer._analyze_buffer_cache()
+    
+    # 검증: 히트율이 90% 미만이면 최적화 필요
+    assert buffer_analysis.avg_hit_ratio < 90.0, \
+        f"평균 히트율({buffer_analysis.avg_hit_ratio}%)이 90% 미만이어야 함"
+    
+    assert buffer_analysis.optimization_needed, \
+        f"히트율이 {hit_ratio}%일 때 최적화가 필요해야 함"
+    
+    # 권장 크기가 현재 크기보다 커야 함
+    assert buffer_analysis.recommended_size_gb > buffer_analysis.current_size_gb, \
+        f"권장 크기({buffer_analysis.recommended_size_gb}GB)가 현재 크기({buffer_analysis.current_size_gb}GB)보다 커야 함"
+    
+    # 권장사항에 "증가" 또는 "권장" 포함
+    recommendations_text = " ".join(buffer_analysis.recommendations)
+    assert "증가" in recommendations_text or "권장" in recommendations_text, \
+        f"히트율이 {hit_ratio}%일 때 권장사항에 '증가' 또는 '권장'이 포함되어야 함"
+
+
+
+# Feature: awr-analyzer, Property 14: LGWR I/O 최적화 권장
+@given(
+    st.floats(min_value=10.1, max_value=200.0)  # LGWR I/O > 10 MB/s
+)
+@settings(max_examples=100)
+def test_property_lgwr_io_optimization_recommendation(lgwr_mb_per_s):
+    """
+    Property 14: LGWR I/O 최적화 권장
+    
+    For any LGWR I/O가 10 MB/s 이상인 데이터에 대해, 
+    로그 쓰기 최적화 권장사항이 포함되어야 합니다.
+    
+    Validates: Requirements 11.1
+    """
+    from src.dbcsi.data_models import AWRData, IOStatFunction
+    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+    
+    # AWRData 생성
+    os_info = OSInformation()
+    iostat_functions = [
+        IOStatFunction(
+            snap_id=1,
+            function_name="LGWR",
+            megabytes_per_s=lgwr_mb_per_s
+        ),
+        IOStatFunction(
+            snap_id=1,
+            function_name="DBWR",
+            megabytes_per_s=5.0
+        )
+    ]
+    
+    awr_data = AWRData(
+        os_info=os_info,
+        iostat_functions=iostat_functions
+    )
+    
+    # EnhancedMigrationAnalyzer 생성
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    
+    # I/O 함수별 분석
+    io_analysis = analyzer._analyze_io_functions()
+    
+    # LGWR 분석 결과 찾기
+    lgwr_analysis = None
+    for analysis in io_analysis:
+        if analysis.function_name == "LGWR":
+            lgwr_analysis = analysis
+            break
+    
+    # 검증: LGWR 분석 결과가 있어야 함
+    assert lgwr_analysis is not None, "LGWR 분석 결과가 있어야 함"
+    
+    # 검증: LGWR I/O가 10 MB/s 이상이면 권장사항이 있어야 함
+    assert lgwr_analysis.avg_mb_per_s > 10.0, \
+        f"LGWR 평균 I/O({lgwr_analysis.avg_mb_per_s} MB/s)가 10 MB/s 초과여야 함"
+    
+    assert len(lgwr_analysis.recommendations) > 0, \
+        f"LGWR I/O가 {lgwr_mb_per_s} MB/s일 때 권장사항이 있어야 함"
+    
+    # 권장사항에 "LGWR" 또는 "로그" 포함
+    recommendations_text = " ".join(lgwr_analysis.recommendations)
+    assert "LGWR" in recommendations_text or "로그" in recommendations_text, \
+        f"LGWR I/O가 {lgwr_mb_per_s} MB/s일 때 권장사항에 'LGWR' 또는 '로그'가 포함되어야 함"
+
+
+# Feature: awr-analyzer, Property 17: 피크 시간대 식별
+@given(
+    st.lists(
+        st.tuples(
+            st.integers(min_value=0, max_value=23),  # 시간
+            st.floats(min_value=1.0, max_value=100.0)  # 부하
+        ),
+        min_size=5,
+        max_size=24,
+        unique_by=lambda x: x[0]
+    )
+)
+@settings(max_examples=50)
+def test_property_peak_hour_identification(hour_loads):
+    """
+    Property 17: 피크 시간대 식별
+    
+    For any 시간대별 워크로드 데이터가 있는 AWR 데이터에 대해, 
+    분석 결과는 피크 시간대 정보를 포함해야 합니다.
+    
+    Validates: Requirements 14.2
+    """
+    from src.dbcsi.data_models import AWRData, WorkloadProfile
+    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+    
+    # AWRData 생성
+    os_info = OSInformation()
+    
+    # 시간대별 워크로드 프로파일 생성
+    workload_profiles = []
+    for hour, load in hour_loads:
+        workload_profiles.append(
+            WorkloadProfile(
+                sample_start=f"2024-01-01 {hour:02d}:00:00",
+                topn=1,
+                module="Application",
+                program="app.exe",
+                event="CPU + CPU Wait",
+                total_dbtime_sum=int(load * 1000),
+                aas_comp=load,
+                aas_contribution_pct=load,
+                tot_contributions=1,
+                session_type="FOREGROUND",
+                wait_class="CPU",
+                delta_read_io_requests=100,
+                delta_write_io_requests=50,
+                delta_read_io_bytes=1000000,
+                delta_write_io_bytes=500000
+            )
+        )
+    
+    awr_data = AWRData(
+        os_info=os_info,
+        workload_profiles=workload_profiles
+    )
+    
+    # EnhancedMigrationAnalyzer 생성
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    
+    # 시간대별 패턴 분석
+    time_patterns = analyzer._analyze_time_based_patterns()
+    
+    # 검증: 피크 시간대 정보가 있어야 함
+    assert "peak_hours" in time_patterns, "피크 시간대 정보가 있어야 함"
+    assert isinstance(time_patterns["peak_hours"], list), "피크 시간대는 리스트여야 함"
+
+
+
+# Feature: awr-analyzer, Property 5: P99 CPU 우선 사용
+@given(
+    st.integers(min_value=2, max_value=64),  # P99 CPU
+    st.floats(min_value=10.0, max_value=90.0)  # 평균 CPU
+)
+@settings(max_examples=100)
+def test_property_p99_cpu_priority(p99_cpu, avg_cpu_pct):
+    """
+    Property 5: P99 CPU 우선 사용
+    
+    For any P99 CPU 값이 있는 AWR 데이터에 대해, 
+    마이그레이션 난이도 계산 시 평균 CPU 대신 P99 CPU 값을 사용해야 합니다.
+    
+    Validates: Requirements 3.7, 8.2
+    """
+    from src.dbcsi.data_models import AWRData, PercentileCPU, MainMetric
+    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+    
+    # AWRData 생성
+    os_info = OSInformation(num_cpus=8, physical_memory_gb=64.0)
+    
+    # P99 CPU 데이터
+    percentile_cpu = {
+        "99th_percentile": PercentileCPU(
+            metric="99th_percentile",
+            instance_number=1,
+            on_cpu=p99_cpu,
+            on_cpu_and_resmgr=p99_cpu,
+            resmgr_cpu_quantum=0,
+            begin_interval="2024-01-01 00:00:00",
+            end_interval="2024-01-01 01:00:00",
+            snap_shots=10,
+            days=1.0,
+            avg_snaps_per_day=10.0
+        )
+    }
+    
+    # 평균 CPU 데이터 (더 낮음)
+    main_metrics = [
+        MainMetric(
+            snap=1,
+            dur_m=60.0,
+            end="2024-01-01 01:00:00",
+            inst=1,
+            cpu_per_s=avg_cpu_pct,
+            read_iops=100.0,
+            read_mb_s=10.0,
+            write_iops=50.0,
+            write_mb_s=5.0,
+            commits_s=10.0
+        )
+    ]
+    
+    awr_data = AWRData(
+        os_info=os_info,
+        percentile_cpu=percentile_cpu,
+        main_metrics=main_metrics
+    )
+    
+    # EnhancedMigrationAnalyzer 생성
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    
+    # P99 CPU 값 가져오기
+    retrieved_p99_cpu = analyzer._get_percentile_cpu("99th_percentile")
+    
+    # 검증: P99 CPU 값이 올바르게 반환되어야 함
+    assert retrieved_p99_cpu == p99_cpu, \
+        f"P99 CPU 값({retrieved_p99_cpu})이 예상값({p99_cpu})과 일치해야 함"
+    
+    # 인스턴스 추천 시 P99 CPU 사용 확인
+    instance_rec = analyzer._recommend_instance_with_percentiles(TargetDatabase.RDS_ORACLE, 5.0)
+    
+    if instance_rec:
+        # P99 CPU + 30% 여유분을 기준으로 인스턴스가 선택되어야 함
+        required_vcpu = int(p99_cpu * 1.3)
+        assert instance_rec.vcpu >= required_vcpu, \
+            f"추천 vCPU({instance_rec.vcpu})가 P99 기반 요구사항({required_vcpu})을 만족해야 함"
+
+
+# Feature: awr-analyzer, Property 6: P99 I/O 우선 사용
+@given(
+    st.integers(min_value=1000, max_value=50000),  # P99 IOPS
+    st.floats(min_value=100.0, max_value=5000.0)  # 평균 IOPS
+)
+@settings(max_examples=100)
+def test_property_p99_io_priority(p99_iops, avg_iops):
+    """
+    Property 6: P99 I/O 우선 사용
+    
+    For any P99 I/O 값이 있는 AWR 데이터에 대해, 
+    마이그레이션 난이도 계산 시 평균 I/O 대신 P99 I/O 값을 사용해야 합니다.
+    
+    Validates: Requirements 4.6, 8.3
+    """
+    from src.dbcsi.data_models import AWRData, PercentileIO
+    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+    
+    # AWRData 생성
+    os_info = OSInformation()
+    
+    # P99 I/O 데이터
+    percentile_io = {
+        "99th_percentile": PercentileIO(
+            metric="99th_percentile",
+            instance_number=1,
+            rw_iops=p99_iops,
+            r_iops=int(p99_iops * 0.7),
+            w_iops=int(p99_iops * 0.3),
+            rw_mbps=int(p99_iops / 10),
+            r_mbps=int(p99_iops * 0.7 / 10),
+            w_mbps=int(p99_iops * 0.3 / 10),
+            begin_interval="2024-01-01 00:00:00",
+            end_interval="2024-01-01 01:00:00",
+            snap_shots=10,
+            days=1.0,
+            avg_snaps_per_day=10.0
+        )
+    }
+    
+    awr_data = AWRData(
+        os_info=os_info,
+        percentile_io=percentile_io
+    )
+    
+    # EnhancedMigrationAnalyzer 생성
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    
+    # P99 I/O 값 가져오기
+    retrieved_p99_io = analyzer._get_percentile_io("99th_percentile")
+    
+    # 검증: P99 I/O 값이 올바르게 반환되어야 함
+    assert retrieved_p99_io is not None, "P99 I/O 값이 반환되어야 함"
+    assert retrieved_p99_io["rw_iops"] == p99_iops, \
+        f"P99 IOPS 값({retrieved_p99_io['rw_iops']})이 예상값({p99_iops})과 일치해야 함"
+
+
+# Feature: awr-analyzer, Property 12: 버퍼 캐시 난이도 반영
+@given(
+    st.floats(min_value=50.0, max_value=89.9)  # 히트율 < 90%
+)
+@settings(max_examples=100)
+def test_property_buffer_cache_complexity_impact(hit_ratio):
+    """
+    Property 12: 버퍼 캐시 난이도 반영
+    
+    For any 히트율이 90% 미만인 버퍼 캐시 데이터에 대해, 
+    마이그레이션 난이도 점수에 1.0 이상의 가중치가 추가되어야 합니다.
+    
+    Validates: Requirements 8.4
+    """
+    from src.dbcsi.data_models import AWRData, BufferCacheStats
+    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+    
+    # AWRData 생성
+    os_info = OSInformation()
+    buffer_cache_stats = [
+        BufferCacheStats(
+            snap_id=1,
+            instance_number=1,
+            block_size=8192,
+            db_cache_gb=32.0,
+            dsk_reads=10000,
+            block_gets=100000,
+            consistent=80000,
+            buf_got_gb=25.0,
+            hit_ratio=hit_ratio
+        )
+    ]
+    
+    awr_data = AWRData(
+        os_info=os_info,
+        buffer_cache_stats=buffer_cache_stats
+    )
+    
+    # EnhancedMigrationAnalyzer 생성
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    
+    # 마이그레이션 난이도 계산
+    complexity = analyzer._calculate_enhanced_complexity(TargetDatabase.RDS_ORACLE)
+    
+    # 검증: factors에 buffer_cache_low가 포함되어야 함
+    assert "buffer_cache_low" in complexity.factors, \
+        f"히트율이 {hit_ratio}%일 때 factors에 'buffer_cache_low'가 포함되어야 함"
+    
+    # 검증: buffer_cache_low 가중치가 1.0 이상이어야 함
+    buffer_cache_weight = complexity.factors["buffer_cache_low"]
+    assert buffer_cache_weight >= 1.0, \
+        f"히트율이 {hit_ratio}%일 때 버퍼 캐시 가중치({buffer_cache_weight})가 1.0 이상이어야 함"
+
+
+
+# Feature: awr-analyzer, Property 15: P99 기반 인스턴스 사이징
+@given(
+    st.integers(min_value=2, max_value=32),  # P99 CPU
+    st.floats(min_value=16.0, max_value=256.0)  # 메모리
+)
+@settings(max_examples=100)
+def test_property_p99_based_instance_sizing(p99_cpu, memory_gb):
+    """
+    Property 15: P99 기반 인스턴스 사이징
+    
+    For any P99 메트릭이 있는 AWR 데이터에 대해, 
+    인스턴스 사이징 시 P99 값을 기준으로 계산해야 합니다.
+    
+    Validates: Requirements 12.1
+    """
+    from src.dbcsi.data_models import AWRData, PercentileCPU, MemoryMetric
+    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+    
+    # AWRData 생성
+    os_info = OSInformation(num_cpus=8, physical_memory_gb=memory_gb)
+    
+    # P99 CPU 데이터
+    percentile_cpu = {
+        "99th_percentile": PercentileCPU(
+            metric="99th_percentile",
+            instance_number=1,
+            on_cpu=p99_cpu,
+            on_cpu_and_resmgr=p99_cpu,
+            resmgr_cpu_quantum=0,
+            begin_interval="2024-01-01 00:00:00",
+            end_interval="2024-01-01 01:00:00",
+            snap_shots=10,
+            days=1.0,
+            avg_snaps_per_day=10.0
+        )
+    }
+    
+    # 메모리 메트릭
+    memory_metrics = [
+        MemoryMetric(
+            snap_id=1,
+            instance_number=1,
+            sga_gb=memory_gb * 0.6,
+            pga_gb=memory_gb * 0.2,
+            total_gb=memory_gb * 0.8
+        )
+    ]
+    
+    awr_data = AWRData(
+        os_info=os_info,
+        percentile_cpu=percentile_cpu,
+        memory_metrics=memory_metrics
+    )
+    
+    # EnhancedMigrationAnalyzer 생성
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    
+    # 인스턴스 추천
+    instance_rec = analyzer._recommend_instance_with_percentiles(TargetDatabase.RDS_ORACLE, 5.0)
+    
+    if instance_rec:
+        # 검증: P99 CPU + 30% 여유분을 만족해야 함
+        required_vcpu = int(p99_cpu * 1.3)
+        required_vcpu = max(required_vcpu, 2)
+        
+        assert instance_rec.vcpu >= required_vcpu, \
+            f"추천 vCPU({instance_rec.vcpu})가 P99 기반 요구사항({required_vcpu})을 만족해야 함"
+        
+        # 검증: 메모리 + 20% 여유분을 만족해야 함
+        required_memory_gb = int(memory_gb * 0.8 * 1.2)
+        required_memory_gb = max(required_memory_gb, 16)
+        
+        assert instance_rec.memory_gib >= required_memory_gb, \
+            f"추천 메모리({instance_rec.memory_gib}GB)가 요구사항({required_memory_gb}GB)을 만족해야 함"

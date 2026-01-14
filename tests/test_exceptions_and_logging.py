@@ -9,14 +9,14 @@ import logging
 import tempfile
 from pathlib import Path
 
-from src.statspack.exceptions import (
+from src.dbcsi.exceptions import (
     StatspackError,
     StatspackParseError,
     StatspackFileError,
     MigrationAnalysisError,
 )
-from src.statspack.logging_config import setup_logging, get_logger
-from src.statspack.parser import StatspackParser
+from src.dbcsi.logging_config import setup_logging, get_logger
+from src.dbcsi.parser import StatspackParser
 
 
 class TestExceptions:

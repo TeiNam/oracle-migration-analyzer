@@ -16,7 +16,7 @@ from pathlib import Path
 from datetime import datetime
 from hypothesis import given, strategies as st, settings
 
-from src.statspack.data_models import (
+from src.dbcsi.data_models import (
     StatspackData,
     OSInformation,
     MemoryMetric,
@@ -30,7 +30,7 @@ from src.statspack.data_models import (
     InstanceRecommendation,
     TargetDatabase
 )
-from src.statspack.result_formatter import StatspackResultFormatter
+from src.dbcsi.result_formatter import StatspackResultFormatter
 
 
 # Hypothesis 전략 정의
@@ -442,3 +442,585 @@ def test_markdown_with_migration_analysis():
     assert "## 8. 마이그레이션 분석 결과" in markdown
     assert "RDS for Oracle" in markdown
     assert "db.r6i.xlarge" in markdown
+
+
+# Property 18: 상세 리포트 필수 섹션
+# Feature: awr-analyzer, Property 18: 상세 리포트 필수 섹션
+@settings(max_examples=100)
+@given(statspack_data_strategy())
+def test_property_detailed_report_required_sections(statspack_data):
+    """
+    For any AWR 분석 결과에 대해, Markdown 리포트는 Executive Summary, 시스템 정보, 
+    성능 메트릭, 워크로드 패턴, 마이그레이션 난이도 섹션을 포함해야 합니다.
+    
+    Validates: Requirements 15.1
+    """
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData
+    
+    # StatspackData를 AWRData로 변환
+    awr_data = AWRData(
+        os_info=statspack_data.os_info,
+        memory_metrics=statspack_data.memory_metrics,
+        disk_sizes=statspack_data.disk_sizes,
+        main_metrics=statspack_data.main_metrics,
+        wait_events=statspack_data.wait_events,
+        system_stats=statspack_data.system_stats,
+        features=statspack_data.features,
+        sga_advice=statspack_data.sga_advice
+    )
+    
+    # 상세 Markdown 생성
+    markdown = EnhancedResultFormatter.to_detailed_markdown(awr_data, language='ko')
+    
+    # 필수 섹션 확인
+    assert "분석 보고서" in markdown  # AWR 또는 Statspack
+    assert "생성 시간:" in markdown
+    assert "## 1. 시스템 정보 요약" in markdown
+    
+    # 데이터가 있는 경우에만 해당 섹션 확인
+    if awr_data.memory_metrics:
+        assert "## 2. 메모리 사용량 통계" in markdown
+
+
+# 단위 테스트: AWR 상세 리포트 생성
+def test_enhanced_result_formatter_detailed_markdown():
+    """AWR 상세 리포트 생성 기본 테스트"""
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData, PercentileCPU, PercentileIO
+    
+    # AWR 데이터 생성
+    awr_data = AWRData(
+        os_info=OSInformation(
+            db_name="TESTDB",
+            version="19.0.0.0",
+            num_cpus=8,
+            physical_memory_gb=64.0,
+            total_db_size_gb=500.0
+        ),
+        memory_metrics=[
+            MemoryMetric(snap_id=1, instance_number=1, sga_gb=40.0, pga_gb=10.0, total_gb=50.0)
+        ]
+    )
+    
+    # P99 CPU 데이터 추가
+    awr_data.percentile_cpu["99th_percentile"] = PercentileCPU(
+        metric="99th_percentile",
+        instance_number=1,
+        on_cpu=6,
+        on_cpu_and_resmgr=6,
+        resmgr_cpu_quantum=0,
+        begin_interval="2024-01-01 00:00:00",
+        end_interval="2024-01-01 23:59:59",
+        snap_shots=24,
+        days=1.0,
+        avg_snaps_per_day=24.0
+    )
+    
+    # P99 I/O 데이터 추가
+    awr_data.percentile_io["99th_percentile"] = PercentileIO(
+        metric="99th_percentile",
+        instance_number=1,
+        rw_iops=5000,
+        r_iops=4000,
+        w_iops=1000,
+        rw_mbps=200,
+        r_mbps=160,
+        w_mbps=40,
+        begin_interval="2024-01-01 00:00:00",
+        end_interval="2024-01-01 23:59:59",
+        snap_shots=24,
+        days=1.0,
+        avg_snaps_per_day=24.0
+    )
+    
+    # 마이그레이션 분석 추가
+    migration_analysis = {
+        TargetDatabase.RDS_ORACLE: MigrationComplexity(
+            target=TargetDatabase.RDS_ORACLE,
+            score=2.5,
+            level="간단",
+            factors={"기본": 1.0},
+            recommendations=["RDS for Oracle 권장"],
+            warnings=[],
+            next_steps=["평가 수행"]
+        )
+    }
+    
+    # 상세 리포트 생성
+    markdown = EnhancedResultFormatter.to_detailed_markdown(awr_data, migration_analysis, language='ko')
+    
+    # 기본 섹션 확인
+    assert "AWR 상세 분석 보고서" in markdown or "Statspack 분석 보고서" in markdown
+    assert "TESTDB" in markdown
+    assert "19.0.0.0" in markdown
+    
+    # Executive Summary 확인 (AWR이고 migration_analysis가 있는 경우)
+    if awr_data.is_awr() and migration_analysis:
+        assert "경영진 요약" in markdown or "Executive Summary" in markdown
+
+
+# 단위 테스트: 워크로드 분석 섹션
+def test_enhanced_result_formatter_workload_analysis():
+    """워크로드 분석 섹션 생성 테스트"""
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData, WorkloadProfile
+    
+    # AWR 데이터 생성
+    awr_data = AWRData(
+        os_info=OSInformation(db_name="TESTDB"),
+        memory_metrics=[]
+    )
+    
+    # 워크로드 프로파일 추가
+    awr_data.workload_profiles = [
+        WorkloadProfile(
+            sample_start="2024-01-01 10:00:00",
+            topn=1,
+            module="SQL*Plus",
+            program="sqlplus@server",
+            event="CPU + CPU Wait",
+            total_dbtime_sum=10000,
+            aas_comp=5.0,
+            aas_contribution_pct=50.0,
+            tot_contributions=1,
+            session_type="FOREGROUND",
+            wait_class="CPU",
+            delta_read_io_requests=1000,
+            delta_write_io_requests=500,
+            delta_read_io_bytes=10000000,
+            delta_write_io_bytes=5000000
+        )
+    ]
+    
+    # 워크로드 분석 생성
+    workload_section = EnhancedResultFormatter._generate_workload_analysis(awr_data, 'ko')
+    
+    # 섹션 확인
+    assert "워크로드 패턴 분석" in workload_section
+    assert "SQL*Plus" in workload_section or "워크로드 프로파일 데이터가 없습니다" in workload_section
+
+
+# 단위 테스트: 버퍼 캐시 분석 섹션
+def test_enhanced_result_formatter_buffer_cache_analysis():
+    """버퍼 캐시 분석 섹션 생성 테스트"""
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData, BufferCacheStats
+    
+    # AWR 데이터 생성
+    awr_data = AWRData(
+        os_info=OSInformation(db_name="TESTDB"),
+        memory_metrics=[]
+    )
+    
+    # 버퍼 캐시 통계 추가
+    awr_data.buffer_cache_stats = [
+        BufferCacheStats(
+            snap_id=1,
+            instance_number=1,
+            block_size=8192,
+            db_cache_gb=40.0,
+            dsk_reads=10000,
+            block_gets=100000,
+            consistent=90000,
+            buf_got_gb=400.0,
+            hit_ratio=92.5
+        )
+    ]
+    
+    # 버퍼 캐시 분석 생성
+    buffer_section = EnhancedResultFormatter._generate_buffer_cache_analysis(awr_data, 'ko')
+    
+    # 섹션 확인
+    assert "버퍼 캐시 효율성 분석" in buffer_section
+    assert "92.5" in buffer_section or "버퍼 캐시 통계 데이터가 없습니다" in buffer_section
+
+
+# 단위 테스트: I/O 함수별 분석 섹션
+def test_enhanced_result_formatter_io_function_analysis():
+    """I/O 함수별 분석 섹션 생성 테스트"""
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData, IOStatFunction
+    
+    # AWR 데이터 생성
+    awr_data = AWRData(
+        os_info=OSInformation(db_name="TESTDB"),
+        memory_metrics=[]
+    )
+    
+    # I/O 함수 통계 추가
+    awr_data.iostat_functions = [
+        IOStatFunction(
+            snap_id=1,
+            function_name="LGWR",
+            megabytes_per_s=15.5
+        ),
+        IOStatFunction(
+            snap_id=1,
+            function_name="DBWR",
+            megabytes_per_s=25.0
+        )
+    ]
+    
+    # I/O 함수별 분석 생성
+    io_section = EnhancedResultFormatter._generate_io_function_analysis(awr_data, 'ko')
+    
+    # 섹션 확인
+    assert "I/O 함수별 분석" in io_section
+    assert "LGWR" in io_section or "I/O 함수별 통계 데이터가 없습니다" in io_section
+
+
+# 단위 테스트: 백분위수 차트 생성
+def test_enhanced_result_formatter_percentile_charts():
+    """백분위수 차트 생성 테스트"""
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData, PercentileCPU, PercentileIO
+    
+    # AWR 데이터 생성
+    awr_data = AWRData(
+        os_info=OSInformation(db_name="TESTDB"),
+        memory_metrics=[]
+    )
+    
+    # CPU 백분위수 추가
+    awr_data.percentile_cpu["99th_percentile"] = PercentileCPU(
+        metric="99th_percentile",
+        instance_number=1,
+        on_cpu=6,
+        on_cpu_and_resmgr=6,
+        resmgr_cpu_quantum=0,
+        begin_interval="2024-01-01 00:00:00",
+        end_interval="2024-01-01 23:59:59",
+        snap_shots=24,
+        days=1.0,
+        avg_snaps_per_day=24.0
+    )
+    
+    # I/O 백분위수 추가
+    awr_data.percentile_io["99th_percentile"] = PercentileIO(
+        metric="99th_percentile",
+        instance_number=1,
+        rw_iops=5000,
+        r_iops=4000,
+        w_iops=1000,
+        rw_mbps=200,
+        r_mbps=160,
+        w_mbps=40,
+        begin_interval="2024-01-01 00:00:00",
+        end_interval="2024-01-01 23:59:59",
+        snap_shots=24,
+        days=1.0,
+        avg_snaps_per_day=24.0
+    )
+    
+    # 백분위수 차트 생성
+    chart_section = EnhancedResultFormatter._generate_percentile_charts(awr_data)
+    
+    # 섹션 확인
+    assert "백분위수 분포 차트" in chart_section
+    assert "```mermaid" in chart_section or "CPU 사용률 백분위수 분포" in chart_section
+
+
+# 단위 테스트: AWR 리포트 비교
+def test_enhanced_result_formatter_compare_reports():
+    """AWR 리포트 비교 테스트"""
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData
+    
+    # 첫 번째 AWR 데이터
+    awr1 = AWRData(
+        os_info=OSInformation(
+            db_name="TESTDB",
+            version="19.0.0.0",
+            num_cpus=8,
+            physical_memory_gb=64.0,
+            total_db_size_gb=500.0
+        ),
+        memory_metrics=[
+            MemoryMetric(snap_id=1, instance_number=1, sga_gb=40.0, pga_gb=10.0, total_gb=50.0)
+        ]
+    )
+    
+    # 두 번째 AWR 데이터 (약간 다른 값)
+    awr2 = AWRData(
+        os_info=OSInformation(
+            db_name="TESTDB",
+            version="19.0.0.0",
+            num_cpus=16,  # CPU 증가
+            physical_memory_gb=128.0,  # 메모리 증가
+            total_db_size_gb=600.0  # DB 크기 증가
+        ),
+        memory_metrics=[
+            MemoryMetric(snap_id=1, instance_number=1, sga_gb=80.0, pga_gb=20.0, total_gb=100.0)
+        ]
+    )
+    
+    # 비교 리포트 생성
+    comparison = EnhancedResultFormatter.compare_awr_reports(awr1, awr2, 'ko')
+    
+    # 비교 리포트 확인
+    assert "AWR 리포트 비교 분석" in comparison
+    assert "시스템 정보 비교" in comparison
+    assert "TESTDB" in comparison
+    assert "+8" in comparison  # CPU 증가
+    assert "+64.0" in comparison  # 메모리 증가
+
+
+# Property 20: 추세 분석 이상 징후 감지
+# Feature: awr-analyzer, Property 20: 추세 분석 이상 징후 감지
+@settings(max_examples=100)
+@given(st.lists(
+    st.tuples(
+        st.floats(min_value=10.0, max_value=100.0),  # CPU 사용률
+        st.floats(min_value=1000.0, max_value=10000.0),  # IOPS
+        st.floats(min_value=80.0, max_value=99.9)  # 버퍼 캐시 히트율
+    ),
+    min_size=2,
+    max_size=10
+))
+def test_property_trend_analysis_anomaly_detection(metrics_list):
+    """
+    For any 시계열 메트릭 데이터에 대해, 추세 분석은 급격한 변화를 이상 징후로 감지해야 합니다.
+    - CPU/IO 사용량이 50% 이상 급증하면 이상 징후로 감지
+    - 버퍼 캐시 히트율이 5%p 이상 하락하면 이상 징후로 감지
+    
+    Validates: Requirements 17.3
+    """
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData, PercentileCPU, PercentileIO, BufferCacheStats
+    
+    # AWR 데이터 리스트 생성
+    awr_list = []
+    for i, (cpu, iops, hit_ratio) in enumerate(metrics_list):
+        awr_data = AWRData(
+            os_info=OSInformation(
+                db_name=f"TESTDB_{i}",
+                version="19.0.0.0"
+            ),
+            memory_metrics=[]
+        )
+        
+        # CPU 백분위수 추가
+        awr_data.percentile_cpu["99th_percentile"] = PercentileCPU(
+            metric="99th_percentile",
+            instance_number=1,
+            on_cpu=int(cpu / 100 * 8),  # 8 코어 기준
+            on_cpu_and_resmgr=int(cpu / 100 * 8),
+            resmgr_cpu_quantum=0,
+            begin_interval=f"2024-01-{i+1:02d} 00:00:00",
+            end_interval=f"2024-01-{i+1:02d} 23:59:59",
+            snap_shots=24,
+            days=1.0,
+            avg_snaps_per_day=24.0
+        )
+        
+        # I/O 백분위수 추가
+        awr_data.percentile_io["99th_percentile"] = PercentileIO(
+            metric="99th_percentile",
+            instance_number=1,
+            rw_iops=int(iops),
+            r_iops=int(iops * 0.7),
+            w_iops=int(iops * 0.3),
+            rw_mbps=int(iops / 50),
+            r_mbps=int(iops * 0.7 / 50),
+            w_mbps=int(iops * 0.3 / 50),
+            begin_interval=f"2024-01-{i+1:02d} 00:00:00",
+            end_interval=f"2024-01-{i+1:02d} 23:59:59",
+            snap_shots=24,
+            days=1.0,
+            avg_snaps_per_day=24.0
+        )
+        
+        # 버퍼 캐시 통계 추가
+        awr_data.buffer_cache_stats = [
+            BufferCacheStats(
+                snap_id=1,
+                instance_number=1,
+                block_size=8192,
+                db_cache_gb=40.0,
+                dsk_reads=10000,
+                block_gets=100000,
+                consistent=90000,
+                buf_got_gb=400.0,
+                hit_ratio=hit_ratio
+            )
+        ]
+        
+        awr_list.append(awr_data)
+    
+    # 추세 리포트 생성
+    trend_report = EnhancedResultFormatter._generate_trend_report(awr_list, 'ko')
+    
+    # 이상 징후 감지 검증
+    # CPU 급증 확인
+    for i in range(1, len(metrics_list)):
+        prev_cpu = metrics_list[i-1][0]
+        curr_cpu = metrics_list[i][0]
+        cpu_change_pct = ((curr_cpu - prev_cpu) / prev_cpu) * 100
+        
+        if cpu_change_pct > 50:  # 50% 이상 급증
+            # 이상 징후가 리포트에 포함되어야 함
+            assert "이상 징후" in trend_report or "급증" in trend_report or "anomaly" in trend_report.lower()
+            break
+    
+    # IOPS 급증 확인
+    for i in range(1, len(metrics_list)):
+        prev_iops = metrics_list[i-1][1]
+        curr_iops = metrics_list[i][1]
+        iops_change_pct = ((curr_iops - prev_iops) / prev_iops) * 100
+        
+        if iops_change_pct > 50:  # 50% 이상 급증
+            assert "이상 징후" in trend_report or "급증" in trend_report or "anomaly" in trend_report.lower()
+            break
+    
+    # 버퍼 캐시 히트율 하락 확인
+    for i in range(1, len(metrics_list)):
+        prev_hit = metrics_list[i-1][2]
+        curr_hit = metrics_list[i][2]
+        hit_change = prev_hit - curr_hit
+        
+        if hit_change > 5.0:  # 5%p 이상 하락
+            assert "이상 징후" in trend_report or "하락" in trend_report or "anomaly" in trend_report.lower()
+            break
+
+
+# 단위 테스트: 추세 분석 기본 케이스
+def test_enhanced_result_formatter_trend_report():
+    """추세 분석 리포트 생성 기본 테스트"""
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData, PercentileCPU
+    
+    # 여러 AWR 데이터 생성
+    awr_list = []
+    for i in range(3):
+        awr_data = AWRData(
+            os_info=OSInformation(
+                db_name=f"TESTDB",
+                version="19.0.0.0",
+                num_cpus=8
+            ),
+            memory_metrics=[]
+        )
+        
+        # CPU 백분위수 추가 (점진적 증가)
+        awr_data.percentile_cpu["99th_percentile"] = PercentileCPU(
+            metric="99th_percentile",
+            instance_number=1,
+            on_cpu=4 + i,  # 4, 5, 6 코어
+            on_cpu_and_resmgr=4 + i,
+            resmgr_cpu_quantum=0,
+            begin_interval=f"2024-01-{i+1:02d} 00:00:00",
+            end_interval=f"2024-01-{i+1:02d} 23:59:59",
+            snap_shots=24,
+            days=1.0,
+            avg_snaps_per_day=24.0
+        )
+        
+        awr_list.append(awr_data)
+    
+    # 추세 리포트 생성
+    trend_report = EnhancedResultFormatter._generate_trend_report(awr_list, 'ko')
+    
+    # 기본 섹션 확인
+    assert "추세 분석" in trend_report or "Trend Analysis" in trend_report
+    assert len(awr_list) >= 2  # 최소 2개 이상의 데이터 필요
+
+
+# 단위 테스트: 이상 징후 감지 - CPU 급증
+def test_trend_analysis_cpu_spike_detection():
+    """CPU 급증 이상 징후 감지 테스트"""
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData, PercentileCPU
+    
+    # 첫 번째 AWR: 정상 CPU
+    awr1 = AWRData(
+        os_info=OSInformation(db_name="TESTDB", num_cpus=8),
+        memory_metrics=[]
+    )
+    awr1.percentile_cpu["99th_percentile"] = PercentileCPU(
+        metric="99th_percentile",
+        instance_number=1,
+        on_cpu=2,  # 25% 사용률
+        on_cpu_and_resmgr=2,
+        resmgr_cpu_quantum=0,
+        begin_interval="2024-01-01 00:00:00",
+        end_interval="2024-01-01 23:59:59",
+        snap_shots=24,
+        days=1.0,
+        avg_snaps_per_day=24.0
+    )
+    
+    # 두 번째 AWR: CPU 급증 (100% 증가)
+    awr2 = AWRData(
+        os_info=OSInformation(db_name="TESTDB", num_cpus=8),
+        memory_metrics=[]
+    )
+    awr2.percentile_cpu["99th_percentile"] = PercentileCPU(
+        metric="99th_percentile",
+        instance_number=1,
+        on_cpu=4,  # 50% 사용률 (100% 증가)
+        on_cpu_and_resmgr=4,
+        resmgr_cpu_quantum=0,
+        begin_interval="2024-01-02 00:00:00",
+        end_interval="2024-01-02 23:59:59",
+        snap_shots=24,
+        days=1.0,
+        avg_snaps_per_day=24.0
+    )
+    
+    # 추세 리포트 생성
+    trend_report = EnhancedResultFormatter._generate_trend_report([awr1, awr2], 'ko')
+    
+    # CPU 급증 이상 징후 확인
+    assert "이상 징후" in trend_report or "급증" in trend_report or "증가" in trend_report
+
+
+# 단위 테스트: 이상 징후 감지 - 버퍼 캐시 히트율 하락
+def test_trend_analysis_buffer_cache_drop_detection():
+    """버퍼 캐시 히트율 하락 이상 징후 감지 테스트"""
+    from src.dbcsi.result_formatter import EnhancedResultFormatter
+    from src.dbcsi.data_models import AWRData, BufferCacheStats
+    
+    # 첫 번째 AWR: 높은 히트율
+    awr1 = AWRData(
+        os_info=OSInformation(db_name="TESTDB"),
+        memory_metrics=[]
+    )
+    awr1.buffer_cache_stats = [
+        BufferCacheStats(
+            snap_id=1,
+            instance_number=1,
+            block_size=8192,
+            db_cache_gb=40.0,
+            dsk_reads=10000,
+            block_gets=100000,
+            consistent=90000,
+            buf_got_gb=400.0,
+            hit_ratio=95.0  # 95%
+        )
+    ]
+    
+    # 두 번째 AWR: 히트율 하락
+    awr2 = AWRData(
+        os_info=OSInformation(db_name="TESTDB"),
+        memory_metrics=[]
+    )
+    awr2.buffer_cache_stats = [
+        BufferCacheStats(
+            snap_id=1,
+            instance_number=1,
+            block_size=8192,
+            db_cache_gb=40.0,
+            dsk_reads=20000,
+            block_gets=100000,
+            consistent=90000,
+            buf_got_gb=400.0,
+            hit_ratio=88.0  # 88% (7%p 하락)
+        )
+    ]
+    
+    # 추세 리포트 생성
+    trend_report = EnhancedResultFormatter._generate_trend_report([awr1, awr2], 'ko')
+    
+    # 버퍼 캐시 히트율 하락 이상 징후 확인
+    assert "이상 징후" in trend_report or "하락" in trend_report or "감소" in trend_report

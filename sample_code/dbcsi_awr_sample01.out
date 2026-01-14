@@ -1,0 +1,485 @@
+~~BEGIN-OS-INFORMATION~~
+STAT_NAME                                                    STAT_VALUE
+------------------------------------------------------------ ------------------------------------------------------------
+AWR_MINER_VER                                                4.0.11.aws.62
+DB_NAME                                                      ORA12C
+DB_UNIQUE_NAME                                               ora12c
+DBID                                                         595413474
+PLATFORM_NAME                                                Linux_x86_64-bit
+VERSION                                                      12.2.0.1.0
+BANNER                                                       Oracle Database 12c Enterprise Edition Release 12.2.0.1.0 - 64bit Production
+DATABASE_ROLE                                                PRIMARY
+INSTANCES                                                    1
+INSTANCES_CURRENT                                            1
+HOST_CONNECTED                                               oracle-12c
+INSTANCE#_CONNECTED                                          1
+HOSTS                                                        oracle-12c
+HOSTS_CURRENT                                                oracle-12c
+NUM_CPUS                                                     6
+NUM_CPU_CORES                                                6
+NUM_CPU_SOCKETS                                              2
+PHYSICAL_MEMORY_GB                                           7.75
+GLOBAL_CPU_COUNT                                             6
+GLOBAL_CPU_CORE_COUNT                                        6
+GLOBAL_CPU_SOCKET_COUNT                                      2
+TOTAL_DB_SIZE_GB                                             3
+TOTAL_DATAFILE_SIZE_GB                                       3
+TOTAL_TEMPFILE_SIZE_GB                                       0
+USED_DB_SIZE_GB                                              3
+DB_CPU_THREADS_AVERAGE_P99                                   .021
+DB_CPU_THREADS_PEAKS_50                                      .037
+DB_CPU_THREADS_PEAKS_90                                      .707
+DB_HOST_CPU_THREADS_AVERAGE_P99                              .474
+DB_HOST_CPU_THREADS_PEAKS_50                                 .39
+DB_HOST_CPU_THREADS_PEAKS_90                                 1.922
+DB_IOPS_AVERAGE_P99                                          15.2
+DB_IOPS_PEAKS_P50                                            14.8
+DB_IOPS_PEAKS_P90                                            440.3
+DB_IOMB_AVERAGE_P99                                          .7
+DB_IOMB_PEAKS_P50                                            .3
+DB_IOMB_PEAKS_P90                                            26.5
+DB_SGAPGA_TOTAL                                              4.8
+DB_EXA_CELL_BYTES_ELIG_MB_P99                                0
+DB_EXA_CELL_SI_SAVE_MB_P99                                   0
+DB_EXA_CELL_INT_MB_P99                                       4.3
+DB_EXA_CELL_INT_SS_MB_P99                                    0
+DB_EXA_CELL_HCC_BYTES_MB_P99                                 0
+DB_EXA_READ_MB_P99                                           1.7
+DB_EXA_READ_MB_OPT_P99                                       0
+DB_EXA_READ_MULTI_P99                                        .1
+DB_EXA_READ_TEMP_P99                                         0
+DB_EXA_WRITE_TEMP_P99                                        0
+COUNT_DB_LINKS                                               1
+COUNT_LINES_PLSQL                                            274
+COUNT_SCHEMAS                                                6
+COUNT_PDBS                                                   0
+COUNT_FUNCTION                                               1
+COUNT_INDEX                                                  136
+COUNT_INDEX PARTITION                                        196
+COUNT_LOB                                                    37
+COUNT_MATERIALIZED VIEW                                      2
+COUNT_PROCEDURE                                              2
+COUNT_SEQUENCE                                               6
+COUNT_TABLE                                                  58
+COUNT_TABLE PARTITION                                        56
+COUNT_TRIGGER                                                6
+COUNT_TYPE                                                   41
+COUNT_TYPE BODY                                              3
+COUNT_VIEW                                                   23
+COUNT_TABLES_HCC                                             0
+COUNT_BITMAP_INDEX                                           15
+COUNT_MATVIEWS_REWRITE_ENABLED                               2
+COUNT_VPD_POLICIES                                           3
+FEATURE_Real Application Security                            Yes
+DEBUG_MODULE                                                 sqlplus
+DEBUG_PROGRAM                                                sqlplus@oracle-12c (TNS V1-V3)
+DEBUG_CONTAINER
+DEBUG_SQLPLUS                                                1202000100
+DEBUG_CDB_OR_DBA_COL                                         DBA
+DEBUG_awr_pdb_autoflush_enabled                              FALSE
+DEBUG_control_management_pack_access                         DIAGNOSTIC+TUNING
+MEMORY_TARGET                                                0
+NLS_COMP                                                     BINARY
+NLS_SORT                                                     BINARY
+SGA_TARGET                                                   5033164800
+DEBUG_statistics_level                                       TYPICAL
+DEBUG_timed_statistics                                       TRUE
+~~END-OS-INFORMATION~~
+경   과: 00:00:02.67
+
+
+..Gathering MEMORY
+
+~~BEGIN-MEMORY~~
+
+   SNAP_ID INSTANCE_NUMBER        SGA        PGA      TOTAL
+---------- --------------- ---------- ---------- ----------
+        17               1        4.5         .2        4.7
+        18               1        4.5         .3        4.8
+        19               1        4.5         .3        4.8
+        20               1        4.5         .3        4.8
+        21               1        4.5         .3        4.8
+        22               1        4.5         .3        4.8
+        23               1        4.5         .3        4.8
+        24               1        4.5         .3        4.8
+        25               1        4.5         .3        4.8
+        26               1        4.5         .3        4.8
+        27               1        4.5         .3        4.8
+        28               1        4.5         .3        4.8
+        29               1        4.5         .3        4.8
+        30               1        4.5         .3        4.8
+
+~~END-MEMORY~~
+경   과: 00:00:00.00
+
+
+..Gathering SIZE-ON-DISK
+
+~~BEGIN-SIZE-ON-DISK~~
+
+   SNAP_ID    SIZE_GB
+---------- ----------
+        17       1.39
+        30       2.67
+
+~~END-SIZE-ON-DISK~~
+경   과: 00:00:00.02
+
+
+..Gathering MAIN-METRICS
+
+~~BEGIN-MAIN-METRICS~~
+
+      snap      dur_m end                  inst     os_cpu os_cpu_max  os_cpu_sd db_wait_ratio db_cpu_ratio  cpu_per_s cpu_per_s_max cpu_per_s_sd        aas     aas_sd    aas_max    db_time db_time_sd sql_res_t_cs bkgd_t_per_s   logons_s logons_total     exec_s   hard_p_s  l_reads_s  commits_s  read_mb_s read_mb_s_max  read_iops read_iops_max   read_bks read_bks_direct write_mb_s write_mb_s_max write_iops write_iops_max  write_bks write_bks_direct read_nt_mb_s read_nt_mb_s_max read_nt_iops read_nt_iops_max write_nt_mb_s write_nt_mb_s_max write_nt_iops write_nt_iops_max  redo_mb_s db_block_gets_s db_block_changes_s gc_cr_rec_s gc_cu_rec_s gc_cr_get_cs gc_cu_get_cs gc_bk_corrupted gc_bk_lost    px_sess    se_sess s_blk_r_lat h_cpu_per_s h_cpu_per_s_max h_cpu_per_s_sd cell_io_int_mb cell_io_int_mb_max network_mb network_mb_max   PDB_IOPS PDB_IOMBPS    PDB_SGA    PDB_PGA PDB_CPU_USAGE_PER_S
+---------- ---------- -------------- ---------- ---------- ---------- ---------- ------------- ------------ ---------- ------------- ------------ ---------- ---------- ---------- ---------- ---------- ------------ ------------ ---------- ------------ ---------- ---------- ---------- ---------- ---------- ------------- ---------- ------------- ---------- --------------- ---------- -------------- ---------- -------------- ---------- ---------------- ------------ ---------------- ------------ ---------------- ------------- ----------------- ------------- ----------------- ---------- --------------- ------------------ ----------- ----------- ------------ ------------ --------------- ---------- ---------- ---------- ----------- ----------- --------------- -------------- -------------- ------------------ ---------- -------------- ---------- ---------- ---------- ---------- -------------------
+        17         50 26/01/11 22:32          1        2.2        6.7        1.1           3.3         43.9       .004          .037         .008          0          0          0         .4         .9            0            0         .1         48.6        3.6         .2      133.5          0          0            .1        2.7           7.5         .3               0          0             .1        1.3            7.3         .6                0            0               .1           .2              1.7             0                .1            .3               6.1          0             4.3                4.6           0           0            0            0               0          0          0          1           0        .129             .39           .062            3.7               11.1          0              0
+        18         61 26/01/12 00:00          1        8.1       33.4        8.4           3.8         28.2       .021          .707         .102          0         .1         .9        2.7       12.5            0           .3         .1         48.6       57.2        5.6      443.4         .3         .2           5.2        8.4         290.8          7              .2         .5           21.3        6.8          149.5        5.4              1.6           .1              2.6          4.7            214.2             0                .8           1.6              29.8          0            95.3               89.2           0           0            0            0               0          0          0        1.4           0        .474           1.922           .493           41.8             1589.7          0             .8
+        19         10 26/01/12 00:10          1        2.2        3.6         .8             0         41.2          0          .001            0          0          0          0          0          0            0            0         .1         47.9       11.7         .6       83.7          0          0            .1        2.9           6.6         .5               0          0             .2        1.8            7.4          2               .1            0                0           .5              2.7             0                .1            .7               6.3          0            30.5               33.8           0           0            0            0               0          0          0        1.1           0        .127            .214           .046            4.9               12.7          0              0
+
+~~END-MAIN-METRICS~~
+경   과: 00:00:00.03
+
+
+..Gathering AVERAGE-ACTIVE-SESSIONS
+경   과: 00:00:00.02
+
+
+..Gathering TOP-N-TIMED-EVENTS
+
+~~BEGIN-TOP-N-TIMED-EVENTS~~
+
+   SNAP_ID WAIT_CLASS           EVENT_NAME                                                       PCTDBT TOTAL_TIME_S
+---------- -------------------- ------------------------------------------------------------ ---------- ------------
+        18 DB CPU               DB CPU                                                            76.94     75729527
+        18 System I/O           log file parallel write                                           13.63     13418711
+        18 User I/O             db file sequential read                                             5.6      5510398
+        18 Other                oracle thread bootstrap                                            5.26      5178420
+        18 System I/O           control file parallel write                                        3.11      3059085
+        19 Other                oracle thread bootstrap                                          430.16       502365
+        19 System I/O           control file parallel write                                      236.35       276029
+        19 System I/O           db file async I/O submit                                         164.05       191590
+        19 DB CPU               DB CPU                                                           121.73       142169
+        19 System I/O           log file parallel write                                              75        87590
+        20 DB CPU               DB CPU                                                            89.59       762054
+        20 System I/O           log file parallel write                                            3.78        32142
+        20 User I/O             direct path write                                                   .48         4047
+        20 Other                PGA memory operation                                                .25         2148
+        20 System I/O           control file sequential read                                        .17         1436
+        21 DB CPU               DB CPU                                                            87.76       353571
+        21 System I/O           log file parallel write                                            7.69        30984
+        21 Configuration        undo segment extension                                             2.69        10827
+        21 System I/O           control file parallel write                                        1.12         4493
+        21 Other                reliable message                                                    .64         2596
+        22 DB CPU               DB CPU                                                            90.86       351902
+        22 System I/O           log file parallel write                                            12.5        48417
+        22 Other                LGWR any worker group                                                 1         3865
+        22 Other                LGWR worker group ordering                                          .64         2478
+        22 System I/O           control file sequential read                                        .41         1581
+        23 DB CPU               DB CPU                                                            90.79       320207
+        23 System I/O           log file parallel write                                            9.62        33945
+        23 Other                LGWR any worker group                                               .41         1430
+        23 System I/O           control file sequential read                                         .4         1420
+        23 Other                LGWR worker group ordering                                          .34         1185
+        24 DB CPU               DB CPU                                                            90.78       340806
+        24 System I/O           log file parallel write                                            9.39        35245
+        24 Other                LGWR any worker group                                               .57         2153
+        24 User I/O             db file sequential read                                             .45         1678
+        24 System I/O           control file sequential read                                        .38         1414
+        25 DB CPU               DB CPU                                                             90.8       323712
+        25 System I/O           log file parallel write                                           10.09        35980
+        25 Other                LGWR any worker group                                               .89         3189
+        25 Other                LGWR worker group ordering                                           .6         2151
+        25 Commit               log file sync                                                       .44         1580
+        26 DB CPU               DB CPU                                                             90.7       348906
+        26 System I/O           log file parallel write                                            8.76        33704
+        26 System I/O           control file sequential read                                        .41         1572
+        26 Other                LGWR worker group ordering                                          .33         1283
+        26 Other                PGA memory operation                                                .19          717
+        27 DB CPU               DB CPU                                                            90.69       324861
+        27 System I/O           log file parallel write                                            9.24        33118
+        27 Other                LGWR worker group ordering                                          .85         3035
+        27 User I/O             db file sequential read                                             .48         1734
+        27 System I/O           control file sequential read                                        .37         1315
+        28 DB CPU               DB CPU                                                            90.63       335463
+        28 System I/O           log file parallel write                                            10.1        37382
+        28 Other                LGWR any worker group                                               .75         2764
+        28 Other                LGWR worker group ordering                                          .72         2681
+        28 System I/O           control file sequential read                                        .37         1384
+        29 DB CPU               DB CPU                                                            90.99       330076
+        29 System I/O           log file parallel write                                            10.8        39182
+        29 Other                LGWR any worker group                                               .63         2273
+        29 User I/O             db file sequential read                                             .53         1932
+        29 System I/O           control file sequential read                                        .44         1582
+        30 DB CPU               DB CPU                                                            90.33       333964
+        30 System I/O           log file parallel write                                            9.14        33792
+        30 Other                LGWR any worker group                                              1.16         4299
+        30 System I/O           control file sequential read                                        .46         1714
+        30 User I/O             db file sequential read                                             .41         1526
+
+~~END-TOP-N-TIMED-EVENTS~~
+경   과: 00:00:00.04
+
+
+..Gathering SYSSTAT
+
+~~BEGIN-SYSSTAT~~
+
+   SNAP_ID cell_flash_hits  read_iops write_iops    read_mb read_mb_opt read_nt_iops write_nt_iops read_nt_mb write_nt_mb cell_int_mb cell_int_ss_mb cell_si_save_mb cell_bytes_elig_mb cell_hcc_bytes_mb read_multi_iops read_temp_iops write_temp_iops network_incoming_mb network_outgoing_mb
+---------- --------------- ---------- ---------- ---------- ----------- ------------ ------------- ---------- ----------- ----------- -------------- --------------- ------------------ ----------------- --------------- -------------- --------------- ------------------- -------------------
+        18               0        6.7        5.3         .2           0          3.5           1.3          0           0          .5              0               0                  0                 0              .1              0               0                   0                   0
+        19               0        2.9        1.8          0           0           .5            .7          0           0          .1              0               0                  0                 0               0              0               0                   0                   0
+        20               0       54.5         22         .8           0            0           3.5          0           0         2.2              0               0                  0                 0               0              0               0                   0                   0
+        21               0         59       20.5         .9           0            0             1          0           0         2.1              0               0                  0                 0               0              0               0                   0                   0
+        22               0       52.5       15.5         .8           0            0             0          0           0           2              0               0                  0                 0               0              0               0                   0                   0
+        23               0        109         35        1.7           0            0             0          0           0         4.3              0               0                  0                 0               0              0               0                   0                   0
+        24               0       35.7       10.3         .5           0           .7             0          0           0         1.2              0               0                  0                 0               0              0               0                   0                   0
+        25               0       54.5       17.5         .8           0            0             0          0           0           2              0               0                  0                 0               0              0               0                   0                   0
+        26               0        107         31        1.6           0            2             0          0           0           4              0               0                  0                 0               0              0               0                   0                   0
+        27               0        113         35        1.7           0            0             0          0           0         4.1              0               0                  0                 0               0              0               0                   0                   0
+        28               0       52.5       17.5         .8           0            0             0          0           0           2              0               0                  0                 0               0              0               0                   0                   0
+        29               0        111         33        1.7           0            2             0          0           0         4.1              0               0                  0                 0               0              0               0                   0                   0
+        30               0        107         29        1.6           0            2             0          0           0           4              0               0                  0                 0               0              0               0                   0                   0
+
+~~END-SYSSTAT~~
+경   과: 00:00:00.02
+
+
+..Gathering FEATURES
+
+~~BEGIN-FEATURES~~
+
+NAME                                                             DETECTED_USAGES TOTAL_SAMPLES CURRE  AUX_COUNT LAST_SAMPLE_DATE FEATURE_INFO
+---------------------------------------------------------------- --------------- ------------- ----- ---------- ---------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Adaptive Plans                                                                 1             1 TRUE             11-1월 -2026     Total number of queries: 741 Number of queries with an adaptive plan: 39 Percentage of queries with an adaptive plan: 5.26315789473684210526315789473684210526 Are the queries running in reporting mode ? : No
+Automatic Maintenance - Optimizer Statistics Gathering                         1             1 TRUE           0 11-1월 -2026
+Automatic Maintenance - SQL Tuning Advisor                                     1             1 TRUE           0 11-1월 -2026
+Automatic Maintenance - Space Advisor                                          1             1 TRUE           0 11-1월 -2026
+Automatic Reoptimization                                                       1             1 TRUE             11-1월 -2026     Total number of queries: 781 Number of reoptimizable queries: 4 Percentage of reoptimizable queries: .5121638924455825864276568501920614596671
+Automatic SGA Tuning                                                           1             1 TRUE           0 11-1월 -2026     :sga_target:5033164800:sga_max_size:5033164800:comp:shared pool:cur:872415232:min:872415232:max:872415232:usr:0:comp:large pool:cur:50331648:min:50331648:max:184549376:usr:0:comp:java pool:cur:16777216:min:16777216:max:16777216:usr:0:comp:SGA Target:cur:5033164800:min:5033164800:max:5033164800:usr:5033164800:comp:DEFAULT buffer cache:cur:3808428032:min:3808428032:max:4076863488:usr:0:comp:Shared IO Pool:cur:268435456:min:0:max:268435456:usr:0:com
+Automatic SQL Execution Memory                                                 1             1 TRUE           0 11-1월 -2026
+Automatic Segment Space Management (system)                                    1             1 TRUE           2 11-1월 -2026     (Segment Space Management: MANUAL, TS Count: 2, Size MB: 880) (Segment Space Management: AUTO, TS Count: 2, Size MB: 515)
+Automatic Undo Management                                                      1             1 TRUE           1 11-1월 -2026     (Retention: NOGUARANTEE, TS Count: 1, Size MB: 70) (Undo Blocks: 680, Max Concurrency: 5) (Snapshot Old Info - Begin Time: 2026-01-07 22:57:29, End Time: 2026-01-11 22:50:04, SSOLD Error Count: 0)
+Character Set                                                                  1             1 TRUE             11-1월 -2026     AL32UTF8
+DBMS_STATS Incremental Maintenance                                             1             1 TRUE         380 11-1월 -2026     Incremental global preference on : FALSE, Number of tables with table level incremental maintenance preference turned on: 35, Number of tables with table level incremental maintenance preference turned off: 0, Number of tables that have had statistics gathered in incremental mode: 380
+Deferred Segment Creation                                                      1             1 TRUE         628 11-1월 -2026     Deferred Segment Creation  Parameter:1 Total Deferred Segments:628 Total Created Segments:5016 Table Segments:219 Index Segments:314 Lob Segments:88 Table Partition Segments:1 Index Partition Segments:3 Lob Partition Segments:3 Table SubPartition Segments:0 Index SubPartition Segments:0 Lob SubPartition Segments:0
+Locally Managed Tablespaces (system)                                           1             1 TRUE           4 11-1월 -2026     (Extent Management: LOCAL, TS Count: 4, Size MB: 1395)
+Locally Managed Tablespaces (user)                                             1             1 TRUE             11-1월 -2026
+Oracle Java Virtual Machine (system)                                           1             1 TRUE       39931 11-1월 -2026     System users: MDSYS with 1077 classes, 4 resources, 0 sources. ORDSYS with 2518 classes, 95 resources, 0 sources. SYS with 34606 classes, 1631 resources, 0 sources.
+Partitioning (system)                                                          1             1 TRUE        3.43 11-1월 -2026     1:T:I::1048575:0:1:::::3::0:ON-0::N:N::0::0:::|1:I:I::1048575:0:1::L:N:NU:3::0:F-0::N:N::0::0:::|1:I:I::1048575:0:1::LP:N:NU:3::0:F-0::N:N::0::0:::|2:T:I::1048575:0:1:::::3::0:ON-0::N:N::0::0:::|2:I:I::1048575:0:1::L:L:U:3::0:F-0::N:N::0::0:::|2:I:I::1048575:0:1::LP:N:U:3::0:F-0::N:N::0::0:::|2:I:I::1048575:0:1::L:N:NU:3::0:F-0::N:N::0::0:::|3:T:I::1048575:0:1:::::3::0:ON-0::N:N::0::0:::|4:T:H::100:0:2:::::100::0:ON-0::N:N::0::0:::|4:I:::::4::GNP
+Real Application Security                                                      1             1 TRUE           0 11-1월 -2026     Number of policies: 0 Number of policies applied:  Number of ACLs created: 4 Number of ACEs: 5 Number of users created: 0 Number of roles created: 0 Number of security classes created: 2 Number of privileges created: 0 Number of sessions created: 0 Number of external sessions created: 0 Number of regular sessions created: 0 Dispatcher used: FALSE Mid-tier cache used: FALSE
+SQL Plan Directive                                                             1             1 TRUE           9 11-1월 -2026     Number of directives with type, DYNAMIC_SAMPLING: 9 Number of Directives with reason, JOIN CARDINALITY MISESTIMATE: 8 Number of Directives with reason, SINGLE TABLE CARDINALITY MISESTIMATE: 1 Number of Directives with state, USABLE: 9 Number of Directive objects: 19, subobjects: 1 spd_retention_weeks: 53 _sql_plan_directive_mgmt_control: 67 _optimizer_dsdir_usage_control: 0
+SecureFiles (system)                                                           1             1 TRUE         384 11-1월 -2026
+SecureFiles (user)                                                             1             1 TRUE          33 11-1월 -2026
+Server Parameter File                                                          1             1 TRUE             11-1월 -2026
+Traditional Audit                                                              1             1 TRUE           0 11-1월 -2026     AUDIT_TRAIL=DB; Number of system audit options=0; Number of object audit options=214
+Unified Audit                                                                  1             1 TRUE           0 11-1월 -2026     Number of Unified Audit policies=9; Number of Enabled Unified Audit policies=2; Number of Unified Audit policies with condition=0; Number of Unified Audit policies on DV=1; Number of Unified Audit policies on OLS=0; Number of Unified Audit policies on XS=2; Number of Unified Audit policies on DATAPUMP=0; Number of Enabled Unified Audit Contexts=0
+
+~~END-FEATURES~~
+경   과: 00:00:00.04
+
+
+..Gathering IOSTAT-FUNCTION
+
+~~BEGIN-IOSTAT-FUNCTION~~
+
+   SNAP_ID FUNCTION_NAME        megabytes_val_per_s
+---------- -------------------- -------------------
+        18 Others                                .4
+        19 Others                                .1
+        20 Direct Writes                         .5
+        20 LGWR                                   1
+        20 Others                                .5
+        21 Direct Writes                          1
+        21 LGWR                                   1
+        21 Others                                .5
+        22 Direct Writes                         .5
+        22 LGWR                                 1.5
+        23 Direct Writes                          2
+        23 LGWR                                   2
+        24 LGWR                                  .7
+        24 Others                                .3
+        25 LGWR                                 1.5
+        25 Others                                 1
+        26 LGWR                                   3
+        26 Others                                 2
+        27 LGWR                                   1
+        27 Others                                 1
+        28 LGWR                                 1.5
+        28 Others                                 1
+        29 LGWR                                   3
+        29 Others                                 2
+        30 LGWR                                   2
+        30 Others                                 1
+
+~~END-IOSTAT-FUNCTION~~
+경   과: 00:00:00.01
+..Gathering PERCENT-CPU
+
+~~BEGIN-PERCENT-CPU~~
+
+      DBID   ORDER_BY METRIC               INSTANCE_NUMBER     ON_CPU ON_CPU_AND_RESMGR RESMGR_CPU_QUANTUM BEGIN_INTERVAL_T END_INTERVAL_TIM SNAP_SHOTS       DAYS AVG_SNAPS_PER_DAY
+---------- ---------- -------------------- --------------- ---------- ----------------- ------------------ ---------------- ---------------- ---------- ---------- -----------------
+ 595413474          1 Maximum_or_peak                    1          2                 2                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          1 Maximum_or_peak                               2                 2                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          2 99.99th_percntl                    1          2                 2                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          2 99.99th_percntl                               2                 2                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          3 99.9th_percentl                    1          2                 2                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          3 99.9th_percentl                               2                 2                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          4 99th_percentile                    1          2                 2                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          4 99th_percentile                               2                 2                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          5 97th_percentile                    1          2                 2                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          5 97th_percentile                               2                 2                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          6 95th_percentile                    1          1                 1                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          6 95th_percentile                               1                 1                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          7 90th_percentile                    1          1                 1                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          7 90th_percentile                               1                 1                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          8 75th_percentile                    1          1                 1                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          8 75th_percentile                               1                 1                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          9 Median                             1          1                 1                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474          9 Median                                        1                 1                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474         10 Average                            1          1                 1                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+ 595413474         10 Average                                       1                 1                  0 2025-12-15 07:47 2026-01-12 00:10          3       27.7                .1
+
+~~END-PERCENT-CPU~~
+경   과: 00:00:00.04
+
+
+..Gathering PERCENT-IO
+
+~~BEGIN-PERCENT-IO~~
+
+      DBID METRIC               INSTANCE_NUMBER    RW_IOPS     R_IOPS     W_IOPS    RW_MBPS     R_MBPS     W_MBPS BEGIN_INTERVAL_T END_INTERVAL_TIM SNAP_SHOTS       DAYS AVG_SNAPS_PER_DAY
+---------- -------------------- --------------- ---------- ---------- ---------- ---------- ---------- ---------- ---------------- ---------------- ---------- ---------- -----------------
+ 595413474 Maximum_or_peak                    1         15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 Maximum_or_peak                              15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 99.9th_percentl                    1         15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 99.9th_percentl                              15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 99th_percentile                    1         15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 99th_percentile                              15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 97th_percentile                    1         15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 97th_percentile                              15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 95th_percentile                    1         15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 95th_percentile                              15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 90th_percentile                    1         15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 90th_percentile                              15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 75th_percentile                    1         15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 75th_percentile                              15          7          8          1          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 Median                             1         10          5          5          0          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 Median                                       10          5          5          0          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 Average                            1         10          5          5          0          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+ 595413474 Average                                      10          5          5          0          0          0 2026-01-11 22:32 2026-01-12 00:10          2         .1              29.5
+
+~~END-PERCENT-IO~~
+경   과: 00:00:00.06
+
+
+..Gathering WORKLOAD
+
+~~BEGIN-WORKLOAD~~
+
+SAMPLESTART                        TOPN MODULE                                                           PROGRAM                                                          EVENT                                                            TOTAL_DBTIME_SUM        AAS_COMP AAS_CONTRIBUTION_PCT TOT_CONTRIBUTIONS SESSION_TY WAIT_CLASS           DELTA_READ_IO_REQUESTS DELTA_WRITE_IO_REQUESTS DELTA_READ_IO_BYTES DELTA_WRITE_IO_BYTES        RIOR_PCT        WIOR_PCT        RIOB_PCT        WIOB_PCT        RIOR_TOT        WIOR_TOT        RIOB_TOT        WIOB_TOT
+----------------------- --------------- ---------------------------------------------------------------- ---------------------------------------------------------------- ---------------------------------------------------------------- ---------------- --------------- -------------------- ----------------- ---------- -------------------- ---------------------- ----------------------- ------------------- -------------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- ---------------
+11-1월 -26 00:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 02:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 04:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 06:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 08:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 10:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 12:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 14:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 16:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 18:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 20:00:00                   1                                                                                                                                   *** IDLE ***                                                                    0               0                    0                 0                                                      0                       0                   0                    0               0               0               0               0               0               0               0               0
+11-1월 -26 22:00:00                   1 SQL*Plus                                                         sqlplus@oracle-12c (TNS V1-V3)                                   CPU + CPU Wait                                                                 90 .01666666666667      .66666666666667                 1 FOREGROUND                                        4798                    1834           182091776            348867584 .68250355618777 .99081577525662 .90671017744238  .9798897271365            7030            1851       200826880       356027392
+11-1월 -26 22:00:00                   2 SQL*Plus                                                         sqlplus@oracle-12c (TNS V1-V3)                                   db file sequential read                                                        90 .00277777777778      .11111111111111                 1 FOREGROUND User I/O                               2225                       0            18620416                    0 .31650071123755               0 .09271874362635               0            7030            1851       200826880       356027392
+11-1월 -26 22:00:00                   3 SQL Loader Direct Path Load                                      sqlldr@oracle-12c (TNS V1-V3)                                    SQL*Net more data from client                                                  90 .00277777777778      .11111111111111                 1 FOREGROUND Network                                   7                      17              114688              7159808 .00099573257468 .00918422474338 .00057107893127  .0201102728635            7030            1851       200826880       356027392
+11-1월 -26 22:00:00                   4 sqlplus@oracle-12c (TNS V1-V3)                                   sqlplus@oracle-12c (TNS V1-V3)                                   Failed Logon Delay                                                             90 .00277777777778      .11111111111111                 1 FOREGROUND Other                                     0                       0                   0                    0               0               0               0               0            7030            1851       200826880       356027392
+
+~~END-WORKLOAD~~
+경   과: 00:00:00.02
+
+
+..Gathering SGA-ADVICE
+
+~~BEGIN-SGA-ADVICE~~
+
+        INST_ID        SGA_SIZE SGA_SIZE_FACTOR    ESTD_DB_TIME ESTD_DB_TIME_FACTOR ESTD_PHYSICAL_READS ESTD_BUFFER_CACHE_SIZE ESTD_SHARED_POOL_SIZE          CON_ID      SGA_TARGET
+--------------- --------------- --------------- --------------- ------------------- ------------------- ---------------------- --------------------- --------------- ---------------
+              1             600            .125             201               .4188              386821                   3168                  1312               0            4800
+              1            1200             .25             201               .4188              386821                   3168                  1312               0            4800
+              1            1800            .375             483              1.0042              400553                    352                  1024               0            4800
+              1            2400              .5             481                   1              386821                    704                  1312               0            4800
+              1            3000            .625             481                   1              386821                   1056                  1600               0            4800
+              1            3600             .75             481                   1              386821                   1760                  1408               0            4800
+              1            4200            .875             481                   1              386821                   2464                  1312               0            4800
+              1            4800               1             481                   1              386821                   3168                  1312               0            4800
+              1            5400           1.125             481                   1              386821                   3520                  1312               0            4800
+              1            6000            1.25             481                   1              386821                   4224                  1312               0            4800
+              1            6600           1.375             481                   1              386821                   4928                  1312               0            4800
+              1            7200             1.5             481                   1              386821                   5280                  1312               0            4800
+              1            7800           1.625             481                   1              386821                   5984                  1312               0            4800
+              1            8400            1.75             481                   1              386821                   6336                  1312               0            4800
+              1            9000           1.875             481                   1              386821                   7040                  1312               0            4800
+              1            9600               2             481                   1              386821                   7744                  1312               0            4800
+
+~~END-SGA-ADVICE~~
+경   과: 00:00:00.03
+
+
+..Gathering MEMORY-ADVICE
+경   과: 00:00:00.00
+
+
+..Gathering BUFFER-CACHE
+
+~~BEGIN-BUFFER-CACHE~~
+
+        SNAP_ID INSTANCE_NUMBER      BLOCK_SIZE     DB_CACHE_GB       DSK_READS      BLOCK_GETS      CONSISTENT      BUF_GOT_GB       HIT_RATIO
+--------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- ---------------
+             18               1            8192 3.3180084228516           28045          465428         1793035 .32508850097656           98.76
+             19               1            8192 3.3180084228516             303           16918           28623 .00653076171875           99.33
+             20               1            8192 3.3180084228516               0            7818            4132 .00161743164063             100
+             21               1            8192 3.3180084228516               0            8041            2590 .00128936767578             100
+             22               1            8192 3.3180084228516               0            7492            2715 .00123596191406             100
+             23               1            8192 3.3180084228516               0            7209            2426 .00070953369141             100
+             24               1            8192 3.3180084228516               2            7531            2545 .00144195556641           99.98
+             25               1            8192 3.3180084228516               0            7202            2534 .00068664550781             100
+             26               1            8192 3.3180084228516               0            7416            2569 .00111389160156             100
+             27               1            8192 3.3180084228516               2            7412            2522 .00102996826172           99.98
+             28               1            8192 3.3180084228516               0            7294            2416 .00154113769531             100
+             29               1            8192 3.3180084228516               2            8342            2657 .00095367431641           99.98
+             30               1            8192 3.3180084228516               2            8614            2574 .00117492675781           99.98
+
+~~END-BUFFER-CACHE~~
+경   과: 00:00:00.02
+
+
+..Gathering PDBs (if applicable)
+경   과: 00:00:00.03
+
+
+..Gathering EBS-PRODUCTS
+This is OK if the next query returns a table or view does not exist message:
+
+  from APPS.fnd_product_installations fpi, APPS.fnd_application fa, APPS.fnd_application_tl fat, APPS.fnd_oracle_userid fou
+                                                                                                      *
+5행에 오류:
+ORA-00942: 테이블 또는 뷰가 존재하지 않습니다
+
+
+경   과: 00:00:00.00
+
+
+..Gathering EBS-OACORE-MEMORY
+This is OK if the next query returns a table or view does not exist message:
+
+  from APPS.fnd_oam_context_files foc
+            *
+3행에 오류:
+ORA-00942: 테이블 또는 뷰가 존재하지 않습니다
+
+
+경   과: 00:00:00.00
+
+
+..Data collection complete.

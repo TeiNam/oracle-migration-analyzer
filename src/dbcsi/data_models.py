@@ -154,6 +154,102 @@ class StatspackData:
     sga_advice: List[SGAAdvice] = field(default_factory=list)
 
 
+# AWR 특화 데이터 모델
+
+@dataclass
+class IOStatFunction:
+    """함수별 I/O 통계"""
+    snap_id: int
+    function_name: str  # "LGWR", "DBWR", "Direct Writes", "Direct Reads", "Others"
+    megabytes_per_s: float
+
+
+@dataclass
+class PercentileCPU:
+    """CPU 백분위수 통계"""
+    metric: str  # "Maximum_or_peak", "99th_percentile", "95th_percentile", etc.
+    instance_number: Optional[int]
+    on_cpu: int
+    on_cpu_and_resmgr: int
+    resmgr_cpu_quantum: int
+    begin_interval: str
+    end_interval: str
+    snap_shots: int
+    days: float
+    avg_snaps_per_day: float
+
+
+@dataclass
+class PercentileIO:
+    """I/O 백분위수 통계"""
+    metric: str  # "Maximum_or_peak", "99th_percentile", "95th_percentile", etc.
+    instance_number: Optional[int]
+    rw_iops: int
+    r_iops: int
+    w_iops: int
+    rw_mbps: int
+    r_mbps: int
+    w_mbps: int
+    begin_interval: str
+    end_interval: str
+    snap_shots: int
+    days: float
+    avg_snaps_per_day: float
+
+
+@dataclass
+class WorkloadProfile:
+    """워크로드 프로파일"""
+    sample_start: str
+    topn: int
+    module: str
+    program: str
+    event: str
+    total_dbtime_sum: int
+    aas_comp: float
+    aas_contribution_pct: float
+    tot_contributions: int
+    session_type: str  # "FOREGROUND" or "BACKGROUND"
+    wait_class: str
+    delta_read_io_requests: int
+    delta_write_io_requests: int
+    delta_read_io_bytes: int
+    delta_write_io_bytes: int
+
+
+@dataclass
+class BufferCacheStats:
+    """버퍼 캐시 통계"""
+    snap_id: int
+    instance_number: int
+    block_size: int
+    db_cache_gb: float
+    dsk_reads: int
+    block_gets: int
+    consistent: int
+    buf_got_gb: float
+    hit_ratio: float
+
+
+@dataclass
+class AWRData(StatspackData):
+    """AWR 데이터 - StatspackData를 확장"""
+    # AWR 특화 필드
+    iostat_functions: List[IOStatFunction] = field(default_factory=list)
+    percentile_cpu: Dict[str, PercentileCPU] = field(default_factory=dict)  # key: metric name
+    percentile_io: Dict[str, PercentileIO] = field(default_factory=dict)  # key: metric name
+    workload_profiles: List[WorkloadProfile] = field(default_factory=list)
+    buffer_cache_stats: List[BufferCacheStats] = field(default_factory=list)
+    
+    def is_awr(self) -> bool:
+        """AWR 데이터인지 확인"""
+        return (len(self.iostat_functions) > 0 or 
+                len(self.percentile_cpu) > 0 or 
+                len(self.percentile_io) > 0 or 
+                len(self.workload_profiles) > 0 or 
+                len(self.buffer_cache_stats) > 0)
+
+
 @dataclass
 class InstanceRecommendation:
     """RDS 인스턴스 추천 정보"""
@@ -180,10 +276,63 @@ class MigrationComplexity:
     instance_recommendation: Optional[InstanceRecommendation] = None
 
 
+# Enhanced Migration Analyzer 데이터 모델
+
+@dataclass
+class WorkloadPattern:
+    """워크로드 패턴 분석 결과"""
+    pattern_type: str  # "CPU-intensive", "IO-intensive", "Mixed", "Interactive", "Batch"
+    cpu_pct: float
+    io_pct: float
+    peak_hours: List[str]
+    main_modules: List[str]
+    main_events: List[str]
+
+
+@dataclass
+class BufferCacheAnalysis:
+    """버퍼 캐시 분석 결과"""
+    avg_hit_ratio: float
+    min_hit_ratio: float
+    max_hit_ratio: float
+    current_size_gb: float
+    recommended_size_gb: float
+    optimization_needed: bool
+    recommendations: List[str]
+
+
+@dataclass
+class IOFunctionAnalysis:
+    """I/O 함수별 분석 결과"""
+    function_name: str
+    avg_mb_per_s: float
+    max_mb_per_s: float
+    pct_of_total: float
+    is_bottleneck: bool
+    recommendations: List[str]
+
+
+@dataclass
+class EnhancedMigrationComplexity(MigrationComplexity):
+    """확장된 마이그레이션 복잡도 - MigrationComplexity 확장"""
+    # 추가 필드
+    workload_pattern: Optional[WorkloadPattern] = None
+    buffer_cache_analysis: Optional[BufferCacheAnalysis] = None
+    io_function_analysis: List[IOFunctionAnalysis] = field(default_factory=list)
+    percentile_based: bool = False  # 백분위수 기반 분석 여부
+    confidence_level: str = "High"  # "High" (AWR), "Medium" (Statspack)
+
+
 # JSON 직렬화/역직렬화 헬퍼 함수
 
 def statspack_to_dict(data: StatspackData) -> Dict[str, Any]:
     """StatspackData를 딕셔너리로 변환"""
+    from dataclasses import asdict
+    return asdict(data)
+
+
+def awr_to_dict(data: AWRData) -> Dict[str, Any]:
+    """AWRData를 딕셔너리로 변환"""
     from dataclasses import asdict
     return asdict(data)
 
@@ -238,6 +387,87 @@ def dict_to_statspack(data_dict: Dict[str, Any]) -> StatspackData:
         system_stats=system_stats,
         features=features,
         sga_advice=sga_advice
+    )
+
+
+def dict_to_awr(data_dict: Dict[str, Any]) -> AWRData:
+    """딕셔너리를 AWRData로 변환"""
+    # OS 정보 변환
+    os_info_dict = data_dict.get("os_info", {})
+    os_info = OSInformation(**os_info_dict) if os_info_dict else OSInformation()
+    
+    # 메모리 메트릭 변환
+    memory_metrics = [
+        MemoryMetric(**m) for m in data_dict.get("memory_metrics", [])
+    ]
+    
+    # 디스크 크기 변환
+    disk_sizes = [
+        DiskSize(**d) for d in data_dict.get("disk_sizes", [])
+    ]
+    
+    # 주요 메트릭 변환
+    main_metrics = [
+        MainMetric(**m) for m in data_dict.get("main_metrics", [])
+    ]
+    
+    # 대기 이벤트 변환
+    wait_events = [
+        WaitEvent(**w) for w in data_dict.get("wait_events", [])
+    ]
+    
+    # 시스템 통계 변환
+    system_stats = [
+        SystemStat(**s) for s in data_dict.get("system_stats", [])
+    ]
+    
+    # 기능 사용 변환
+    features = [
+        FeatureUsage(**f) for f in data_dict.get("features", [])
+    ]
+    
+    # SGA 권장사항 변환
+    sga_advice = [
+        SGAAdvice(**s) for s in data_dict.get("sga_advice", [])
+    ]
+    
+    # AWR 특화 필드 변환
+    iostat_functions = [
+        IOStatFunction(**io) for io in data_dict.get("iostat_functions", [])
+    ]
+    
+    percentile_cpu = {
+        key: PercentileCPU(**val) 
+        for key, val in data_dict.get("percentile_cpu", {}).items()
+    }
+    
+    percentile_io = {
+        key: PercentileIO(**val) 
+        for key, val in data_dict.get("percentile_io", {}).items()
+    }
+    
+    workload_profiles = [
+        WorkloadProfile(**w) for w in data_dict.get("workload_profiles", [])
+    ]
+    
+    buffer_cache_stats = [
+        BufferCacheStats(**b) for b in data_dict.get("buffer_cache_stats", [])
+    ]
+    
+    return AWRData(
+        os_info=os_info,
+        memory_metrics=memory_metrics,
+        disk_sizes=disk_sizes,
+        main_metrics=main_metrics,
+        wait_events=wait_events,
+        system_stats=system_stats,
+        features=features,
+        sga_advice=sga_advice,
+        iostat_functions=iostat_functions,
+        percentile_cpu=percentile_cpu,
+        percentile_io=percentile_io,
+        workload_profiles=workload_profiles,
+        buffer_cache_stats=buffer_cache_stats
     )
 
 

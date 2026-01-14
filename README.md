@@ -10,6 +10,304 @@ Oracle SQL 및 PL/SQL 코드의 복잡도를 분석하여 PostgreSQL 또는 MySQ
 ### 2. Statspack Analyzer
 DBCSI Statspack 결과 파일을 파싱하여 Oracle 데이터베이스의 성능 메트릭과 리소스 사용량을 분석하고, RDS for Oracle, Aurora MySQL, Aurora PostgreSQL로의 마이그레이션 난이도를 평가합니다.
 
+### 3. AWR Analyzer
+DBCSI AWR(Automatic Workload Repository) 결과 파일을 파싱하여 Oracle 데이터베이스의 상세한 성능 메트릭을 분석합니다. Statspack보다 더 정확한 백분위수 기반 성능 데이터를 제공하며, 함수별 I/O 통계, 워크로드 패턴, 버퍼 캐시 효율성 등 고급 분석 기능을 포함합니다.
+
+---
+
+## AWR Analyzer
+
+### 주요 기능
+
+- ✅ **AWR 파일 파싱**: DBCSI AWR 결과 파일(.out) 자동 파싱
+- ✅ **Statspack 호환성**: 기존 Statspack 파일도 처리 가능
+- ✅ **백분위수 기반 분석**: P99, P95, P90 등 백분위수 메트릭 활용
+- ✅ **함수별 I/O 분석**: LGWR, DBWR, Direct I/O 등 함수별 통계
+- ✅ **워크로드 패턴 분석**: CPU 집약적/I/O 집약적 워크로드 분류
+- ✅ **버퍼 캐시 효율성**: 히트율 분석 및 최적화 권장사항
+- ✅ **시간대별 분석**: 피크 시간대 및 유휴 시간대 식별
+- ✅ **정밀한 인스턴스 사이징**: P99 메트릭 기반 RDS 인스턴스 추천
+- ✅ **상세 리포트**: Executive Summary, 워크로드 분석, 최적화 권장사항
+- ✅ **다양한 출력 형식**: JSON, Markdown 리포트 생성
+
+### 설치
+
+```bash
+# 저장소 클론
+git clone <repository-url>
+cd oracle-migration-analyzer
+
+# 가상 환경 생성 (권장)
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 의존성 설치
+pip install -r requirements.txt
+
+# 패키지 설치 (개발 모드)
+pip install -e .
+```
+
+### 사용 방법
+
+#### 단일 AWR 파일 분석
+
+```bash
+# 기본 분석 (모든 타겟 DB)
+statspack-analyzer --file sample_code/dbcsi_awr_sample01.out
+
+# 특정 타겟 DB만 분석
+statspack-analyzer --file awr_sample.out --target rds-oracle
+statspack-analyzer --file awr_sample.out --target aurora-postgresql
+statspack-analyzer --file awr_sample.out --target aurora-mysql
+
+# 상세 리포트 생성 (AWR 특화 섹션 포함)
+statspack-analyzer --file awr_sample.out --detailed
+
+# JSON 형식으로 출력
+statspack-analyzer --file awr_sample.out --format json
+
+# Markdown 형식으로 출력
+statspack-analyzer --file awr_sample.out --format markdown
+
+# 파일로 저장
+statspack-analyzer --file awr_sample.out --output reports/awr_analysis.md
+
+# 마이그레이션 분석 포함
+statspack-analyzer --file awr_sample.out --analyze-migration --detailed
+```
+
+#### 배치 AWR 파일 분석
+
+```bash
+# 디렉토리 내 모든 AWR 파일 분석
+statspack-analyzer --directory /path/to/awr/files
+
+# 특정 타겟 DB로 배치 분석
+statspack-analyzer --directory /path/to/files --target aurora-postgresql
+
+# 상세 리포트로 배치 분석
+statspack-analyzer --directory /path/to/files --detailed
+
+# 결과를 Markdown으로 저장
+statspack-analyzer --directory /path/to/files --format markdown --output reports/
+```
+
+#### AWR vs Statspack 비교
+
+```bash
+# 두 AWR 파일 비교
+statspack-analyzer --compare awr_before.out awr_after.out
+
+# 특정 백분위수로 분석
+statspack-analyzer --file awr_sample.out --percentile 99
+statspack-analyzer --file awr_sample.out --percentile 95
+```
+
+### 명령줄 옵션
+
+#### 필수 옵션 (둘 중 하나 선택)
+
+- `--file FILE`: 분석할 단일 AWR/Statspack 파일 경로
+- `--directory DIR`: 분석할 디렉토리 경로 (모든 .out 파일)
+
+#### 선택 옵션
+
+- `--format FORMAT`: 출력 형식 선택
+  - `json`: JSON 형식
+  - `markdown`: Markdown 형식 (기본값)
+
+- `--output PATH`: 출력 파일 경로 (지정하지 않으면 표준 출력)
+
+- `--target TARGET`: 타겟 데이터베이스 선택
+  - `rds-oracle`: RDS for Oracle
+  - `aurora-mysql`: Aurora MySQL 8.0
+  - `aurora-postgresql`: Aurora PostgreSQL 16
+  - `all`: 모든 타겟 (기본값)
+
+- `--analyze-migration`: 마이그레이션 난이도 분석 포함
+
+- `--detailed`: AWR 특화 섹션을 포함한 상세 리포트 생성
+
+- `--compare FILE1 FILE2`: 두 AWR 파일 비교
+
+- `--percentile PERCENTILE`: 분석에 사용할 백분위수
+  - `99`: P99 (기본값)
+  - `95`: P95
+  - `90`: P90
+  - `75`: P75
+  - `median`: 중앙값
+  - `average`: 평균
+
+- `--language LANG`: 리포트 언어
+  - `ko`: 한국어 (기본값)
+  - `en`: 영어
+
+### Python API 사용
+
+```python
+from src.dbcsi.parser import StatspackParser
+from src.dbcsi.migration_analyzer import MigrationAnalyzer
+from src.dbcsi.result_formatter import StatspackResultFormatter
+from src.dbcsi.data_models import TargetDatabase
+
+# 1. AWR 파일 파싱
+parser = StatspackParser("sample_code/dbcsi_awr_sample01.out")
+awr_data = parser.parse()
+
+# 2. AWR 특화 데이터 확인
+if hasattr(awr_data, 'percentile_cpu') and awr_data.percentile_cpu:
+    p99_cpu = awr_data.percentile_cpu.get("99th_percentile")
+    if p99_cpu:
+        print(f"P99 CPU: {p99_cpu.on_cpu} cores")
+
+if hasattr(awr_data, 'percentile_io') and awr_data.percentile_io:
+    p99_io = awr_data.percentile_io.get("99th_percentile")
+    if p99_io:
+        print(f"P99 IOPS: {p99_io.rw_iops}")
+
+# 3. 마이그레이션 분석 (백분위수 기반)
+analyzer = MigrationAnalyzer(awr_data)
+analysis_results = analyzer.analyze()
+
+# 특정 타겟만 분석
+rds_result = analyzer.analyze(target=TargetDatabase.RDS_ORACLE)
+
+# 4. 결과 출력
+# JSON 형식
+json_output = StatspackResultFormatter.to_json(awr_data)
+print(json_output)
+
+# Markdown 형식 (상세 리포트)
+markdown_output = StatspackResultFormatter.to_markdown(
+    awr_data, 
+    analysis_results
+)
+print(markdown_output)
+
+# 5. 파일로 저장
+with open("awr_report.json", "w") as f:
+    f.write(json_output)
+
+with open("awr_report.md", "w") as f:
+    f.write(markdown_output)
+```
+
+### AWR vs Statspack 차이점
+
+| 기능 | Statspack | AWR |
+|------|-----------|-----|
+| 기본 성능 메트릭 | ✅ | ✅ |
+| 백분위수 메트릭 (P99, P95) | ❌ | ✅ |
+| 함수별 I/O 통계 | ❌ | ✅ |
+| 워크로드 패턴 분석 | ❌ | ✅ |
+| 버퍼 캐시 효율성 | ❌ | ✅ |
+| 시간대별 분석 | ❌ | ✅ |
+| 정밀한 인스턴스 사이징 | ✅ | ✅✅ (더 정확) |
+| 분석 신뢰도 | 중간 | 높음 |
+
+### 출력 예시
+
+#### AWR 마이그레이션 분석 결과
+
+```markdown
+## 마이그레이션 분석 결과 (AWR 기반)
+
+### RDS for Oracle
+
+- **난이도 점수**: 2.50 / 10.0
+- **난이도 레벨**: 간단 (Low effort)
+- **분석 신뢰도**: 높음 (AWR 백분위수 기반)
+
+**RDS 인스턴스 추천 (P99 기반):**
+
+- **인스턴스 타입**: db.r6i.xlarge
+- **vCPU**: 4
+- **메모리**: 32 GiB
+- **P99 CPU 사용률**: 2.5 cores (62.5%)
+- **P99 IOPS**: 450
+- **현재 메모리 사용량**: 12.50 GB
+- **CPU 여유분**: 37.5%
+- **메모리 여유분**: 156.0%
+
+**백분위수 메트릭:**
+- P99 CPU: 2.5 cores
+- P95 CPU: 2.1 cores
+- Average CPU: 1.2 cores
+- P99 IOPS: 450
+- P95 IOPS: 380
+- Average IOPS: 150
+
+**권장사항:**
+
+- RDS for Oracle은 동일 엔진 마이그레이션으로 호환성이 높습니다.
+- P99 메트릭 기반 인스턴스 사이징으로 피크 부하를 안정적으로 처리할 수 있습니다.
+- 버퍼 캐시 히트율이 92%로 양호하지만, 95% 이상으로 개선 가능합니다.
+
+### Aurora PostgreSQL 16
+
+- **난이도 점수**: 6.80 / 10.0
+- **난이도 레벨**: 복잡 (High effort)
+- **분석 신뢰도**: 높음 (AWR 백분위수 기반)
+
+**워크로드 패턴:**
+- 워크로드 타입: I/O 집약적 (User I/O 65%)
+- 피크 시간대: 09:00-12:00, 14:00-17:00
+- 주요 애플리케이션: JDBC Thin Client, SQL*Plus
+
+**점수 구성 요소:**
+
+- 기본 점수 (엔진 변경): 3.00
+- PL/SQL 코드 변환: 2.50
+- Oracle 특화 기능: 0.80
+- 버퍼 캐시 최적화 필요: 0.50
+
+**권장사항:**
+
+- Aurora PostgreSQL은 Oracle과 높은 호환성을 제공합니다.
+- PL/SQL 코드를 PL/pgSQL로 변환해야 합니다.
+- I/O 집약적 워크로드이므로 스토리지 최적화 인스턴스를 권장합니다.
+- 버퍼 캐시 크기를 현재의 1.5배로 증가하여 히트율을 개선하세요.
+```
+
+### 마이그레이션 난이도 계산 방식 (AWR)
+
+#### RDS for Oracle
+
+- 기본 점수: 1.0 (동일 엔진)
+- 에디션 변경: SE → SE2 (+0.5), EE → SE2 (+3.0)
+- RAC → Single Instance: +2.0
+- 버전 업그레이드: 메이저 버전당 +0.5
+- 캐릭터셋 변환: +1.0 ~ +2.5
+- **버퍼 캐시 효율성**: 히트율 < 90% (+1.0 ~ +2.0)
+- **LGWR I/O 부하**: > 10 MB/s (+0.5 ~ +1.5)
+
+#### Aurora PostgreSQL
+
+- 기본 점수: 3.0 (엔진 변경)
+- PL/SQL 코드: 라인 수 기반 (+0.5 ~ +5.0)
+- Oracle 특화 기능: 기능당 가중치 합산
+- **P99 CPU 부하**: P99 > 80% (+0.5 ~ +2.0)
+- **P99 I/O 부하**: P99 IOPS > 1000 (+0.5 ~ +2.0)
+- **워크로드 패턴**: CPU/IO 집약적 (+0.5 ~ +1.0)
+- 캐릭터셋 변환: +1.0 ~ +2.5
+
+#### Aurora MySQL
+
+- 기본 점수: 4.0 (엔진 변경 + 제약 많음)
+- PL/SQL 코드: 라인 수 기반 * 1.5
+- Oracle 특화 기능: 기능당 가중치 * 1.3
+- **P99 CPU 부하**: P99 > 80% (+1.0 ~ +3.0)
+- **P99 I/O 부하**: P99 IOPS > 1000 (+1.0 ~ +3.0)
+- **워크로드 패턴**: CPU/IO 집약적 (+1.0 ~ +1.5)
+- 캐릭터셋 변환: +1.0 ~ +2.5
+
+### 예제 스크립트
+
+- `example_awr_analysis.py`: AWR 파일 분석 예제
+- `example_awr_batch_analysis.py`: 배치 AWR 파일 분석 예제
+- `example_awr_comparison.py`: AWR 파일 비교 예제
+
 ---
 
 ## Statspack Analyzer
@@ -109,10 +407,10 @@ statspack-analyzer --directory /path/to/files --format markdown --output reports
 ### Python API 사용
 
 ```python
-from src.statspack.parser import StatspackParser
-from src.statspack.migration_analyzer import MigrationAnalyzer
-from src.statspack.result_formatter import StatspackResultFormatter
-from src.statspack.data_models import TargetDatabase
+from src.dbcsi.parser import StatspackParser
+from src.dbcsi.migration_analyzer import MigrationAnalyzer
+from src.dbcsi.result_formatter import StatspackResultFormatter
+from src.dbcsi.data_models import TargetDatabase
 
 # 1. Statspack 파일 파싱
 parser = StatspackParser("sample_code/dbcsi_statspack_sample01.out")

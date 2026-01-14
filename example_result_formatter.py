@@ -1,10 +1,10 @@
 """
 ResultFormatter 사용 예제
 
-Statspack 분석 결과를 JSON 및 Markdown 형식으로 출력하는 예제입니다.
+DBCSI 분석 결과를 JSON 및 Markdown 형식으로 출력하는 예제입니다.
 """
 
-from src.statspack.data_models import (
+from src.dbcsi.data_models import (
     StatspackData,
     OSInformation,
     MemoryMetric,
@@ -16,11 +16,11 @@ from src.statspack.data_models import (
     InstanceRecommendation,
     TargetDatabase
 )
-from src.statspack.result_formatter import StatspackResultFormatter
+from src.dbcsi.result_formatter import StatspackResultFormatter
 
 
 def main():
-    # 샘플 Statspack 데이터 생성
+    # 샘플 DBCSI 데이터 생성
     statspack_data = StatspackData(
         os_info=OSInformation(
             db_name="PRODDB",
@@ -184,7 +184,7 @@ def main():
     # JSON 파일 저장 (DB 이름 포함)
     json_filepath = StatspackResultFormatter.save_report(
         content=json_output,
-        filename="statspack_analysis",
+        filename="dbcsi_analysis",
         format="json",
         db_name=statspack_data.os_info.db_name
     )

@@ -1,7 +1,7 @@
 """
 Statspack BatchAnalyzer 단위 테스트
 
-Requirements 12.1~12.5를 검증합니다.
+Requirements 12.1~12.5, 17.1~17.3을 검증합니다.
 """
 
 import pytest
@@ -9,8 +9,11 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from src.statspack.batch_analyzer import BatchAnalyzer, BatchAnalysisResult, BatchFileResult
-from src.statspack.data_models import TargetDatabase
+from src.dbcsi.batch_analyzer import (
+    BatchAnalyzer, BatchAnalysisResult, BatchFileResult,
+    TrendAnalysisResult, TrendMetrics, Anomaly
+)
+from src.dbcsi.data_models import TargetDatabase
 
 
 class TestBatchAnalyzer:
@@ -353,6 +356,40 @@ INST_ID SGA_SIZE SGA_SIZE_FACTOR ESTD_DB_TIME ESTD_DB_TIME_FACTOR ESTD_PHYSICAL_
         assert isinstance(file_result.filepath, str)
         assert isinstance(file_result.filename, str)
         assert isinstance(file_result.success, bool)
+    
+    def test_analyze_batch_with_trend_analysis(self, temp_dir, sample_statspack_content):
+        """추세 분석 포함 배치 분석 테스트
+        
+        Requirements 17.1, 17.2를 검증합니다.
+        """
+        # 여러 파일 생성 (추세 분석을 위해 최소 2개 필요)
+        file1 = Path(temp_dir) / "statspack1.out"
+        file2 = Path(temp_dir) / "statspack2.out"
+        
+        file1.write_text(sample_statspack_content)
+        file2.write_text(sample_statspack_content)
+        
+        analyzer = BatchAnalyzer(temp_dir)
+        result = analyzer.analyze_batch(analyze_trends=True)
+        
+        # 추세 분석 결과가 포함되어야 함
+        assert result.trend_analysis is not None
+        assert isinstance(result.trend_analysis, TrendAnalysisResult)
+    
+    def test_trend_analysis_with_single_file(self, temp_dir, sample_statspack_content):
+        """단일 파일로는 추세 분석이 수행되지 않음을 테스트
+        
+        Requirements 17.1을 검증합니다.
+        """
+        # 파일 1개만 생성
+        file1 = Path(temp_dir) / "statspack1.out"
+        file1.write_text(sample_statspack_content)
+        
+        analyzer = BatchAnalyzer(temp_dir)
+        result = analyzer.analyze_batch(analyze_trends=True)
+        
+        # 추세 분석 결과가 None이어야 함 (파일이 2개 미만)
+        assert result.trend_analysis is None
 
 
 if __name__ == "__main__":
