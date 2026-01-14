@@ -71,23 +71,27 @@ oracle-complexity-analyzer -f query.sql -o both
 ### 폴더 일괄 분석
 
 ```bash
-# 폴더 내 모든 SQL/PL/SQL 파일 분석
+# 폴더 내 모든 SQL/PL/SQL 파일 분석 (요약만)
 oracle-complexity-analyzer -d /path/to/sql/files
 
 # MySQL 타겟으로 폴더 분석
 oracle-complexity-analyzer -d /path/to/sql/files -t mysql
 
-# 병렬 워커 수 지정 (기본값: CPU 코어 수)
-oracle-complexity-analyzer -d /path/to/sql/files -w 8
-
-# 개별 파일 상세 결과 포함
+# 개별 파일 상세 결과 포함 (권장)
 oracle-complexity-analyzer -d /path/to/sql/files --details
 
-# JSON 형식으로 결과 저장
+# 병렬 워커 수 지정 (기본값: 4)
+oracle-complexity-analyzer -d /path/to/sql/files -w 8
+
+# JSON/Markdown 형식으로 결과 저장
 oracle-complexity-analyzer -d /path/to/sql/files -o json
+oracle-complexity-analyzer -d /path/to/sql/files -o markdown
 
 # 진행 상황 표시 비활성화
 oracle-complexity-analyzer -d /path/to/sql/files --no-progress
+
+# 실전 예제: sample_code 폴더의 모든 파일을 PostgreSQL 타겟으로 분석
+oracle-complexity-analyzer -d sample_code -t postgresql --details -o markdown
 ```
 
 ### 출력 디렉토리 지정
@@ -216,11 +220,14 @@ oracle-complexity-analyzer -f query.sql -o json --output-dir my_reports
 
 CLI 외에도 Python 코드에서 직접 사용할 수 있습니다.
 
+### 단일 파일 분석 예제
+
+자세한 예제는 `example_usage.py` 파일을 참조하세요.
+
 ```python
 from src.oracle_complexity_analyzer import (
     OracleComplexityAnalyzer,
-    TargetDatabase,
-    BatchAnalyzer
+    TargetDatabase
 )
 
 # 분석기 생성
@@ -243,30 +250,32 @@ result = analyzer.analyze_sql(sql_query)
 print(f"복잡도 점수: {result.normalized_score:.2f}")
 print(f"복잡도 레벨: {result.complexity_level.value}")
 
-# PL/SQL 코드 분석
-plsql_code = """
-CREATE OR REPLACE PACKAGE BODY emp_pkg AS
-    PROCEDURE update_salary(p_emp_id NUMBER, p_amount NUMBER) IS
-    BEGIN
-        UPDATE employees 
-        SET salary = salary + p_amount
-        WHERE employee_id = p_emp_id;
-        COMMIT;
-    END;
-END emp_pkg;
-"""
-
-result = analyzer.analyze_plsql(plsql_code)
-print(f"복잡도 점수: {result.normalized_score:.2f}")
-
 # 파일 분석
 result = analyzer.analyze_file("query.sql")
 
 # 결과 저장
 json_path = analyzer.export_json(result, "analysis_result.json")
 md_path = analyzer.export_markdown(result, "analysis_report.md")
+```
 
-# 폴더 일괄 분석
+### 폴더 배치 분석 예제
+
+자세한 예제는 `example_batch_usage.py` 파일을 참조하세요.
+
+```python
+from src.oracle_complexity_analyzer import (
+    OracleComplexityAnalyzer,
+    BatchAnalyzer,
+    TargetDatabase
+)
+
+# 분석기 생성
+analyzer = OracleComplexityAnalyzer(
+    target_database=TargetDatabase.POSTGRESQL,
+    output_dir="reports"
+)
+
+# 폴더 일괄 분석 (병렬 처리)
 batch_analyzer = BatchAnalyzer(analyzer, max_workers=4)
 batch_result = batch_analyzer.analyze_folder("/path/to/sql/files")
 
@@ -277,6 +286,17 @@ print(f"평균 점수: {batch_result.average_score:.2f}")
 # 배치 결과 저장
 json_path = batch_analyzer.export_batch_json(batch_result, include_details=True)
 md_path = batch_analyzer.export_batch_markdown(batch_result, include_details=False)
+```
+
+### CLI vs Python API 선택 가이드
+
+- **CLI 사용 권장**: 빠른 분석, 스크립트 자동화, 배치 작업
+- **Python API 사용 권장**: 커스텀 워크플로우, 다른 도구와 통합, 결과 후처리
+
+**참고**: 폴더 배치 분석은 CLI의 `-d` 플래그를 사용하는 것이 가장 간단합니다.
+```bash
+# CLI로 배치 분석 (권장)
+oracle-complexity-analyzer -d sample_code --details -o markdown
 ```
 
 ## 복잡도 계산 방식
