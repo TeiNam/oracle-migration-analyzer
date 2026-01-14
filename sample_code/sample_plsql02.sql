@@ -1,0 +1,41 @@
+-- Oracle 종속성 높음: 시스템 관리 및 병렬 처리 패턴
+CREATE OR REPLACE PROCEDURE complex_parallel_sys_proc (
+    p_table_name IN VARCHAR2,
+    p_chunk_size IN NUMBER DEFAULT 5000
+) IS
+    v_task_name VARCHAR2(100) := 'TASK_' || TO_CHAR(SYSDATE, 'YYYYMMDD_HH24MISS');
+    v_sql_stmt  VARCHAR2(1000);
+    v_status    NUMBER;
+BEGIN
+    -- 1. Oracle 세션 모니터링 등록 (Longops 등록)
+    DBMS_APPLICATION_INFO.SET_MODULE('BATCH_PROCESSOR', 'INITIALIZING');
+    DBMS_APPLICATION_INFO.SET_CLIENT_INFO('Task: ' || v_task_name);
+
+    -- 2. 병렬 작업 생성
+    DBMS_PARALLEL_EXECUTE.CREATE_TASK(v_task_name);
+
+    -- 3. ROWID 기준으로 데이터를 청크(Chunk)로 나눔
+    DBMS_PARALLEL_EXECUTE.CREATE_CHUNKS_BY_ROWID(v_task_name, 'HR', p_table_name, TRUE, p_chunk_size);
+
+    -- 4. 병렬 실행할 SQL 정의
+    v_sql_stmt := 'UPDATE ' || p_table_name || 
+                  ' SET salary = salary * 1.05 WHERE rowid BETWEEN :start_id AND :end_id';
+
+    -- 5. 스케줄러를 통한 병렬 실행 (Job 갯수 4개)
+    DBMS_PARALLEL_EXECUTE.RUN_TASK(v_task_name, v_sql_stmt, DBMS_SQL.NATIVE, parallel_level => 4);
+
+    -- 6. 실행 상태 확인 루프 (복잡한 상태 체크 로직)
+    LOOP
+        v_status := DBMS_PARALLEL_EXECUTE.TASK_STATUS(v_task_name);
+        EXIT WHEN v_status = DBMS_PARALLEL_EXECUTE.FINISHED;
+        DBMS_SESSION.SLEEP(5); -- 21c/23c 이상 권장 패키지
+    END LOOP;
+
+    DBMS_PARALLEL_EXECUTE.DROP_TASK(v_task_name);
+    DBMS_APPLICATION_INFO.SET_MODULE(NULL, NULL);
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_PARALLEL_EXECUTE.DROP_TASK(v_task_name);
+        RAISE;
+END complex_parallel_sys_proc;
