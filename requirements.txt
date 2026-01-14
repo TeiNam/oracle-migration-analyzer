@@ -1,0 +1,19 @@
+# Oracle Complexity Analyzer - Python Dependencies
+
+# 테스팅 프레임워크
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# 속성 기반 테스트
+hypothesis>=6.92.0
+
+# 코드 품질
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# 유틸리티
+python-dateutil>=2.8.2
+
+# 진행 상황 표시
+tqdm>=4.66.0
