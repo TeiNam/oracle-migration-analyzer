@@ -1,0 +1,149 @@
+{
+  "RDS for Oracle": {
+    "target": "RDS for Oracle",
+    "score": 1.0,
+    "level": "매우 간단 (Minimal effort)",
+    "factors": {
+      "기본 점수 (동일 엔진)": 1.0
+    },
+    "recommendations": [
+      "RDS for Oracle은 동일 엔진 마이그레이션으로 호환성이 높습니다.",
+      "현재 버전 19.0.0.0.0에서 최신 버전으로 업그레이드를 권장합니다."
+    ],
+    "warnings": [],
+    "next_steps": [
+      "RDS for Oracle 인스턴스 사이즈 선택",
+      "Multi-AZ 배포 구성 계획",
+      "백업 및 복구 전략 수립",
+      "마이그레이션 도구 선택 (DMS, Data Pump 등)",
+      "테스트 환경에서 마이그레이션 검증"
+    ],
+    "instance_recommendation": {
+      "instance_type": "db.r6i.large",
+      "vcpu": 2,
+      "memory_gib": 16,
+      "current_cpu_usage_pct": 0.009410299,
+      "current_memory_gb": 11.6,
+      "cpu_headroom_pct": 99.990589701,
+      "memory_headroom_pct": 37.931034482758626,
+      "estimated_monthly_cost_usd": null
+    }
+  },
+  "Aurora PostgreSQL 16": {
+    "target": "Aurora PostgreSQL 16",
+    "score": 10.0,
+    "level": "매우 복잡 (Very high effort)",
+    "factors": {
+      "기본 점수 (엔진 변경)": 3.0,
+      "PL/SQL 코드 변환": 4.0,
+      "Oracle 특화 기능": 9.700000000000001
+    },
+    "recommendations": [
+      "Aurora PostgreSQL은 Oracle과 높은 호환성을 제공합니다.",
+      "PL/SQL 코드를 PL/pgSQL로 변환해야 합니다.",
+      "PL/SQL을 PL/pgSQL로 변환해야 합니다.",
+      "1개의 패키지를 PostgreSQL 스키마 또는 확장으로 변환해야 합니다.",
+      "일부 Oracle 특화 기능은 대체 방안이 필요합니다:",
+      "Adaptive Plans: 애플리케이션 레벨에서 구현 필요",
+      "Automatic Maintenance - Optimizer Statistics Gathering: 애플리케이션 레벨에서 구현 필요",
+      "Automatic Maintenance - SQL Tuning Advisor: 애플리케이션 레벨에서 구현 필요",
+      "Automatic Maintenance - Space Advisor: 애플리케이션 레벨에서 구현 필요",
+      "Automatic Reoptimization: 애플리케이션 레벨에서 구현 필요",
+      "Automatic SGA Tuning: 애플리케이션 레벨에서 구현 필요",
+      "Automatic SQL Execution Memory: 애플리케이션 레벨에서 구현 필요",
+      "Automatic Segment Space Management (system): 애플리케이션 레벨에서 구현 필요",
+      "Automatic Segment Space Management (user): 애플리케이션 레벨에서 구현 필요",
+      "Automatic Undo Management: 애플리케이션 레벨에서 구현 필요",
+      "Bigfile Tablespace: 애플리케이션 레벨에서 구현 필요",
+      "Character Set: 애플리케이션 레벨에서 구현 필요",
+      "Deferred Segment Creation: 애플리케이션 레벨에서 구현 필요",
+      "Extensibility: 애플리케이션 레벨에서 구현 필요",
+      "LOB: 애플리케이션 레벨에서 구현 필요",
+      "Locally Managed Tablespaces (system): 애플리케이션 레벨에서 구현 필요",
+      "Locally Managed Tablespaces (user): 애플리케이션 레벨에서 구현 필요",
+      "Object: 애플리케이션 레벨에서 구현 필요",
+      "Oracle Call Interface (OCI): 애플리케이션 레벨에서 구현 필요",
+      "Oracle Managed Files: 애플리케이션 레벨에서 구현 필요",
+      "Oracle Utility External Table (ORACLE_LOADER): 애플리케이션 레벨에서 구현 필요",
+      "Partitioning (system): 네이티브 파티셔닝 지원",
+      "Resource Manager: 애플리케이션 레벨에서 구현 필요",
+      "SQL Plan Directive: 애플리케이션 레벨에서 구현 필요",
+      "SQL*Plus: 애플리케이션 레벨에서 구현 필요",
+      "SecureFiles (system): 애플리케이션 레벨에서 구현 필요",
+      "SecureFiles (user): 애플리케이션 레벨에서 구현 필요",
+      "Server Parameter File: 애플리케이션 레벨에서 구현 필요",
+      "Services: 애플리케이션 레벨에서 구현 필요",
+      "Unified Audit: 애플리케이션 레벨에서 구현 필요"
+    ],
+    "warnings": [],
+    "next_steps": [
+      "AWS Schema Conversion Tool (SCT)로 스키마 변환",
+      "PL/SQL을 PL/pgSQL로 변환",
+      "AWS DMS로 데이터 마이그레이션",
+      "애플리케이션 연결 문자열 업데이트",
+      "성능 테스트 및 튜닝"
+    ],
+    "instance_recommendation": null
+  },
+  "Aurora MySQL 8.0": {
+    "target": "Aurora MySQL 8.0",
+    "score": 10.0,
+    "level": "매우 복잡 (Very high effort)",
+    "factors": {
+      "기본 점수 (엔진 변경 + 제약)": 4.0,
+      "PL/SQL 코드 변환 (MySQL 제약)": 7.5,
+      "Oracle 특화 기능 (MySQL 제약)": 12.610000000000001
+    },
+    "recommendations": [
+      "Aurora MySQL은 Oracle과의 호환성이 제한적입니다.",
+      "대규모 PL/SQL 코드나 Oracle 특화 기능이 많은 경우 PostgreSQL을 권장합니다.",
+      "PL/SQL 코드를 MySQL 저장 프로시저로 변환하거나 애플리케이션으로 이관해야 합니다.",
+      "PL/SQL을 MySQL 저장 프로시저로 변환하거나 애플리케이션으로 이관해야 합니다.",
+      "1개의 패키지를 저장 프로시저로 변환하거나 애플리케이션으로 이관해야 합니다.",
+      "많은 Oracle 특화 기능이 MySQL에서 지원되지 않습니다:",
+      "Adaptive Plans: 애플리케이션 레벨에서 구현 필요",
+      "Automatic Maintenance - Optimizer Statistics Gathering: 애플리케이션 레벨에서 구현 필요",
+      "Automatic Maintenance - SQL Tuning Advisor: 애플리케이션 레벨에서 구현 필요",
+      "Automatic Maintenance - Space Advisor: 애플리케이션 레벨에서 구현 필요",
+      "Automatic Reoptimization: 애플리케이션 레벨에서 구현 필요",
+      "Automatic SGA Tuning: 애플리케이션 레벨에서 구현 필요",
+      "Automatic SQL Execution Memory: 애플리케이션 레벨에서 구현 필요",
+      "Automatic Segment Space Management (system): 애플리케이션 레벨에서 구현 필요",
+      "Automatic Segment Space Management (user): 애플리케이션 레벨에서 구현 필요",
+      "Automatic Undo Management: 애플리케이션 레벨에서 구현 필요",
+      "Bigfile Tablespace: 애플리케이션 레벨에서 구현 필요",
+      "Character Set: 애플리케이션 레벨에서 구현 필요",
+      "Deferred Segment Creation: 애플리케이션 레벨에서 구현 필요",
+      "Extensibility: 애플리케이션 레벨에서 구현 필요",
+      "LOB: 애플리케이션 레벨에서 구현 필요",
+      "Locally Managed Tablespaces (system): 애플리케이션 레벨에서 구현 필요",
+      "Locally Managed Tablespaces (user): 애플리케이션 레벨에서 구현 필요",
+      "Object: 애플리케이션 레벨에서 구현 필요",
+      "Oracle Call Interface (OCI): 애플리케이션 레벨에서 구현 필요",
+      "Oracle Managed Files: 애플리케이션 레벨에서 구현 필요",
+      "Oracle Utility External Table (ORACLE_LOADER): 애플리케이션 레벨에서 구현 필요",
+      "Partitioning (system): 네이티브 파티셔닝 지원 (제한적)",
+      "Resource Manager: 애플리케이션 레벨에서 구현 필요",
+      "SQL Plan Directive: 애플리케이션 레벨에서 구현 필요",
+      "SQL*Plus: 애플리케이션 레벨에서 구현 필요",
+      "SecureFiles (system): 애플리케이션 레벨에서 구현 필요",
+      "SecureFiles (user): 애플리케이션 레벨에서 구현 필요",
+      "Server Parameter File: 애플리케이션 레벨에서 구현 필요",
+      "Services: 애플리케이션 레벨에서 구현 필요",
+      "Unified Audit: 애플리케이션 레벨에서 구현 필요"
+    ],
+    "warnings": [
+      "대규모 PL/SQL 코드 변환은 MySQL에서 매우 어렵습니다. PostgreSQL을 고려하세요.",
+      "많은 Oracle 특화 기능이 사용되고 있습니다. MySQL 호환성을 신중히 검토하세요."
+    ],
+    "next_steps": [
+      "AWS Schema Conversion Tool (SCT)로 스키마 변환 가능성 평가",
+      "PL/SQL 코드를 MySQL 저장 프로시저 또는 애플리케이션으로 변환",
+      "Oracle 특화 기능의 대체 방안 구현",
+      "AWS DMS로 데이터 마이그레이션",
+      "광범위한 애플리케이션 테스트 및 검증"
+    ],
+    "instance_recommendation": null
+  },
+  "_type": "MigrationComplexityDict"
+}
