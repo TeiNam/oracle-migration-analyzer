@@ -152,6 +152,27 @@ class StatspackResultFormatter:
             md.append(f"- **RDS 환경**: {'예' if os_info.is_rds else '아니오'}")
             md.append(f"- **캐릭터셋**: {os_info.character_set or 'N/A'}")
             md.append(f"- **총 DB 크기**: {os_info.total_db_size_gb or 'N/A'} GB")
+            
+            # PL/SQL 코드 통계 추가
+            if os_info.count_lines_plsql or os_info.count_packages or os_info.count_procedures or os_info.count_functions:
+                md.append("\n**PL/SQL 코드 통계:**")
+                if os_info.count_lines_plsql:
+                    md.append(f"- **PL/SQL 코드 라인 수**: {os_info.count_lines_plsql:,}")
+                if os_info.count_packages:
+                    md.append(f"- **패키지 수**: {os_info.count_packages}")
+                if os_info.count_procedures:
+                    md.append(f"- **프로시저 수**: {os_info.count_procedures}")
+                if os_info.count_functions:
+                    md.append(f"- **함수 수**: {os_info.count_functions}")
+            
+            # 스키마 및 테이블 통계 추가
+            if os_info.count_schemas or os_info.count_tables:
+                md.append("\n**데이터베이스 오브젝트 통계:**")
+                if os_info.count_schemas:
+                    md.append(f"- **스키마 수**: {os_info.count_schemas}")
+                if os_info.count_tables:
+                    md.append(f"- **테이블 수**: {os_info.count_tables}")
+            
             md.append("")
         
         # 2. 메모리 사용량 통계
