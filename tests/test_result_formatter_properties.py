@@ -716,9 +716,10 @@ def test_enhanced_result_formatter_percentile_charts():
     # 백분위수 차트 생성
     chart_section = EnhancedResultFormatter._generate_percentile_charts(awr_data)
     
-    # 섹션 확인
+    # 섹션 확인 (그래프 제거 후 테이블만 확인)
     assert "백분위수 분포 차트" in chart_section
-    assert "```mermaid" in chart_section or "CPU 사용률 백분위수 분포" in chart_section
+    assert "CPU 사용률 백분위수 분포" in chart_section
+    assert "| 백분위수 | CPU 코어 수 |" in chart_section
 
 
 # 단위 테스트: AWR 리포트 비교

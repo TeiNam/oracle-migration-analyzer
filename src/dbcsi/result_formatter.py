@@ -201,10 +201,10 @@ class StatspackResultFormatter:
         # 4. 주요 성능 메트릭 요약
         if statspack_data.main_metrics:
             md.append("## 4. 주요 성능 메트릭 요약\n")
-            md.append("| Snap | Duration (m) | CPU/s | Read IOPS | Write IOPS | Commits/s |")
+            md.append("| 시간 | Duration (m) | CPU/s | Read IOPS | Write IOPS | Commits/s |")
             md.append("|------|--------------|-------|-----------|------------|-----------|")
             for metric in statspack_data.main_metrics[:10]:  # 최대 10개만 표시
-                md.append(f"| {metric.snap} | {metric.dur_m:.1f} | {metric.cpu_per_s:.2f} | "
+                md.append(f"| {metric.end} | {metric.dur_m:.1f} | {metric.cpu_per_s:.2f} | "
                          f"{metric.read_iops:.2f} | {metric.write_iops:.2f} | {metric.commits_s:.2f} |")
             if len(statspack_data.main_metrics) > 10:
                 md.append(f"\n*({len(statspack_data.main_metrics) - 10}개 항목 더 있음)*")
@@ -1532,21 +1532,7 @@ class EnhancedResultFormatter(StatspackResultFormatter):
                     cpu_values.append(cpu_data.on_cpu)
             
             if percentiles and cpu_values:
-                # Mermaid 바 차트 생성
-                md.append("```mermaid")
-                md.append("%%{init: {'theme':'base'}}%%")
-                md.append("graph LR")
-                md.append("    subgraph CPU_Percentiles[\"CPU 코어 수 (백분위수별)\"]")
-                
-                for i, (label, value) in enumerate(zip(percentiles, cpu_values)):
-                    # 노드 ID는 영문자로 시작해야 함
-                    node_id = f"CPU{i}"
-                    md.append(f"        {node_id}[\"{label}: {value} 코어\"]")
-                
-                md.append("    end")
-                md.append("```\n")
-                
-                # 테이블로도 표시
+                # 테이블로 표시
                 md.append("| 백분위수 | CPU 코어 수 |")
                 md.append("|----------|-------------|")
                 for label, value in zip(percentiles, cpu_values):
@@ -1583,42 +1569,16 @@ class EnhancedResultFormatter(StatspackResultFormatter):
                     mbps_values.append(io_data.rw_mbps)
             
             if percentiles and iops_values:
-                # IOPS 차트
-                md.append("#### IOPS (읽기+쓰기)\n")
-                md.append("```mermaid")
-                md.append("%%{init: {'theme':'base'}}%%")
-                md.append("graph LR")
-                md.append("    subgraph IOPS_Percentiles[\"IOPS (백분위수별)\"]")
-                
-                for i, (label, value) in enumerate(zip(percentiles, iops_values)):
-                    node_id = f"IOPS{i}"
-                    md.append(f"        {node_id}[\"{label}: {value:,} IOPS\"]")
-                
-                md.append("    end")
-                md.append("```\n")
-                
                 # IOPS 테이블
+                md.append("#### IOPS (읽기+쓰기)\n")
                 md.append("| 백분위수 | IOPS |")
                 md.append("|----------|------|")
                 for label, value in zip(percentiles, iops_values):
                     md.append(f"| {label} | {value:,} |")
                 md.append("")
                 
-                # MB/s 차트
-                md.append("#### 처리량 (MB/s)\n")
-                md.append("```mermaid")
-                md.append("%%{init: {'theme':'base'}}%%")
-                md.append("graph LR")
-                md.append("    subgraph MBPS_Percentiles[\"MB/s (백분위수별)\"]")
-                
-                for i, (label, value) in enumerate(zip(percentiles, mbps_values)):
-                    node_id = f"MBPS{i}"
-                    md.append(f"        {node_id}[\"{label}: {value} MB/s\"]")
-                
-                md.append("    end")
-                md.append("```\n")
-                
                 # MB/s 테이블
+                md.append("#### 처리량 (MB/s)\n")
                 md.append("| 백분위수 | MB/s |")
                 md.append("|----------|------|")
                 for label, value in zip(percentiles, mbps_values):
