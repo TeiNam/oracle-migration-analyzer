@@ -612,32 +612,96 @@ class ComplexityCalculator:
         return min(score, max_execution)
     
     def _calculate_conversion_difficulty(self, parser: SQLParser) -> float:
-        """변환 난이도 점수 계산 (힌트 포함)
+        """변환 난이도 점수 계산 (힌트 + Oracle 특화 기능 포함)
         
         Requirements 7.1-7.5를 구현합니다.
+        
+        힌트 점수:
         - 7.1: 힌트 개수 계산
         - 7.2: 0개 = 0점
         - 7.3: 1-2개 = 0.5점
         - 7.4: 3-5개 = 1.0점
         - 7.5: 6개 이상 = 1.5점
         
+        Oracle 특화 기능 변환 난이도:
+        - 각 기능별로 변환 난이도 가중치 적용
+        - 매우 어려운 기능 (MODEL, CONNECT BY 등): 1.0점
+        - 어려운 기능 (PIVOT, MERGE 등): 0.5점
+        - 보통 기능 (ROWNUM, DECODE 등): 0.3점
+        - 최대 3.0점
+        
         Args:
             parser: SQL 파서 객체
             
         Returns:
-            float: 변환 난이도 점수
+            float: 변환 난이도 점수 (최대 4.5점)
         """
+        score = 0.0
+        
+        # 1. 힌트 점수 계산
         hints = parser.count_hints()
         hint_count = len(hints)
         
         if hint_count == 0:
-            return 0.0
+            hint_score = 0.0
         elif hint_count <= 2:
-            return 0.5
+            hint_score = 0.5
         elif hint_count <= 5:
-            return 1.0
+            hint_score = 1.0
         else:
-            return 1.5
+            hint_score = 1.5
+        
+        score += hint_score
+        
+        # 2. Oracle 특화 기능 변환 난이도 계산
+        detected_features = parser.detect_oracle_features()
+        
+        # 변환 난이도 가중치 정의
+        feature_difficulty = {
+            # 매우 어려운 기능 (1.0점)
+            'MODEL': 1.0,
+            'CONNECT BY': 1.0,
+            'START WITH': 0.5,  # CONNECT BY와 함께 사용되므로 0.5점
+            'PRIOR': 0.3,  # CONNECT BY와 함께 사용되므로 0.3점
+            'FLASHBACK': 1.0,
+            'MATERIALIZED VIEW': 1.0,
+            
+            # 어려운 기능 (0.5점)
+            'PIVOT': 0.5,
+            'UNPIVOT': 0.5,
+            'MERGE': 0.5,
+            'XMLTABLE': 0.5,
+            'XMLQUERY': 0.5,
+            'XMLEXISTS': 0.5,
+            'MATCH_RECOGNIZE': 0.5,
+            
+            # 보통 기능 (0.3점)
+            'ROWNUM': 0.3,
+            'DECODE': 0.3,
+            'DUAL': 0.1,  # 간단하지만 변환 필요
+            'LEVEL': 0.3,
+            'SYS_CONNECT_BY_PATH': 0.3,
+            'CONNECT_BY_ROOT': 0.3,
+            'CONNECT_BY_ISLEAF': 0.3,
+            'CONNECT_BY_ISCYCLE': 0.3,
+            
+            # 기타 기능 (0.2점)
+            'ROWID': 0.2,
+            'SYSDATE': 0.1,
+            'SYSTIMESTAMP': 0.1,
+        }
+        
+        feature_score = 0.0
+        for feature in detected_features:
+            if feature in feature_difficulty:
+                feature_score += feature_difficulty[feature]
+        
+        # Oracle 특화 기능 점수는 최대 3.0점
+        feature_score = min(feature_score, 3.0)
+        score += feature_score
+        
+        # 전체 변환 난이도는 최대 4.5점 (힌트 1.5 + 기능 3.0)
+        return min(score, 4.5)
     
     def _calculate_plsql_code_complexity(self, parser: PLSQLParser) -> float:
         """PL/SQL 코드 복잡도 점수 계산

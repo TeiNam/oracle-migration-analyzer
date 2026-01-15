@@ -304,8 +304,8 @@ class TestDataVolumeScore:
 class TestConversionDifficulty:
     """변환 난이도 계산 테스트"""
     
-    def test_conversion_difficulty_no_hints(self):
-        """힌트가 없는 경우"""
+    def test_conversion_difficulty_no_hints_no_features(self):
+        """힌트와 Oracle 특화 기능이 없는 경우"""
         query = "SELECT * FROM users"
         parser = SQLParser(query)
         calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
@@ -334,6 +334,44 @@ class TestConversionDifficulty:
         
         score = calc._calculate_conversion_difficulty(parser)
         assert score == 1.5
+    
+    def test_conversion_difficulty_with_oracle_features(self):
+        """Oracle 특화 기능이 있는 경우"""
+        query = "SELECT * FROM users WHERE ROWNUM <= 10"
+        parser = SQLParser(query)
+        calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
+        
+        score = calc._calculate_conversion_difficulty(parser)
+        # ROWNUM = 0.3점
+        assert score == 0.3
+    
+    def test_conversion_difficulty_with_complex_features(self):
+        """복잡한 Oracle 특화 기능이 있는 경우"""
+        query = """
+        SELECT * FROM departments
+        START WITH parent_id IS NULL
+        CONNECT BY PRIOR department_id = parent_id
+        """
+        parser = SQLParser(query)
+        calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
+        
+        score = calc._calculate_conversion_difficulty(parser)
+        # CONNECT BY = 1.0, START WITH = 0.5, PRIOR = 0.3 = 1.8점
+        assert score >= 1.5
+    
+    def test_conversion_difficulty_with_model_clause(self):
+        """MODEL 절이 있는 경우"""
+        query = """
+        SELECT * FROM sales
+        MODEL DIMENSION BY (product_id) MEASURES (sales_amount)
+        RULES (sales_amount[1] = 100)
+        """
+        parser = SQLParser(query)
+        calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
+        
+        score = calc._calculate_conversion_difficulty(parser)
+        # MODEL = 1.0점
+        assert score >= 1.0
 
 
 # ============================================================================
