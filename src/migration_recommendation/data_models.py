@@ -125,6 +125,18 @@ class MigrationRoadmap:
 
 
 @dataclass
+class InstanceRecommendation:
+    """인스턴스 추천
+    
+    Requirements 11.4, 11.5, 11.6을 구현합니다.
+    """
+    instance_type: str  # 예: "db.r6i.xlarge"
+    vcpu: int
+    memory_gb: int
+    rationale: str  # 추천 근거
+
+
+@dataclass
 class ExecutiveSummary:
     """Executive Summary
     
@@ -141,7 +153,7 @@ class ExecutiveSummary:
 class MigrationRecommendation:
     """마이그레이션 추천 결과
     
-    Requirements 5.1, 6.1, 7.1, 8.1, 13.1을 구현합니다.
+    Requirements 5.1, 6.1, 7.1, 8.1, 11.6, 13.1을 구현합니다.
     """
     # 추천 전략
     recommended_strategy: MigrationStrategy
@@ -162,5 +174,8 @@ class MigrationRecommendation:
     # Executive Summary (Requirements 13.1)
     executive_summary: ExecutiveSummary
     
+    # 인스턴스 추천 (Requirements 11.6)
+    instance_recommendation: Optional[InstanceRecommendation] = None
+    
     # 분석 메트릭 (참조용)
-    metrics: AnalysisMetrics
+    metrics: AnalysisMetrics = field(default=None)

@@ -15,7 +15,8 @@ from .data_models import (
     Risk,
     MigrationRoadmap,
     RoadmapPhase,
-    ExecutiveSummary
+    ExecutiveSummary,
+    InstanceRecommendation
 )
 from .decision_engine import MigrationDecisionEngine
 
@@ -74,7 +75,10 @@ class RecommendationReportGenerator:
         # 6. 마이그레이션 로드맵 생성
         roadmap = self._generate_roadmap(recommended_strategy, metrics)
         
-        # 7. MigrationRecommendation 객체 생성 (Executive Summary 제외)
+        # 7. 인스턴스 추천 생성
+        instance_recommendation = self._generate_instance_recommendation(recommended_strategy, metrics)
+        
+        # 8. MigrationRecommendation 객체 생성 (Executive Summary 제외)
         recommendation = MigrationRecommendation(
             recommended_strategy=recommended_strategy,
             confidence_level=confidence_level,
@@ -89,10 +93,11 @@ class RecommendationReportGenerator:
                 key_risks=[],
                 summary_text=""
             ),  # 임시 값
+            instance_recommendation=instance_recommendation,
             metrics=metrics
         )
         
-        # 8. Executive Summary 생성 (recommendation 객체 필요)
+        # 9. Executive Summary 생성 (recommendation 객체 필요)
         executive_summary = self._generate_executive_summary(recommendation)
         recommendation.executive_summary = executive_summary
         
@@ -1055,3 +1060,90 @@ Aurora PostgreSQL은 Oracle과 높은 호환성을 제공하는 오픈소스 데
 ### 권장 사항
 
 현재 시스템의 복잡도와 PL/SQL 사용량을 고려할 때, Aurora PostgreSQL은 Oracle 기능을 최대한 유지하면서도 비용을 절감할 수 있는 최적의 선택입니다. 미지원 기능을 사전에 식별하고 대체 방안을 수립하시기를 권장드립니다."""
+
+    def _generate_instance_recommendation(
+        self,
+        strategy: MigrationStrategy,
+        metrics: AnalysisMetrics
+    ) -> InstanceRecommendation:
+        """
+        인스턴스 추천 생성
+        
+        Requirements 11.4, 11.5, 11.6을 구현합니다.
+        
+        Args:
+            strategy: 추천 전략
+            metrics: 분석 메트릭
+            
+        Returns:
+            InstanceRecommendation: 인스턴스 추천
+        """
+        # CPU 및 I/O 기반 인스턴스 사이징
+        cpu_usage = metrics.avg_cpu_usage
+        io_load = metrics.avg_io_load
+        memory_usage = metrics.avg_memory_usage
+        
+        # 기본 인스턴스 타입 결정
+        if strategy == MigrationStrategy.REPLATFORM:
+            # RDS for Oracle SE2
+            if cpu_usage >= 70 or io_load >= 1000:
+                # 고성능 필요
+                instance_type = "db.r6i.2xlarge"
+                vcpu = 8
+                memory_gb = 64
+                rationale = f"높은 CPU 사용률({cpu_usage:.1f}%) 및 I/O 부하({io_load:.1f} IOPS)를 고려하여 고성능 인스턴스를 추천합니다."
+            elif cpu_usage >= 50 or io_load >= 500:
+                # 중간 성능
+                instance_type = "db.r6i.xlarge"
+                vcpu = 4
+                memory_gb = 32
+                rationale = f"중간 수준의 CPU 사용률({cpu_usage:.1f}%) 및 I/O 부하({io_load:.1f} IOPS)를 고려하여 균형잡힌 인스턴스를 추천합니다."
+            else:
+                # 기본 성능
+                instance_type = "db.r6i.large"
+                vcpu = 2
+                memory_gb = 16
+                rationale = f"현재 CPU 사용률({cpu_usage:.1f}%) 및 I/O 부하({io_load:.1f} IOPS)를 고려하여 표준 인스턴스를 추천합니다."
+        
+        elif strategy == MigrationStrategy.REFACTOR_MYSQL:
+            # Aurora MySQL
+            if cpu_usage >= 70 or io_load >= 1000:
+                instance_type = "db.r6i.xlarge"
+                vcpu = 4
+                memory_gb = 32
+                rationale = f"높은 CPU 사용률({cpu_usage:.1f}%) 및 I/O 부하({io_load:.1f} IOPS)를 고려하여 고성능 인스턴스를 추천합니다. Aurora MySQL의 자동 스케일링 기능을 활용할 수 있습니다."
+            elif cpu_usage >= 50 or io_load >= 500:
+                instance_type = "db.r6i.large"
+                vcpu = 2
+                memory_gb = 16
+                rationale = f"중간 수준의 CPU 사용률({cpu_usage:.1f}%) 및 I/O 부하({io_load:.1f} IOPS)를 고려하여 균형잡힌 인스턴스를 추천합니다."
+            else:
+                instance_type = "db.r6i.large"
+                vcpu = 2
+                memory_gb = 16
+                rationale = f"현재 CPU 사용률({cpu_usage:.1f}%) 및 I/O 부하({io_load:.1f} IOPS)를 고려하여 표준 인스턴스를 추천합니다. 필요시 Aurora의 자동 스케일링으로 확장 가능합니다."
+        
+        else:  # REFACTOR_POSTGRESQL
+            # Aurora PostgreSQL
+            if cpu_usage >= 70 or io_load >= 1000:
+                instance_type = "db.r6i.xlarge"
+                vcpu = 4
+                memory_gb = 32
+                rationale = f"높은 CPU 사용률({cpu_usage:.1f}%) 및 I/O 부하({io_load:.1f} IOPS)를 고려하여 고성능 인스턴스를 추천합니다. Aurora PostgreSQL의 자동 스케일링 기능을 활용할 수 있습니다."
+            elif cpu_usage >= 50 or io_load >= 500:
+                instance_type = "db.r6i.large"
+                vcpu = 2
+                memory_gb = 16
+                rationale = f"중간 수준의 CPU 사용률({cpu_usage:.1f}%) 및 I/O 부하({io_load:.1f} IOPS)를 고려하여 균형잡힌 인스턴스를 추천합니다."
+            else:
+                instance_type = "db.r6i.large"
+                vcpu = 2
+                memory_gb = 16
+                rationale = f"현재 CPU 사용률({cpu_usage:.1f}%) 및 I/O 부하({io_load:.1f} IOPS)를 고려하여 표준 인스턴스를 추천합니다. 필요시 Aurora의 자동 스케일링으로 확장 가능합니다."
+        
+        return InstanceRecommendation(
+            instance_type=instance_type,
+            vcpu=vcpu,
+            memory_gb=memory_gb,
+            rationale=rationale
+        )

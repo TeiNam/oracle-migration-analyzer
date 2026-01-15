@@ -14,7 +14,8 @@ from .data_models import (
     Risk,
     MigrationRoadmap,
     ExecutiveSummary,
-    AnalysisMetrics
+    AnalysisMetrics,
+    InstanceRecommendation
 )
 
 
@@ -57,19 +58,23 @@ class MarkdownReportFormatter:
         # 3. 추천 전략
         sections.append(self._format_strategy(recommendation, language))
         
-        # 4. 추천 근거
+        # 4. 인스턴스 추천
+        if recommendation.instance_recommendation:
+            sections.append(self._format_instance_recommendation(recommendation.instance_recommendation, language))
+        
+        # 5. 추천 근거
         sections.append(self._format_rationales(recommendation.rationales, language))
         
-        # 5. 대안 전략
+        # 6. 대안 전략
         sections.append(self._format_alternatives(recommendation.alternative_strategies, language))
         
-        # 6. 위험 요소
+        # 7. 위험 요소
         sections.append(self._format_risks(recommendation.risks, language))
         
-        # 7. 마이그레이션 로드맵
+        # 8. 마이그레이션 로드맵
         sections.append(self._format_roadmap(recommendation.roadmap, language))
         
-        # 8. 분석 메트릭 (부록)
+        # 9. 분석 메트릭 (부록)
         sections.append(self._format_metrics(recommendation.metrics, language))
         
         return "\n\n".join(sections)
@@ -116,22 +121,24 @@ class MarkdownReportFormatter:
 
 1. [Executive Summary](#executive-summary)
 2. [추천 전략](#추천-전략)
-3. [추천 근거](#추천-근거)
-4. [대안 전략](#대안-전략)
-5. [위험 요소 및 완화 방안](#위험-요소-및-완화-방안)
-6. [마이그레이션 로드맵](#마이그레이션-로드맵)
-7. [분석 메트릭 (부록)](#분석-메트릭-부록)
+3. [인스턴스 추천](#인스턴스-추천)
+4. [추천 근거](#추천-근거)
+5. [대안 전략](#대안-전략)
+6. [위험 요소 및 완화 방안](#위험-요소-및-완화-방안)
+7. [마이그레이션 로드맵](#마이그레이션-로드맵)
+8. [분석 메트릭 (부록)](#분석-메트릭-부록)
 """
         else:
             return """# Table of Contents
 
 1. [Executive Summary](#executive-summary)
 2. [Recommended Strategy](#recommended-strategy)
-3. [Rationales](#rationales)
-4. [Alternative Strategies](#alternative-strategies)
-5. [Risks and Mitigation](#risks-and-mitigation)
-6. [Migration Roadmap](#migration-roadmap)
-7. [Analysis Metrics (Appendix)](#analysis-metrics-appendix)
+3. [Instance Recommendation](#instance-recommendation)
+4. [Rationales](#rationales)
+5. [Alternative Strategies](#alternative-strategies)
+6. [Risks and Mitigation](#risks-and-mitigation)
+7. [Migration Roadmap](#migration-roadmap)
+8. [Analysis Metrics (Appendix)](#analysis-metrics-appendix)
 """
     
     def _format_strategy(self, recommendation: MigrationRecommendation, language: str) -> str:
@@ -266,6 +273,47 @@ This strategy has been selected based on the analysis of your Oracle database sy
                 content += self._format_list(phase.required_resources) + "\n\n"
         
         return content
+    
+    def _format_instance_recommendation(self, instance: 'InstanceRecommendation', language: str) -> str:
+        """인스턴스 추천 섹션 포맷"""
+        if language == "ko":
+            return f"""# 인스턴스 추천
+
+## 권장 인스턴스 타입
+
+- **인스턴스 타입**: {instance.instance_type}
+- **vCPU**: {instance.vcpu}
+- **메모리**: {instance.memory_gb} GB
+
+### 추천 근거
+
+{instance.rationale}
+
+### 참고사항
+
+- 위 인스턴스는 현재 성능 메트릭을 기반으로 한 권장 사항입니다
+- 실제 마이그레이션 시 부하 테스트를 통해 최적 사이즈를 결정하시기 바랍니다
+- Aurora의 경우 자동 스케일링 기능을 활용하여 유연하게 확장 가능합니다
+"""
+        else:  # English
+            return f"""# Instance Recommendation
+
+## Recommended Instance Type
+
+- **Instance Type**: {instance.instance_type}
+- **vCPU**: {instance.vcpu}
+- **Memory**: {instance.memory_gb} GB
+
+### Rationale
+
+{instance.rationale}
+
+### Notes
+
+- The recommended instance is based on current performance metrics
+- Please conduct load testing during actual migration to determine optimal sizing
+- For Aurora, you can leverage auto-scaling features for flexible expansion
+"""
     
     def _format_metrics(self, metrics: AnalysisMetrics, language: str) -> str:
         """분석 메트릭 섹션 포맷"""
