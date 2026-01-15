@@ -82,7 +82,7 @@ class MarkdownReportFormatter:
     def _format_executive_summary(self, summary: ExecutiveSummary, language: str) -> str:
         """Executive Summary 섹션 포맷"""
         if language == "ko":
-            return f"""# Executive Summary
+            return f"""# 요약
 
 {summary.summary_text}
 
@@ -119,7 +119,7 @@ class MarkdownReportFormatter:
         if language == "ko":
             return """# 목차
 
-1. [Executive Summary](#executive-summary)
+1. [요약](#요약)
 2. [추천 전략](#추천-전략)
 3. [인스턴스 추천](#인스턴스-추천)
 4. [추천 근거](#추천-근거)
@@ -145,9 +145,9 @@ class MarkdownReportFormatter:
         """추천 전략 섹션 포맷"""
         strategy_names = {
             "ko": {
-                MigrationStrategy.REPLATFORM: "RDS for Oracle SE2 (Replatform)",
-                MigrationStrategy.REFACTOR_MYSQL: "Aurora MySQL (Refactoring)",
-                MigrationStrategy.REFACTOR_POSTGRESQL: "Aurora PostgreSQL (Refactoring)"
+                MigrationStrategy.REPLATFORM: "RDS for Oracle SE2 (리플랫폼)",
+                MigrationStrategy.REFACTOR_MYSQL: "Aurora MySQL (리팩토링)",
+                MigrationStrategy.REFACTOR_POSTGRESQL: "Aurora PostgreSQL (리팩토링)"
             },
             "en": {
                 MigrationStrategy.REPLATFORM: "RDS for Oracle SE2 (Replatform)",
@@ -159,23 +159,38 @@ class MarkdownReportFormatter:
         strategy_name = strategy_names[language][recommendation.recommended_strategy]
         confidence = recommendation.confidence_level
         
+        confidence_names = {
+            "ko": {
+                "high": "높음",
+                "medium": "중간",
+                "low": "낮음"
+            },
+            "en": {
+                "high": "high",
+                "medium": "medium",
+                "low": "low"
+            }
+        }
+        
+        confidence_text = confidence_names[language].get(confidence, confidence)
+        
         if language == "ko":
             return f"""# 추천 전략
 
 ## {strategy_name}
 
-**신뢰도**: {confidence}
+**신뢰도**: {confidence_text}
 
-이 전략은 귀사의 Oracle 데이터베이스 시스템 분석 결과를 바탕으로 선정되었습니다.
+이 전략은 AWR/STATSPACK의 누적 데이터 분석을 통해 작성되었습니다.
 """
         else:
             return f"""# Recommended Strategy
 
 ## {strategy_name}
 
-**Confidence Level**: {confidence}
+**Confidence Level**: {confidence_text}
 
-This strategy has been selected based on the analysis of your Oracle database system.
+This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
 """
     
     def _format_rationales(self, rationales: List[Rationale], language: str) -> str:

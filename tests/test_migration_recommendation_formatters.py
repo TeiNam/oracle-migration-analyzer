@@ -88,7 +88,7 @@ def test_markdown_output_validity_property(
     
     # 검증: 필수 섹션 포함 (언어별)
     if language == "ko":
-        assert "# Executive Summary" in markdown_output, "Executive Summary 섹션이 없습니다"
+        assert "# 요약" in markdown_output, "요약 섹션이 없습니다"
         assert "# 목차" in markdown_output, "목차 섹션이 없습니다"
         assert "# 추천 전략" in markdown_output, "추천 전략 섹션이 없습니다"
         assert "# 추천 근거" in markdown_output, "추천 근거 섹션이 없습니다"
@@ -300,7 +300,7 @@ def test_markdown_formatter_basic():
     formatter = MarkdownReportFormatter()
     markdown_ko = formatter.format(recommendation, language="ko")
     
-    assert "# Executive Summary" in markdown_ko
+    assert "# 요약" in markdown_ko
     assert "# 목차" in markdown_ko
     assert "# 추천 전략" in markdown_ko
     
