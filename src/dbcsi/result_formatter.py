@@ -251,15 +251,16 @@ class StatspackResultFormatter:
             md.append(f"- **평균 Commits/s**: {sum(commits_values)/len(commits_values):.2f} (최소: {min(commits_values):.2f}, 최대: {max(commits_values):.2f})")
             md.append("")
             
-            # 상위 10개만 표시
-            md.append("**상세 데이터 (최근 10개):**\n")
+            # 시간 기반 데이터는 24개 표시 (하루 패턴)
+            display_count = min(24, len(statspack_data.main_metrics))
+            md.append(f"**상세 데이터 (최근 {display_count}개 - 하루 패턴):**\n")
             md.append("| 시간 | Duration (m) | CPU/s | Read IOPS | Write IOPS | Commits/s |")
             md.append("|------|--------------|-------|-----------|------------|-----------|")
-            for metric in statspack_data.main_metrics[:10]:
+            for metric in statspack_data.main_metrics[:display_count]:
                 md.append(f"| {metric.end} | {metric.dur_m:.1f} | {metric.cpu_per_s:.2f} | "
                          f"{metric.read_iops:.2f} | {metric.write_iops:.2f} | {metric.commits_s:.2f} |")
-            if len(statspack_data.main_metrics) > 10:
-                md.append(f"\n*전체 {len(statspack_data.main_metrics)}개 중 10개만 표시*")
+            if len(statspack_data.main_metrics) > display_count:
+                md.append(f"\n*전체 {len(statspack_data.main_metrics)}개 중 {display_count}개만 표시*")
             md.append("")
         
         # 5. Top 대기 이벤트
