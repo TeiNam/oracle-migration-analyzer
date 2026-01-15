@@ -219,7 +219,10 @@ def detect_file_type(filepath: str) -> str:
     """
     파일 타입을 자동으로 감지합니다 (AWR vs Statspack).
     
-    AWR 특화 섹션 마커의 존재 여부를 확인하여 파일 타입을 결정합니다.
+    1. 먼저 파일명에서 AWR 또는 STATSPACK 키워드 확인
+    2. 파일명에 없으면 파일 내용에서 AWR 특화 마커 확인
+    
+    AWR 특화 섹션 마커:
     - IOSTAT-FUNCTION
     - PERCENT-CPU
     - PERCENT-IO
@@ -232,6 +235,16 @@ def detect_file_type(filepath: str) -> str:
     Returns:
         "awr" 또는 "statspack"
     """
+    # 1. 파일명 확인 (대소문자 무시)
+    from pathlib import Path
+    filename_lower = Path(filepath).name.lower()
+    
+    if 'awr' in filename_lower:
+        return "awr"
+    elif 'statspack' in filename_lower:
+        return "statspack"
+    
+    # 2. 파일명에 타입 정보가 없으면 파일 내용 확인
     awr_markers = [
         "~~BEGIN-IOSTAT-FUNCTION~~",
         "~~BEGIN-PERCENT-CPU~~",
@@ -244,11 +257,11 @@ def detect_file_type(filepath: str) -> str:
         # UTF-8로 시도
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read()
+                content = f.read(50000)  # 처음 50KB만 읽기 (성능 최적화)
         except UnicodeDecodeError:
             # Latin-1로 폴백
             with open(filepath, 'r', encoding='latin-1') as f:
-                content = f.read()
+                content = f.read(50000)
         
         # AWR 마커가 하나라도 있으면 AWR 파일
         for marker in awr_markers:

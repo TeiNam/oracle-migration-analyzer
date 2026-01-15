@@ -265,7 +265,8 @@ class BatchAnalyzer:
         """
         파일 타입 자동 감지 (AWR vs Statspack)
         
-        파일 내용의 처음 몇 줄을 읽어서 AWR 특화 마커를 찾습니다.
+        1. 먼저 파일명에서 AWR 또는 STATSPACK 키워드 확인
+        2. 파일명에 없으면 파일 내용에서 AWR 특화 마커 확인
         
         Args:
             filepath: 파일 경로
@@ -273,6 +274,15 @@ class BatchAnalyzer:
         Returns:
             "awr" 또는 "statspack"
         """
+        # 1. 파일명 확인 (대소문자 무시)
+        filename_lower = filepath.name.lower()
+        
+        if 'awr' in filename_lower:
+            return "awr"
+        elif 'statspack' in filename_lower:
+            return "statspack"
+        
+        # 2. 파일명에 타입 정보가 없으면 파일 내용 확인
         awr_markers = [
             "~~BEGIN-IOSTAT-FUNCTION~~",
             "~~BEGIN-PERCENT-CPU~~",
