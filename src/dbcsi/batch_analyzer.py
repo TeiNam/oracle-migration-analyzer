@@ -207,8 +207,17 @@ class BatchAnalyzer:
             BatchFileResult: 파일 분석 결과
         """
         try:
+            # 파일 타입 자동 감지 (AWR vs Statspack)
+            file_type = self._detect_file_type(filepath)
+            
+            # 적절한 파서 선택
+            if file_type == "awr":
+                from src.dbcsi.parser import AWRParser
+                parser = AWRParser(str(filepath))
+            else:
+                parser = StatspackParser(str(filepath))
+            
             # 파일 파싱
-            parser = StatspackParser(str(filepath))
             statspack_data = parser.parse()
             
             # 타임스탬프 추출 (파일명 또는 데이터에서)
@@ -217,7 +226,13 @@ class BatchAnalyzer:
             # 마이그레이션 분석 (선택적)
             migration_analysis = None
             if analyze_migration:
-                analyzer = MigrationAnalyzer(statspack_data)
+                # AWR 데이터인 경우 EnhancedMigrationAnalyzer 사용
+                if hasattr(statspack_data, 'is_awr') and statspack_data.is_awr():
+                    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
+                    analyzer = EnhancedMigrationAnalyzer(statspack_data)
+                else:
+                    analyzer = MigrationAnalyzer(statspack_data)
+                
                 migration_analysis = analyzer.analyze(target=target)
             
             return BatchFileResult(
@@ -245,6 +260,48 @@ class BatchAnalyzer:
                 success=False,
                 error_message=f"Unexpected error: {str(e)}"
             )
+    
+    def _detect_file_type(self, filepath: Path) -> str:
+        """
+        파일 타입 자동 감지 (AWR vs Statspack)
+        
+        파일 내용의 처음 몇 줄을 읽어서 AWR 특화 마커를 찾습니다.
+        
+        Args:
+            filepath: 파일 경로
+            
+        Returns:
+            "awr" 또는 "statspack"
+        """
+        awr_markers = [
+            "~~BEGIN-IOSTAT-FUNCTION~~",
+            "~~BEGIN-PERCENT-CPU~~",
+            "~~BEGIN-PERCENT-IO~~",
+            "~~BEGIN-WORKLOAD~~",
+            "~~BEGIN-BUFFER-CACHE~~"
+        ]
+        
+        try:
+            # UTF-8로 시도
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read(50000)  # 처음 50KB만 읽기
+        except UnicodeDecodeError:
+            # Latin-1로 폴백
+            try:
+                with open(filepath, 'r', encoding='latin-1') as f:
+                    content = f.read(50000)
+            except Exception:
+                # 읽기 실패 시 Statspack으로 간주
+                return "statspack"
+        except Exception:
+            return "statspack"
+        
+        # AWR 마커 확인
+        for marker in awr_markers:
+            if marker in content:
+                return "awr"
+        
+        return "statspack"
     
     def _extract_timestamp(self, filepath: Path, data: Union[StatspackData, AWRData]) -> str:
         """
