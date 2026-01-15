@@ -172,11 +172,16 @@ class StatspackParser:
                 continue
             
             # STAT_NAME과 STAT_VALUE 분리 (공백으로 구분)
-            parts = stripped.split(None, 1)  # 최대 2개로 분리
+            # COUNT_TABLE PARTITION 같은 경우를 처리하기 위해 전체를 분리
+            parts = stripped.split()
             
             if len(parts) >= 1:
+                # COUNT_TABLE PARTITION 같은 경우 건너뛰기
+                if len(parts) >= 2 and parts[0] == "COUNT_TABLE" and parts[1] == "PARTITION":
+                    continue
+                
                 stat_name = parts[0]
-                stat_value = parts[1] if len(parts) == 2 else ""
+                stat_value = " ".join(parts[1:]) if len(parts) > 1 else ""
                 
                 # 타입 변환 시도 (DB_NAME은 항상 문자열로 유지)
                 if stat_name == "DB_NAME":
@@ -645,14 +650,62 @@ class StatspackParser:
                             aux_count = float(parts[3])
                             # AUX_COUNT가 숫자면 다음은 LAST_SAMPLE_DATE
                             if len(parts) > 4:
-                                last_sample_date = parts[4]
-                            if len(parts) > 5:
-                                feature_info = ' '.join(parts[5:])
+                                # 날짜 형식이 "11-1월 -2026" 처럼 공백으로 나뉘어 있을 수 있음
+                                # 날짜 패턴: 숫자로 시작하고 하이픈이나 한글 월 포함
+                                date_parts = []
+                                info_start_idx = 4
+                                
+                                for i in range(4, min(len(parts), 7)):  # 날짜는 최대 3개 부분으로 제한
+                                    part = parts[i]
+                                    # 날짜 패턴: 숫자로 시작하거나, 하이픈으로 시작하거나, 한글 월 포함
+                                    is_date_part = (
+                                        part[0].isdigit() or  # 숫자로 시작
+                                        part.startswith('-') or  # 하이픈으로 시작
+                                        any('\uac00' <= c <= '\ud7a3' for c in part)  # 한글 포함 (월)
+                                    )
+                                    
+                                    # AL32UTF8 같은 캐릭터셋은 제외 (대문자로만 구성)
+                                    if is_date_part and not part.isupper():
+                                        date_parts.append(part)
+                                        info_start_idx = i + 1
+                                    else:
+                                        break
+                                
+                                if date_parts:
+                                    last_sample_date = ' '.join(date_parts)
+                                    if info_start_idx < len(parts):
+                                        feature_info = ' '.join(parts[info_start_idx:])
+                                else:
+                                    last_sample_date = parts[4]
+                                    if len(parts) > 5:
+                                        feature_info = ' '.join(parts[5:])
                         except ValueError:
                             # AUX_COUNT가 숫자가 아니면 LAST_SAMPLE_DATE부터 시작
-                            last_sample_date = parts[3]
-                            if len(parts) > 4:
-                                feature_info = ' '.join(parts[4:])
+                            date_parts = []
+                            info_start_idx = 3
+                            
+                            for i in range(3, min(len(parts), 6)):  # 날짜는 최대 3개 부분으로 제한
+                                part = parts[i]
+                                is_date_part = (
+                                    part[0].isdigit() or
+                                    part.startswith('-') or
+                                    any('\uac00' <= c <= '\ud7a3' for c in part)
+                                )
+                                
+                                if is_date_part and not part.isupper():
+                                    date_parts.append(part)
+                                    info_start_idx = i + 1
+                                else:
+                                    break
+                            
+                            if date_parts:
+                                last_sample_date = ' '.join(date_parts)
+                                if info_start_idx < len(parts):
+                                    feature_info = ' '.join(parts[info_start_idx:])
+                            else:
+                                last_sample_date = parts[3]
+                                if len(parts) > 4:
+                                    feature_info = ' '.join(parts[4:])
                     
                     # Character Set 특별 처리
                     if name == "Character Set" and feature_info:

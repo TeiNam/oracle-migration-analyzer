@@ -71,6 +71,30 @@ IS_RDS                                                       NO
                 assert result.os_info.is_rds == False
             finally:
                 os.unlink(f.name)
+    
+    def test_parse_os_information_count_table_partition(self):
+        """COUNT_TABLE과 COUNT_TABLE PARTITION 구분 테스트"""
+        content = """~~BEGIN-OS-INFORMATION~~
+STAT_NAME                                                    STAT_VALUE
+------------------------------------------------------------ ------------------------------------------------------------
+COUNT_TABLE                                                  58
+COUNT_TABLE PARTITION                                        56
+COUNT_VIEW                                                   23
+~~END-OS-INFORMATION~~
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.out', delete=False) as f:
+            f.write(content)
+            f.flush()
+            
+            try:
+                parser = StatspackParser(f.name)
+                result = parser.parse()
+                
+                # COUNT_TABLE은 58이어야 하고, COUNT_TABLE PARTITION은 무시되어야 함
+                assert result.os_info.count_tables == 58
+                assert isinstance(result.os_info.count_tables, int)
+            finally:
+                os.unlink(f.name)
 
 
 class TestMemoryParser:
@@ -289,6 +313,46 @@ Partitioning                                                                   1
                 assert result.features[0].name == "Partitioning"
                 assert result.features[0].detected_usages == 1
                 assert result.features[0].currently_used == True
+            finally:
+                os.unlink(f.name)
+    
+    def test_parse_features_character_set_with_korean_date(self):
+        """한글 날짜 형식의 Character Set 파싱 테스트"""
+        content = """~~BEGIN-OS-INFORMATION~~
+STAT_NAME                                                    STAT_VALUE
+------------------------------------------------------------ ------------------------------------------------------------
+DB_NAME                                                      TEST
+~~END-OS-INFORMATION~~
+
+~~BEGIN-FEATURES~~
+
+NAME                                                             DETECTED_USAGES TOTAL_SAMPLES CURRE  AUX_COUNT LAST_SAMPLE_DATE     FEATURE_INFO
+---------------------------------------------------------------- --------------- ------------- ----- ---------- -------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Character Set                                                                  1             1 TRUE             11-1월 -2026     AL32UTF8
+
+~~END-FEATURES~~
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.out', delete=False) as f:
+            f.write(content)
+            f.flush()
+            
+            try:
+                parser = StatspackParser(f.name)
+                result = parser.parse()
+                
+                # Character Set 기능 찾기
+                char_set_feature = None
+                for feature in result.features:
+                    if feature.name == "Character Set":
+                        char_set_feature = feature
+                        break
+                
+                assert char_set_feature is not None
+                assert char_set_feature.last_sample_date == "11-1월 -2026"
+                assert char_set_feature.feature_info == "AL32UTF8"
+                
+                # OS 정보에도 캐릭터셋이 설정되어야 함
+                assert result.os_info.character_set == "AL32UTF8"
             finally:
                 os.unlink(f.name)
 
