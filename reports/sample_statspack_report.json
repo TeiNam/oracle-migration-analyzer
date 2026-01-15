@@ -1,149 +1,2255 @@
 {
-  "RDS for Oracle": {
-    "target": "RDS for Oracle",
-    "score": 1.0,
-    "level": "매우 간단 (Minimal effort)",
-    "factors": {
-      "기본 점수 (동일 엔진)": 1.0
-    },
-    "recommendations": [
-      "RDS for Oracle은 동일 엔진 마이그레이션으로 호환성이 높습니다.",
-      "현재 버전 19.0.0.0.0에서 최신 버전으로 업그레이드를 권장합니다."
-    ],
-    "warnings": [],
-    "next_steps": [
-      "RDS for Oracle 인스턴스 사이즈 선택",
-      "Multi-AZ 배포 구성 계획",
-      "백업 및 복구 전략 수립",
-      "마이그레이션 도구 선택 (DMS, Data Pump 등)",
-      "테스트 환경에서 마이그레이션 검증"
-    ],
-    "instance_recommendation": {
-      "instance_type": "db.r6i.large",
-      "vcpu": 2,
-      "memory_gib": 16,
-      "current_cpu_usage_pct": 0.009410299,
-      "current_memory_gb": 11.6,
-      "cpu_headroom_pct": 99.990589701,
-      "memory_headroom_pct": 37.931034482758626,
-      "estimated_monthly_cost_usd": null
+  "os_info": {
+    "statspack_version": "4.0.11.statspack.32",
+    "num_cpus": 2,
+    "num_cpu_cores": 1,
+    "physical_memory_gb": 15.35,
+    "platform_name": "Linux_x86_64-bit",
+    "version": "19.0.0.0.0",
+    "db_name": "ORCL01",
+    "dbid": 96266285,
+    "banner": "Oracle Database 19c Standard Edition 2 Release 19.0.0.0.0 - Production",
+    "instances": 1,
+    "is_rds": true,
+    "total_db_size_gb": 2,
+    "count_lines_plsql": 6165,
+    "count_schemas": 2,
+    "count_tables": 73,
+    "count_packages": 1,
+    "count_procedures": null,
+    "count_functions": null,
+    "character_set": "AL32UTF8",
+    "raw_data": {
+      "STATSPACK_MINER_VER": "4.0.11.statspack.32",
+      "NUM_CPUS": 2,
+      "NUM_CPU_CORES": 1,
+      "NUM_CPU_SOCKETS": 1,
+      "PHYSICAL_MEMORY_GB": 15.35,
+      "GLOBAL_CPU_COUNT": 2,
+      "GLOBAL_CPU_CORE_COUNT": 1,
+      "GLOBAL_CPU_SOCKET_COUNT": 1,
+      "PLATFORM_NAME": "Linux_x86_64-bit",
+      "VERSION": "19.0.0.0.0",
+      "DB_NAME": "ORCL01",
+      "DBID": 96266285,
+      "BANNER": "Oracle Database 19c Standard Edition 2 Release 19.0.0.0.0 - Production",
+      "INSTANCES": 1,
+      "STATSPACK_SNAPSHOTS": 23,
+      "INSTANCES_CURRENT": 1,
+      "HOSTS": "ip-172-23-0-137",
+      "HOSTS_CURRENT": "ip-172-23-0-137",
+      "TOTAL_DB_SIZE_GB": 2,
+      "TOTAL_DATAFILE_SIZE_GB": 2,
+      "USED_DB_SIZE_GB": 1,
+      "DB_CPU_THREADS_AVERAGE_P99": 0.01,
+      "DB_IOPS_AVERAGE_P99": 7.8,
+      "DB_IOMB_AVERAGE_P99": 0.1,
+      "DB_SGAPGA_TOTAL": 11.6,
+      "COUNT_DB_LINKS": 0,
+      "COUNT_LINES_PLSQL": 6165,
+      "COUNT_SCHEMAS": 2,
+      "COUNT_PDBS": -1,
+      "COUNT_INDEX": 73,
+      "COUNT_PACKAGE": 1,
+      "COUNT_SEQUENCE": 1,
+      "COUNT_TABLE": 73,
+      "COUNT_VIEW": 1,
+      "COUNT_TABLES_HCC": 0,
+      "COUNT_BITMAP_INDEX": 0,
+      "COUNT_MATVIEWS_REWRITE_ENABLED": 0,
+      "COUNT_VPD_POLICIES": 0,
+      "FEATURE_Resource": "Manager                                     Yes",
+      "IS_RDS": true,
+      "LOCAL_LISTENER": "(ADDRESS=(PROTOCOL=TCP)(HOST=10.1.81.122)(PORT=1521))",
+      "DEBUG_MODULE": "SQL*Plus",
+      "DEBUG_SQLPLUS": 1923000000,
+      "DEBUG_control_management_pack_access": "NONE",
+      "MEMORY_TARGET": 0,
+      "NLS_COMP": "BINARY",
+      "NLS_SORT": null,
+      "SGA_TARGET": 12213813248,
+      "DEBUG_statistics_level": "TYPICAL",
+      "DEBUG_timed_statistics": true
     }
   },
-  "Aurora PostgreSQL 16": {
-    "target": "Aurora PostgreSQL 16",
-    "score": 10.0,
-    "level": "매우 복잡 (Very high effort)",
-    "factors": {
-      "기본 점수 (엔진 변경)": 3.0,
-      "PL/SQL 코드 변환": 4.0,
-      "Oracle 특화 기능": 9.700000000000001
+  "memory_metrics": [
+    {
+      "snap_id": 2,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
     },
-    "recommendations": [
-      "Aurora PostgreSQL은 Oracle과 높은 호환성을 제공합니다.",
-      "PL/SQL 코드를 PL/pgSQL로 변환해야 합니다.",
-      "PL/SQL을 PL/pgSQL로 변환해야 합니다.",
-      "1개의 패키지를 PostgreSQL 스키마 또는 확장으로 변환해야 합니다.",
-      "일부 Oracle 특화 기능은 대체 방안이 필요합니다:",
-      "Adaptive Plans: 애플리케이션 레벨에서 구현 필요",
-      "Automatic Maintenance - Optimizer Statistics Gathering: 애플리케이션 레벨에서 구현 필요",
-      "Automatic Maintenance - SQL Tuning Advisor: 애플리케이션 레벨에서 구현 필요",
-      "Automatic Maintenance - Space Advisor: 애플리케이션 레벨에서 구현 필요",
-      "Automatic Reoptimization: 애플리케이션 레벨에서 구현 필요",
-      "Automatic SGA Tuning: 애플리케이션 레벨에서 구현 필요",
-      "Automatic SQL Execution Memory: 애플리케이션 레벨에서 구현 필요",
-      "Automatic Segment Space Management (system): 애플리케이션 레벨에서 구현 필요",
-      "Automatic Segment Space Management (user): 애플리케이션 레벨에서 구현 필요",
-      "Automatic Undo Management: 애플리케이션 레벨에서 구현 필요",
-      "Bigfile Tablespace: 애플리케이션 레벨에서 구현 필요",
-      "Character Set: 애플리케이션 레벨에서 구현 필요",
-      "Deferred Segment Creation: 애플리케이션 레벨에서 구현 필요",
-      "Extensibility: 애플리케이션 레벨에서 구현 필요",
-      "LOB: 애플리케이션 레벨에서 구현 필요",
-      "Locally Managed Tablespaces (system): 애플리케이션 레벨에서 구현 필요",
-      "Locally Managed Tablespaces (user): 애플리케이션 레벨에서 구현 필요",
-      "Object: 애플리케이션 레벨에서 구현 필요",
-      "Oracle Call Interface (OCI): 애플리케이션 레벨에서 구현 필요",
-      "Oracle Managed Files: 애플리케이션 레벨에서 구현 필요",
-      "Oracle Utility External Table (ORACLE_LOADER): 애플리케이션 레벨에서 구현 필요",
-      "Partitioning (system): 네이티브 파티셔닝 지원",
-      "Resource Manager: 애플리케이션 레벨에서 구현 필요",
-      "SQL Plan Directive: 애플리케이션 레벨에서 구현 필요",
-      "SQL*Plus: 애플리케이션 레벨에서 구현 필요",
-      "SecureFiles (system): 애플리케이션 레벨에서 구현 필요",
-      "SecureFiles (user): 애플리케이션 레벨에서 구현 필요",
-      "Server Parameter File: 애플리케이션 레벨에서 구현 필요",
-      "Services: 애플리케이션 레벨에서 구현 필요",
-      "Unified Audit: 애플리케이션 레벨에서 구현 필요"
-    ],
-    "warnings": [],
-    "next_steps": [
-      "AWS Schema Conversion Tool (SCT)로 스키마 변환",
-      "PL/SQL을 PL/pgSQL로 변환",
-      "AWS DMS로 데이터 마이그레이션",
-      "애플리케이션 연결 문자열 업데이트",
-      "성능 테스트 및 튜닝"
-    ],
-    "instance_recommendation": null
-  },
-  "Aurora MySQL 8.0": {
-    "target": "Aurora MySQL 8.0",
-    "score": 10.0,
-    "level": "매우 복잡 (Very high effort)",
-    "factors": {
-      "기본 점수 (엔진 변경 + 제약)": 4.0,
-      "PL/SQL 코드 변환 (MySQL 제약)": 7.5,
-      "Oracle 특화 기능 (MySQL 제약)": 12.610000000000001
+    {
+      "snap_id": 3,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
     },
-    "recommendations": [
-      "Aurora MySQL은 Oracle과의 호환성이 제한적입니다.",
-      "대규모 PL/SQL 코드나 Oracle 특화 기능이 많은 경우 PostgreSQL을 권장합니다.",
-      "PL/SQL 코드를 MySQL 저장 프로시저로 변환하거나 애플리케이션으로 이관해야 합니다.",
-      "PL/SQL을 MySQL 저장 프로시저로 변환하거나 애플리케이션으로 이관해야 합니다.",
-      "1개의 패키지를 저장 프로시저로 변환하거나 애플리케이션으로 이관해야 합니다.",
-      "많은 Oracle 특화 기능이 MySQL에서 지원되지 않습니다:",
-      "Adaptive Plans: 애플리케이션 레벨에서 구현 필요",
-      "Automatic Maintenance - Optimizer Statistics Gathering: 애플리케이션 레벨에서 구현 필요",
-      "Automatic Maintenance - SQL Tuning Advisor: 애플리케이션 레벨에서 구현 필요",
-      "Automatic Maintenance - Space Advisor: 애플리케이션 레벨에서 구현 필요",
-      "Automatic Reoptimization: 애플리케이션 레벨에서 구현 필요",
-      "Automatic SGA Tuning: 애플리케이션 레벨에서 구현 필요",
-      "Automatic SQL Execution Memory: 애플리케이션 레벨에서 구현 필요",
-      "Automatic Segment Space Management (system): 애플리케이션 레벨에서 구현 필요",
-      "Automatic Segment Space Management (user): 애플리케이션 레벨에서 구현 필요",
-      "Automatic Undo Management: 애플리케이션 레벨에서 구현 필요",
-      "Bigfile Tablespace: 애플리케이션 레벨에서 구현 필요",
-      "Character Set: 애플리케이션 레벨에서 구현 필요",
-      "Deferred Segment Creation: 애플리케이션 레벨에서 구현 필요",
-      "Extensibility: 애플리케이션 레벨에서 구현 필요",
-      "LOB: 애플리케이션 레벨에서 구현 필요",
-      "Locally Managed Tablespaces (system): 애플리케이션 레벨에서 구현 필요",
-      "Locally Managed Tablespaces (user): 애플리케이션 레벨에서 구현 필요",
-      "Object: 애플리케이션 레벨에서 구현 필요",
-      "Oracle Call Interface (OCI): 애플리케이션 레벨에서 구현 필요",
-      "Oracle Managed Files: 애플리케이션 레벨에서 구현 필요",
-      "Oracle Utility External Table (ORACLE_LOADER): 애플리케이션 레벨에서 구현 필요",
-      "Partitioning (system): 네이티브 파티셔닝 지원 (제한적)",
-      "Resource Manager: 애플리케이션 레벨에서 구현 필요",
-      "SQL Plan Directive: 애플리케이션 레벨에서 구현 필요",
-      "SQL*Plus: 애플리케이션 레벨에서 구현 필요",
-      "SecureFiles (system): 애플리케이션 레벨에서 구현 필요",
-      "SecureFiles (user): 애플리케이션 레벨에서 구현 필요",
-      "Server Parameter File: 애플리케이션 레벨에서 구현 필요",
-      "Services: 애플리케이션 레벨에서 구현 필요",
-      "Unified Audit: 애플리케이션 레벨에서 구현 필요"
-    ],
-    "warnings": [
-      "대규모 PL/SQL 코드 변환은 MySQL에서 매우 어렵습니다. PostgreSQL을 고려하세요.",
-      "많은 Oracle 특화 기능이 사용되고 있습니다. MySQL 호환성을 신중히 검토하세요."
-    ],
-    "next_steps": [
-      "AWS Schema Conversion Tool (SCT)로 스키마 변환 가능성 평가",
-      "PL/SQL 코드를 MySQL 저장 프로시저 또는 애플리케이션으로 변환",
-      "Oracle 특화 기능의 대체 방안 구현",
-      "AWS DMS로 데이터 마이그레이션",
-      "광범위한 애플리케이션 테스트 및 검증"
-    ],
-    "instance_recommendation": null
-  },
-  "_type": "MigrationComplexityDict"
+    {
+      "snap_id": 4,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 5,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 6,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 7,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 8,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 9,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 10,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 11,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 12,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 13,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 14,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 15,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 16,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 17,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 18,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 19,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 20,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 21,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 22,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    },
+    {
+      "snap_id": 23,
+      "instance_number": 1,
+      "sga_gb": 11.1,
+      "pga_gb": 0.5,
+      "total_gb": 11.6
+    }
+  ],
+  "disk_sizes": [
+    {
+      "snap_id": 2,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 3,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 4,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 5,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 6,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 7,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 8,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 9,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 10,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 11,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 12,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 13,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 14,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 15,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 16,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 17,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 18,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 19,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 20,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 21,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 22,
+      "size_gb": 2.0
+    },
+    {
+      "snap_id": 23,
+      "size_gb": 2.0
+    }
+  ],
+  "main_metrics": [
+    {
+      "snap": 2,
+      "dur_m": 8.5,
+      "end": "26/01/13 05:43",
+      "inst": 1,
+      "cpu_per_s": 0.00629518,
+      "read_iops": 4.6,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 3,
+      "dur_m": 16.9,
+      "end": "26/01/13 06:00",
+      "inst": 1,
+      "cpu_per_s": 0.00559768,
+      "read_iops": 4.5,
+      "read_mb_s": 0.1,
+      "write_iops": 3.3,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 4,
+      "dur_m": 60.0,
+      "end": "26/01/13 07:00",
+      "inst": 1,
+      "cpu_per_s": 0.005298899,
+      "read_iops": 4.3,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 5,
+      "dur_m": 60.0,
+      "end": "26/01/13 08:00",
+      "inst": 1,
+      "cpu_per_s": 0.005143238,
+      "read_iops": 4.3,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 6,
+      "dur_m": 60.0,
+      "end": "26/01/13 09:00",
+      "inst": 1,
+      "cpu_per_s": 0.005258339,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 7,
+      "dur_m": 60.0,
+      "end": "26/01/13 10:00",
+      "inst": 1,
+      "cpu_per_s": 0.005188144,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 8,
+      "dur_m": 60.0,
+      "end": "26/01/13 11:00",
+      "inst": 1,
+      "cpu_per_s": 0.0053749,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 9,
+      "dur_m": 60.0,
+      "end": "26/01/13 12:00",
+      "inst": 1,
+      "cpu_per_s": 0.005260068,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 10,
+      "dur_m": 60.0,
+      "end": "26/01/13 13:00",
+      "inst": 1,
+      "cpu_per_s": 0.005138386,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 11,
+      "dur_m": 60.0,
+      "end": "26/01/13 14:00",
+      "inst": 1,
+      "cpu_per_s": 0.005365494,
+      "read_iops": 4.3,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 12,
+      "dur_m": 60.0,
+      "end": "26/01/13 15:00",
+      "inst": 1,
+      "cpu_per_s": 0.005298155,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 13,
+      "dur_m": 60.0,
+      "end": "26/01/13 16:00",
+      "inst": 1,
+      "cpu_per_s": 0.005323636,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 14,
+      "dur_m": 60.0,
+      "end": "26/01/13 17:00",
+      "inst": 1,
+      "cpu_per_s": 0.005248521,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 15,
+      "dur_m": 60.0,
+      "end": "26/01/13 18:00",
+      "inst": 1,
+      "cpu_per_s": 0.005312442,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 16,
+      "dur_m": 60.0,
+      "end": "26/01/13 19:00",
+      "inst": 1,
+      "cpu_per_s": 0.005508334,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 17,
+      "dur_m": 60.0,
+      "end": "26/01/13 20:00",
+      "inst": 1,
+      "cpu_per_s": 0.005473746,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 18,
+      "dur_m": 60.0,
+      "end": "26/01/13 21:00",
+      "inst": 1,
+      "cpu_per_s": 0.005388219,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 19,
+      "dur_m": 60.0,
+      "end": "26/01/13 22:00",
+      "inst": 1,
+      "cpu_per_s": 0.005343149,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 20,
+      "dur_m": 60.0,
+      "end": "26/01/13 23:00",
+      "inst": 1,
+      "cpu_per_s": 0.009410299,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 3.4,
+      "write_mb_s": 0.0,
+      "commits_s": 0.9
+    },
+    {
+      "snap": 21,
+      "dur_m": 60.0,
+      "end": "26/01/14 00:00",
+      "inst": 1,
+      "cpu_per_s": 0.005452095,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 22,
+      "dur_m": 60.0,
+      "end": "26/01/14 01:00",
+      "inst": 1,
+      "cpu_per_s": 0.005415496,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.2,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    },
+    {
+      "snap": 23,
+      "dur_m": 60.0,
+      "end": "26/01/14 02:00",
+      "inst": 1,
+      "cpu_per_s": 0.00574466,
+      "read_iops": 4.4,
+      "read_mb_s": 0.1,
+      "write_iops": 1.4,
+      "write_mb_s": 0.0,
+      "commits_s": 0.0
+    }
+  ],
+  "wait_events": [
+    {
+      "snap_id": 2,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 83.02,
+      "total_time_s": 1627867.0
+    },
+    {
+      "snap_id": 2,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 80.35,
+      "total_time_s": 1575619.0
+    },
+    {
+      "snap_id": 2,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 24.47,
+      "total_time_s": 479882.0
+    },
+    {
+      "snap_id": 2,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 10.01,
+      "total_time_s": 196269.0
+    },
+    {
+      "snap_id": 2,
+      "wait_class": "System",
+      "event_name": "I/O log file parallel write",
+      "pctdbt": 3.06,
+      "total_time_s": 59913.0
+    },
+    {
+      "snap_id": 3,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 120.07,
+      "total_time_s": 4202947.0
+    },
+    {
+      "snap_id": 3,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 67.61,
+      "total_time_s": 2366699.0
+    },
+    {
+      "snap_id": 3,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 28.62,
+      "total_time_s": 1001764.0
+    },
+    {
+      "snap_id": 3,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 13.07,
+      "total_time_s": 457491.0
+    },
+    {
+      "snap_id": 3,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 4.64,
+      "total_time_s": 162419.0
+    },
+    {
+      "snap_id": 4,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 105.54,
+      "total_time_s": 12154411.0
+    },
+    {
+      "snap_id": 4,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 67.98,
+      "total_time_s": 7829109.0
+    },
+    {
+      "snap_id": 4,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 33.1,
+      "total_time_s": 3811506.0
+    },
+    {
+      "snap_id": 4,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 11.64,
+      "total_time_s": 1340630.0
+    },
+    {
+      "snap_id": 4,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 2.68,
+      "total_time_s": 308255.0
+    },
+    {
+      "snap_id": 5,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 95.49,
+      "total_time_s": 11890333.0
+    },
+    {
+      "snap_id": 5,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 61.16,
+      "total_time_s": 7615544.0
+    },
+    {
+      "snap_id": 5,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 29.21,
+      "total_time_s": 3636750.0
+    },
+    {
+      "snap_id": 5,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 12.32,
+      "total_time_s": 1533721.0
+    },
+    {
+      "snap_id": 5,
+      "wait_class": "Commit",
+      "event_name": "log file sync",
+      "pctdbt": 4.54,
+      "total_time_s": 565671.0
+    },
+    {
+      "snap_id": 6,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 115.64,
+      "total_time_s": 12101375.0
+    },
+    {
+      "snap_id": 6,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 72.03,
+      "total_time_s": 7537546.0
+    },
+    {
+      "snap_id": 6,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 35.52,
+      "total_time_s": 3717066.0
+    },
+    {
+      "snap_id": 6,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 14.47,
+      "total_time_s": 1514716.0
+    },
+    {
+      "snap_id": 6,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 3.01,
+      "total_time_s": 314473.0
+    },
+    {
+      "snap_id": 7,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 107.25,
+      "total_time_s": 12174847.0
+    },
+    {
+      "snap_id": 7,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 66.86,
+      "total_time_s": 7590002.0
+    },
+    {
+      "snap_id": 7,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 32.44,
+      "total_time_s": 3681996.0
+    },
+    {
+      "snap_id": 7,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 11.45,
+      "total_time_s": 1299436.0
+    },
+    {
+      "snap_id": 7,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 3.01,
+      "total_time_s": 341991.0
+    },
+    {
+      "snap_id": 8,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 102.08,
+      "total_time_s": 12221964.0
+    },
+    {
+      "snap_id": 8,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 65.57,
+      "total_time_s": 7850672.0
+    },
+    {
+      "snap_id": 8,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 31.69,
+      "total_time_s": 3794017.0
+    },
+    {
+      "snap_id": 8,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 11.46,
+      "total_time_s": 1371606.0
+    },
+    {
+      "snap_id": 8,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 5.34,
+      "total_time_s": 639706.0
+    },
+    {
+      "snap_id": 9,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 105.57,
+      "total_time_s": 12229632.0
+    },
+    {
+      "snap_id": 9,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 66.24,
+      "total_time_s": 7673870.0
+    },
+    {
+      "snap_id": 9,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 32.41,
+      "total_time_s": 3754309.0
+    },
+    {
+      "snap_id": 9,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 11.92,
+      "total_time_s": 1381328.0
+    },
+    {
+      "snap_id": 9,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 2.35,
+      "total_time_s": 272292.0
+    },
+    {
+      "snap_id": 10,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 103.61,
+      "total_time_s": 11950365.0
+    },
+    {
+      "snap_id": 10,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 66.22,
+      "total_time_s": 7638111.0
+    },
+    {
+      "snap_id": 10,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 31.74,
+      "total_time_s": 3660625.0
+    },
+    {
+      "snap_id": 10,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 11.77,
+      "total_time_s": 1357082.0
+    },
+    {
+      "snap_id": 10,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 4.13,
+      "total_time_s": 476782.0
+    },
+    {
+      "snap_id": 11,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 100.73,
+      "total_time_s": 11979627.0
+    },
+    {
+      "snap_id": 11,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 66.46,
+      "total_time_s": 7904425.0
+    },
+    {
+      "snap_id": 11,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 30.65,
+      "total_time_s": 3645176.0
+    },
+    {
+      "snap_id": 11,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 10.91,
+      "total_time_s": 1297694.0
+    },
+    {
+      "snap_id": 11,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 3.72,
+      "total_time_s": 441853.0
+    },
+    {
+      "snap_id": 12,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 88.85,
+      "total_time_s": 12085490.0
+    },
+    {
+      "snap_id": 12,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 58.19,
+      "total_time_s": 7915170.0
+    },
+    {
+      "snap_id": 12,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 27.83,
+      "total_time_s": 3784970.0
+    },
+    {
+      "snap_id": 12,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 9.64,
+      "total_time_s": 1311562.0
+    },
+    {
+      "snap_id": 12,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 5.5,
+      "total_time_s": 748389.0
+    },
+    {
+      "snap_id": 13,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 118.7,
+      "total_time_s": 12214869.0
+    },
+    {
+      "snap_id": 13,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 74.04,
+      "total_time_s": 7619046.0
+    },
+    {
+      "snap_id": 13,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 35.59,
+      "total_time_s": 3662955.0
+    },
+    {
+      "snap_id": 13,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 13.01,
+      "total_time_s": 1338578.0
+    },
+    {
+      "snap_id": 13,
+      "wait_class": "System",
+      "event_name": "I/O log file parallel write",
+      "pctdbt": 3.22,
+      "total_time_s": 331460.0
+    },
+    {
+      "snap_id": 14,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 103.95,
+      "total_time_s": 11955518.0
+    },
+    {
+      "snap_id": 14,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 65.74,
+      "total_time_s": 7560511.0
+    },
+    {
+      "snap_id": 14,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 31.55,
+      "total_time_s": 3628978.0
+    },
+    {
+      "snap_id": 14,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 14.16,
+      "total_time_s": 1628528.0
+    },
+    {
+      "snap_id": 14,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 3.68,
+      "total_time_s": 423275.0
+    },
+    {
+      "snap_id": 15,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 98.81,
+      "total_time_s": 12137456.0
+    },
+    {
+      "snap_id": 15,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 62.21,
+      "total_time_s": 7641827.0
+    },
+    {
+      "snap_id": 15,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 30.41,
+      "total_time_s": 3735629.0
+    },
+    {
+      "snap_id": 15,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 12.88,
+      "total_time_s": 1582535.0
+    },
+    {
+      "snap_id": 15,
+      "wait_class": "Commit",
+      "event_name": "log file sync",
+      "pctdbt": 3.55,
+      "total_time_s": 435769.0
+    },
+    {
+      "snap_id": 16,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 98.63,
+      "total_time_s": 12033675.0
+    },
+    {
+      "snap_id": 16,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 63.79,
+      "total_time_s": 7783542.0
+    },
+    {
+      "snap_id": 16,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 30.2,
+      "total_time_s": 3684124.0
+    },
+    {
+      "snap_id": 16,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 11.48,
+      "total_time_s": 1401164.0
+    },
+    {
+      "snap_id": 16,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 3.0,
+      "total_time_s": 365573.0
+    },
+    {
+      "snap_id": 17,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 105.33,
+      "total_time_s": 12162366.0
+    },
+    {
+      "snap_id": 17,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 68.29,
+      "total_time_s": 7885485.0
+    },
+    {
+      "snap_id": 17,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 31.79,
+      "total_time_s": 3670965.0
+    },
+    {
+      "snap_id": 17,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 11.86,
+      "total_time_s": 1369654.0
+    },
+    {
+      "snap_id": 17,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 2.83,
+      "total_time_s": 326643.0
+    },
+    {
+      "snap_id": 18,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 105.16,
+      "total_time_s": 12319050.0
+    },
+    {
+      "snap_id": 18,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 64.39,
+      "total_time_s": 7542628.0
+    },
+    {
+      "snap_id": 18,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 31.19,
+      "total_time_s": 3654247.0
+    },
+    {
+      "snap_id": 18,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 12.29,
+      "total_time_s": 1439156.0
+    },
+    {
+      "snap_id": 18,
+      "wait_class": "Commit",
+      "event_name": "log file sync",
+      "pctdbt": 2.84,
+      "total_time_s": 332596.0
+    },
+    {
+      "snap_id": 19,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 103.87,
+      "total_time_s": 12376684.0
+    },
+    {
+      "snap_id": 19,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 63.71,
+      "total_time_s": 7591089.0
+    },
+    {
+      "snap_id": 19,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 30.6,
+      "total_time_s": 3646603.0
+    },
+    {
+      "snap_id": 19,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 11.96,
+      "total_time_s": 1425503.0
+    },
+    {
+      "snap_id": 19,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 5.54,
+      "total_time_s": 660229.0
+    },
+    {
+      "snap_id": 20,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 82.59,
+      "total_time_s": 22405610.0
+    },
+    {
+      "snap_id": 20,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 43.03,
+      "total_time_s": 11672690.0
+    },
+    {
+      "snap_id": 20,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 13.44,
+      "total_time_s": 3644731.0
+    },
+    {
+      "snap_id": 20,
+      "wait_class": "System",
+      "event_name": "I/O log file parallel write",
+      "pctdbt": 8.09,
+      "total_time_s": 2195297.0
+    },
+    {
+      "snap_id": 20,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 5.51,
+      "total_time_s": 1495784.0
+    },
+    {
+      "snap_id": 21,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 95.2,
+      "total_time_s": 12397356.0
+    },
+    {
+      "snap_id": 21,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 60.29,
+      "total_time_s": 7851167.0
+    },
+    {
+      "snap_id": 21,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 28.32,
+      "total_time_s": 3688201.0
+    },
+    {
+      "snap_id": 21,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 9.98,
+      "total_time_s": 1299528.0
+    },
+    {
+      "snap_id": 21,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 3.39,
+      "total_time_s": 440834.0
+    },
+    {
+      "snap_id": 22,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 116.47,
+      "total_time_s": 12393220.0
+    },
+    {
+      "snap_id": 22,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 72.28,
+      "total_time_s": 7691438.0
+    },
+    {
+      "snap_id": 22,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 35.49,
+      "total_time_s": 3775945.0
+    },
+    {
+      "snap_id": 22,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 13.04,
+      "total_time_s": 1387212.0
+    },
+    {
+      "snap_id": 22,
+      "wait_class": "Other",
+      "event_name": "oracle thread bootstrap",
+      "pctdbt": 3.07,
+      "total_time_s": 327193.0
+    },
+    {
+      "snap_id": 23,
+      "wait_class": "System",
+      "event_name": "I/O control file sequential read",
+      "pctdbt": 95.76,
+      "total_time_s": 11440219.0
+    },
+    {
+      "snap_id": 23,
+      "wait_class": "DB",
+      "event_name": "CPU DB CPU",
+      "pctdbt": 65.46,
+      "total_time_s": 7820566.0
+    },
+    {
+      "snap_id": 23,
+      "wait_class": "System",
+      "event_name": "I/O control file parallel write",
+      "pctdbt": 31.06,
+      "total_time_s": 3710657.0
+    },
+    {
+      "snap_id": 23,
+      "wait_class": "User",
+      "event_name": "I/O Disk file operations I/O",
+      "pctdbt": 12.75,
+      "total_time_s": 1523568.0
+    },
+    {
+      "snap_id": 23,
+      "wait_class": "System",
+      "event_name": "I/O log file parallel write",
+      "pctdbt": 4.84,
+      "total_time_s": 577968.0
+    }
+  ],
+  "system_stats": [
+    {
+      "snap": 2,
+      "cell_flash_hits": 0,
+      "read_iops": 4.6,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 3,
+      "cell_flash_hits": 0,
+      "read_iops": 4.5,
+      "write_iops": 3.3,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 2.2,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 4,
+      "cell_flash_hits": 0,
+      "read_iops": 4.3,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 5,
+      "cell_flash_hits": 0,
+      "read_iops": 4.3,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 6,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 7,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 8,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 9,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 10,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 11,
+      "cell_flash_hits": 0,
+      "read_iops": 4.3,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 12,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 13,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 14,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 15,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 16,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 17,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 18,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 19,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 20,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 3.4,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 1.2,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.2,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 21,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 22,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.2,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    },
+    {
+      "snap": 23,
+      "cell_flash_hits": 0,
+      "read_iops": 4.4,
+      "write_iops": 1.4,
+      "read_mb": 0.1,
+      "read_mb_opt": 0.0,
+      "read_nt_iops": 0.0,
+      "write_nt_iops": 0.1,
+      "read_nt_mb": 0.0,
+      "write_nt_mb": 0.0,
+      "cell_int_mb": 0.1,
+      "cell_int_ss_mb": 0.0,
+      "cell_si_save_mb": 0.0,
+      "cell_bytes_elig_mb": 0.0,
+      "cell_hcc_bytes_mb": 0.0,
+      "read_multi_iops": 0.1,
+      "read_temp_iops": 0.0,
+      "write_temp_iops": 0.0,
+      "network_incoming_mb": 0.0,
+      "network_outgoing_mb": 0.0
+    }
+  ],
+  "features": [
+    {
+      "name": "Adaptive Plans",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "Total number of queries: 2628 Number of queries with an adaptive plan: 0 Percent"
+    },
+    {
+      "name": "Automatic Maintenance - Optimizer Statistics Gathering",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 0.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Automatic Maintenance - SQL Tuning Advisor",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 0.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Automatic Maintenance - Space Advisor",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 0.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Automatic Reoptimization",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "Total number of queries: 2660 Number of reoptimizable queries: 44 Percentage of"
+    },
+    {
+      "name": "Automatic SGA Tuning",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 0.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": ":sga_target:12213813248:sga_max_size:12213813248:comp:shared pool:cur:1677721600"
+    },
+    {
+      "name": "Automatic SQL Execution Memory",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 0.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Automatic Segment Space Management (system)",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 3.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "(Segment Space Management: MANUAL, TS Count: 2, Size MB: 1020) (Segment Space Ma"
+    },
+    {
+      "name": "Automatic Segment Space Management (user)",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Automatic Undo Management",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 1.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "(Retention: NOGUARANTEE, TS Count: 1, Size MB: 320) (Undo Blocks: 3133, Max Conc"
+    },
+    {
+      "name": "Bigfile Tablespace",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Character Set",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "AL32UTF8"
+    },
+    {
+      "name": "Deferred Segment Creation",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 0.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "Deferred Segment Creation Parameter:1 Total Deferred Segments:0 Total Created S"
+    },
+    {
+      "name": "Extensibility",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 0.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "num of user-defined operators: 0,num of user-defined aggregates: 0,num of table"
+    },
+    {
+      "name": "LOB",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Locally Managed Tablespaces (system)",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 5.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "(Extent Management: LOCAL, TS Count: 5, Size MB: 1791)"
+    },
+    {
+      "name": "Locally Managed Tablespaces (user)",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Object",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 0.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "num of object types: 1,num of object tables: 0,num of adt and ref columns: 0,num"
+    },
+    {
+      "name": "Oracle Call Interface (OCI)",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "Driver Versions=(21.3.0.0.0,23.2.0.0.0),Client Lib Versions=(21.3.0.0.0,23.2.0.0"
+    },
+    {
+      "name": "Oracle Managed Files",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Oracle Utility External Table (ORACLE_LOADER)",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 15.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "Oracle Utility External Table (ORACLE_LOADER) invoked 15 times"
+    },
+    {
+      "name": "Partitioning (system)",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 8.44,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "1:T:I::1048575:0:1:::::1::0:ON-0::N:N::0::0::::N|1:I:I::1048575:0:1::LP:N:NU:1::"
+    },
+    {
+      "name": "Resource Manager",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 0.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "Non-Maintenance CPU Management: 1, Non-Maintenance Other Management: 0"
+    },
+    {
+      "name": "SQL Plan Directive",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 4.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "Number of directives with type, DYNAMIC_SAMPLING: 4 Number of Directives with re"
+    },
+    {
+      "name": "SQL*Plus",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "Client Lib Versions=(19.28.0.0.0,19.23.0.0.0),Charsets=(US7ASCII)"
+    },
+    {
+      "name": "SecureFiles (system)",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 380.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "SecureFiles (user)",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 19.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Server Parameter File",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": null,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": null
+    },
+    {
+      "name": "Services",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 1.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "num_clb_long: 1 num_clb_short: 0 num_goal_service_time: 0 num_goal_throughput:"
+    },
+    {
+      "name": "Unified Audit",
+      "detected_usages": 1,
+      "total_samples": 1,
+      "currently_used": true,
+      "aux_count": 0.0,
+      "last_sample_date": "09-JAN-2026",
+      "feature_info": "Pure Unified Auditing=FALSE; Number of Unified Audit policies=7; Number of Enabl"
+    }
+  ],
+  "sga_advice": [
+    {
+      "inst_id": 1,
+      "sga_size": 2912,
+      "sga_size_factor": 0.25,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 4368,
+      "sga_size_factor": 0.375,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 5824,
+      "sga_size_factor": 0.5,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 7280,
+      "sga_size_factor": 0.625,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 8736,
+      "sga_size_factor": 0.75,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 10192,
+      "sga_size_factor": 0.875,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 11648,
+      "sga_size_factor": 1.0,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 13104,
+      "sga_size_factor": 1.125,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 14560,
+      "sga_size_factor": 1.25,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 16016,
+      "sga_size_factor": 1.375,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 17472,
+      "sga_size_factor": 1.5,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 18928,
+      "sga_size_factor": 1.625,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 20384,
+      "sga_size_factor": 1.75,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 21840,
+      "sga_size_factor": 1.875,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    },
+    {
+      "inst_id": 1,
+      "sga_size": 23296,
+      "sga_size_factor": 2.0,
+      "estd_db_time": 1595,
+      "estd_db_time_factor": 1,
+      "estd_physical_reads": 39565,
+      "sga_target": 11648
+    }
+  ],
+  "_type": "StatspackData"
 }
