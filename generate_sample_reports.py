@@ -14,7 +14,7 @@ sys.path.insert(0, str(project_root))
 
 from src.oracle_complexity_analyzer import OracleComplexityAnalyzer, TargetDatabase
 from src.dbcsi.parser import StatspackParser
-from src.dbcsi.migration_analyzer import MigrationAnalyzer
+from src.dbcsi.migration_analyzer import MigrationAnalyzer, EnhancedMigrationAnalyzer
 from src.dbcsi.result_formatter import StatspackResultFormatter
 
 def generate_sql_complexity_report():
@@ -84,6 +84,47 @@ def generate_dbcsi_report():
     
     print(f"✓ DBCSI JSON 리포트 생성: {json_path}")
 
+def generate_awr_report():
+    """AWR 샘플 리포트 생성"""
+    print("\n" + "="*80)
+    print("AWR 샘플 리포트 생성")
+    print("="*80)
+    
+    # AWR 샘플 파일 분석
+    awr_file = "sample_code/dbcsi_awr_sample01.out"
+    
+    print(f"\n분석 중: {awr_file}")
+    
+    # 1. 파싱
+    parser = StatspackParser(awr_file)
+    awr_data = parser.parse()
+    
+    # 2. 분석 (Enhanced Analyzer 사용 - AWR 특화)
+    analyzer = EnhancedMigrationAnalyzer(awr_data)
+    analysis_results = analyzer.analyze()
+    
+    # 3. 리포트 생성
+    formatter = StatspackResultFormatter()
+    
+    # Markdown 파일로 저장
+    md_report = formatter.to_markdown(awr_data, analysis_results)
+    md_path = "reports/sample_awr_report.md"
+    with open(md_path, 'w', encoding='utf-8') as f:
+        f.write(md_report)
+    
+    print(f"\n✓ AWR 리포트 생성: {md_path}")
+    print(f"  - DB 이름: {awr_data.os_info.db_name}")
+    print(f"  - 버전: {awr_data.os_info.version}")
+    print(f"  - AWR 특화 분석: 백분위수 기반")
+    
+    # JSON 파일로 저장
+    json_report = formatter.to_json(awr_data)
+    json_path = "reports/sample_awr_report.json"
+    with open(json_path, 'w', encoding='utf-8') as f:
+        f.write(json_report)
+    
+    print(f"✓ AWR JSON 리포트 생성: {json_path}")
+
 if __name__ == "__main__":
     print("\n" + "="*80)
     print("샘플 리포트 생성 시작")
@@ -95,6 +136,9 @@ if __name__ == "__main__":
     # DBCSI 리포트 생성
     generate_dbcsi_report()
     
+    # AWR 리포트 생성
+    generate_awr_report()
+    
     print("\n" + "="*80)
     print("모든 샘플 리포트 생성 완료!")
     print("="*80)
@@ -102,4 +146,6 @@ if __name__ == "__main__":
     print("  - reports/sample_sql_complexity_report.md")
     print("  - reports/sample_statspack_report.md")
     print("  - reports/sample_statspack_report.json")
+    print("  - reports/sample_awr_report.md")
+    print("  - reports/sample_awr_report.json")
     print()
