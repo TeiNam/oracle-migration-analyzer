@@ -105,7 +105,7 @@ class PLSQLAnalysisResult:
     code_complexity: float
     oracle_features: float
     business_logic: float
-    ai_difficulty: float
+    conversion_difficulty: float
     mysql_constraints: float = 0.0  # MySQL 타겟만
     app_migration_penalty: float = 0.0  # MySQL 타겟만
     
@@ -791,6 +791,7 @@ class BatchAnalyzer:
         """
         self.analyzer = analyzer
         self.max_workers = max_workers or os.cpu_count()
+        self.source_folder_name = None  # 분석 대상 폴더명 저장
     
     def find_sql_files(self, folder_path: str) -> List[Path]:
         """폴더 내 SQL/PL/SQL 파일 검색
@@ -856,6 +857,9 @@ class BatchAnalyzer:
         Raises:
             FileNotFoundError: 폴더가 존재하지 않는 경우
         """
+        # 분석 대상 폴더명 저장 (경로에서 폴더명만 추출)
+        self.source_folder_name = Path(folder_path).name
+        
         # SQL/PL/SQL 파일 검색
         sql_files = self.find_sql_files(folder_path)
         
@@ -938,6 +942,9 @@ class BatchAnalyzer:
         Raises:
             FileNotFoundError: 폴더가 존재하지 않는 경우
         """
+        # 분석 대상 폴더명 저장 (경로에서 폴더명만 추출)
+        self.source_folder_name = Path(folder_path).name
+        
         # SQL/PL/SQL 파일 검색
         sql_files = self.find_sql_files(folder_path)
         
@@ -1070,12 +1077,16 @@ class BatchAnalyzer:
         import json
         from src.formatters.result_formatter import ResultFormatter
         
-        # 날짜 폴더 생성
-        date_folder = self.analyzer._get_date_folder()
+        # 타겟 데이터베이스 이름 (postgresql -> PGSQL, mysql -> MySQL)
+        target_folder = "PGSQL" if batch_result.target_database == TargetDatabase.POSTGRESQL else "MySQL"
         
-        # 파일명 생성 (batch_summary_YYYYMMDD_HHMMSS.json)
-        filename = f"batch_summary_{batch_result.analysis_time}.json"
-        file_path = date_folder / filename
+        # 폴더 경로 생성: reports/{분석대상폴더명}/{타겟}/
+        report_folder = self.analyzer.output_dir / (self.source_folder_name or "batch") / target_folder
+        report_folder.mkdir(parents=True, exist_ok=True)
+        
+        # 파일명 생성 (sql_complexity_PGSQL.json 또는 sql_complexity_MySQL.json)
+        filename = f"sql_complexity_{target_folder}.json"
+        file_path = report_folder / filename
         
         # JSON 데이터 구성
         json_data = {
@@ -1128,12 +1139,16 @@ class BatchAnalyzer:
         """
         from src.formatters.result_formatter import ResultFormatter
         
-        # 날짜 폴더 생성
-        date_folder = self.analyzer._get_date_folder()
+        # 타겟 데이터베이스 이름 (postgresql -> PGSQL, mysql -> MySQL)
+        target_folder = "PGSQL" if batch_result.target_database == TargetDatabase.POSTGRESQL else "MySQL"
         
-        # 파일명 생성 (batch_summary_YYYYMMDD_HHMMSS.md)
-        filename = f"batch_summary_{batch_result.analysis_time}.md"
-        file_path = date_folder / filename
+        # 폴더 경로 생성: reports/{분석대상폴더명}/{타겟}/
+        report_folder = self.analyzer.output_dir / (self.source_folder_name or "batch") / target_folder
+        report_folder.mkdir(parents=True, exist_ok=True)
+        
+        # 파일명 생성 (sql_complexity_PGSQL.md 또는 sql_complexity_MySQL.md)
+        filename = f"sql_complexity_{target_folder}.md"
+        file_path = report_folder / filename
         
         # Markdown 내용 생성
         lines = []
@@ -1164,14 +1179,21 @@ class BatchAnalyzer:
         
         lines.append("\n")
         
-        # 복잡도 높은 파일 Top 10
-        lines.append("## 🔥 복잡도 높은 파일 Top 10\n")
-        lines.append("| 순위 | 파일명 | 복잡도 점수 |\n")
-        lines.append("|------|--------|-------------|\n")
+        # 전체 파일 복잡도 목록 (복잡도 높은 순으로 정렬)
+        lines.append("## 📋 전체 파일 복잡도 목록\n")
+        lines.append("| 순위 | 파일명 | 복잡도 점수 | 복잡도 레벨 |\n")
+        lines.append("|------|--------|-------------|-------------|\n")
         
-        top_files = self.get_top_complex_files(batch_result, 10)
-        for idx, (file_name, score) in enumerate(top_files, 1):
-            lines.append(f"| {idx} | `{file_name}` | {score:.2f} |\n")
+        # 모든 파일을 복잡도 점수 기준으로 정렬
+        all_files = sorted(
+            [(file_name, result.normalized_score, result.complexity_level.value) 
+             for file_name, result in batch_result.results.items()],
+            key=lambda x: x[1],
+            reverse=True
+        )
+        
+        for idx, (file_name, score, level) in enumerate(all_files, 1):
+            lines.append(f"| {idx} | `{file_name}` | {score:.2f} | {level} |\n")
         
         lines.append("\n")
         
@@ -1206,6 +1228,49 @@ class BatchAnalyzer:
             f.write(markdown_content)
         
         return str(file_path)
+    
+    def export_individual_reports(self, batch_result: BatchAnalysisResult) -> List[str]:
+        """배치 분석 결과에서 개별 파일별 리포트를 생성
+        
+        각 분석된 파일에 대해 별도의 Markdown 리포트를 생성합니다.
+        
+        Args:
+            batch_result: 배치 분석 결과
+            
+        Returns:
+            List[str]: 생성된 개별 리포트 파일 경로 리스트
+        """
+        from src.formatters.result_formatter import ResultFormatter
+        
+        # 타겟 데이터베이스 이름 (postgresql -> PGSQL, mysql -> MySQL)
+        target_folder = "PGSQL" if batch_result.target_database == TargetDatabase.POSTGRESQL else "MySQL"
+        
+        # 폴더 경로 생성: reports/{분석대상폴더명}/{타겟}/
+        report_folder = self.analyzer.output_dir / (self.source_folder_name or "batch") / target_folder
+        report_folder.mkdir(parents=True, exist_ok=True)
+        
+        # 생성된 파일 경로 리스트
+        created_files = []
+        
+        # 각 파일별로 리포트 생성
+        for file_path, result in batch_result.results.items():
+            # 파일명 추출 (경로에서 파일명만)
+            file_name = Path(file_path).stem
+            
+            # 개별 리포트 파일명 생성: {파일명}.md
+            report_filename = f"{file_name}.md"
+            report_path = report_folder / report_filename
+            
+            # Markdown 변환
+            markdown_str = ResultFormatter.to_markdown(result)
+            
+            # 파일 저장
+            with open(report_path, 'w', encoding='utf-8') as f:
+                f.write(markdown_str)
+            
+            created_files.append(str(report_path))
+        
+        return created_files
 
 
 # ============================================================================
@@ -1392,7 +1457,7 @@ def print_result_console(result: Union[SQLAnalysisResult, PLSQLAnalysisResult]):
         print(f"  - 코드 복잡도: {result.code_complexity:.2f}")
         print(f"  - Oracle 특화 기능: {result.oracle_features:.2f}")
         print(f"  - 비즈니스 로직: {result.business_logic:.2f}")
-        print(f"  - AI 변환 난이도: {result.ai_difficulty:.2f}")
+        print(f"  - 변환 난이도: {result.conversion_difficulty:.2f}")
         if hasattr(result, 'mysql_constraints') and result.mysql_constraints > 0:
             print(f"  - MySQL 제약: {result.mysql_constraints:.2f}")
         if hasattr(result, 'app_migration_penalty') and result.app_migration_penalty > 0:
@@ -1599,6 +1664,12 @@ def analyze_directory(args):
                 include_details=args.details
             )
             print(f"✅ Markdown 저장 완료: {md_path}")
+        
+        # 개별 파일 리포트 생성 (Markdown 출력 시)
+        if args.output in ['markdown', 'both']:
+            print(f"\n📝 개별 파일 리포트 생성 중...")
+            individual_files = batch_analyzer.export_individual_reports(batch_result)
+            print(f"✅ {len(individual_files)}개 개별 리포트 생성 완료")
         
         return 0
         

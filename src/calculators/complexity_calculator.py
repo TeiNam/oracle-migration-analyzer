@@ -177,8 +177,8 @@ class ComplexityCalculator:
         # 비즈니스 로직 복잡도 점수
         business_logic = self._calculate_plsql_business_logic(parser)
         
-        # AI 변환 난이도 점수
-        ai_difficulty = self._calculate_plsql_ai_difficulty(parser)
+        # 변환 난이도 점수
+        conversion_difficulty = self._calculate_plsql_conversion_difficulty(parser)
         
         # MySQL 특화 제약 점수 (MySQL 타겟만)
         mysql_constraints = 0.0
@@ -193,7 +193,7 @@ class ComplexityCalculator:
             code_complexity +
             oracle_features +
             business_logic +
-            ai_difficulty +
+            conversion_difficulty +
             mysql_constraints +
             app_migration_penalty
         )
@@ -216,7 +216,7 @@ class ComplexityCalculator:
             code_complexity=code_complexity,
             oracle_features=oracle_features,
             business_logic=business_logic,
-            ai_difficulty=ai_difficulty,
+            conversion_difficulty=conversion_difficulty,
             mysql_constraints=mysql_constraints,
             app_migration_penalty=app_migration_penalty,
             detected_oracle_features=parser.detect_advanced_features(),
@@ -842,8 +842,8 @@ class ComplexityCalculator:
         
         return min(score, 2.0)  # 최대 2.0점
     
-    def _calculate_plsql_ai_difficulty(self, parser: PLSQLParser) -> float:
-        """PL/SQL AI 변환 난이도 점수 계산
+    def _calculate_plsql_conversion_difficulty(self, parser: PLSQLParser) -> float:
+        """PL/SQL 변환 난이도 점수 계산
         
         Requirements 10.6을 구현합니다.
         - 10.6: 외부 의존성 (min(1.0, count*0.5))
@@ -852,7 +852,7 @@ class ComplexityCalculator:
             parser: PL/SQL 파서 객체
             
         Returns:
-            float: AI 변환 난이도 점수
+            float: 변환 난이도 점수
         """
         score = 0.0
         

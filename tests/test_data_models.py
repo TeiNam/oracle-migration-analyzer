@@ -165,7 +165,7 @@ class TestPLSQLAnalysisResult:
             code_complexity=1.0,
             oracle_features=1.0,
             business_logic=0.5,
-            ai_difficulty=0.5,
+            conversion_difficulty=0.5,
         )
         
         assert result.code == "CREATE OR REPLACE PROCEDURE test_proc IS BEGIN NULL; END;"
@@ -190,7 +190,7 @@ class TestPLSQLAnalysisResult:
             code_complexity=1.0,
             oracle_features=0.5,
             business_logic=0.3,
-            ai_difficulty=0.2,
+            conversion_difficulty=0.2,
         )
         
         # 기본값 검증
@@ -220,7 +220,7 @@ class TestPLSQLAnalysisResult:
             code_complexity=1.5,
             oracle_features=1.0,
             business_logic=0.5,
-            ai_difficulty=0.5,
+            conversion_difficulty=0.5,
             mysql_constraints=0.5,
             app_migration_penalty=2.0,
         )
@@ -243,7 +243,7 @@ class TestPLSQLAnalysisResult:
             code_complexity=1.5,
             oracle_features=1.0,
             business_logic=0.3,
-            ai_difficulty=0.2,
+            conversion_difficulty=0.2,
             detected_oracle_features=["BULK COLLECT", "FORALL", "REF CURSOR"],
             detected_external_dependencies=["UTL_FILE", "DBMS_SCHEDULER"],
             line_count=150,
@@ -292,7 +292,7 @@ class TestPLSQLAnalysisResult:
             code_complexity=1.5,
             oracle_features=1.0,
             business_logic=0.3,
-            ai_difficulty=0.2,
+            conversion_difficulty=0.2,
         )
         
         # 5가지 기본 세부 점수 검증
@@ -300,13 +300,13 @@ class TestPLSQLAnalysisResult:
         assert hasattr(pg_result, 'code_complexity')
         assert hasattr(pg_result, 'oracle_features')
         assert hasattr(pg_result, 'business_logic')
-        assert hasattr(pg_result, 'ai_difficulty')
+        assert hasattr(pg_result, 'conversion_difficulty')
         
         assert pg_result.base_score == 5.0
         assert pg_result.code_complexity == 1.5
         assert pg_result.oracle_features == 1.0
         assert pg_result.business_logic == 0.3
-        assert pg_result.ai_difficulty == 0.2
+        assert pg_result.conversion_difficulty == 0.2
         
         # MySQL 타겟 (7가지 세부 점수)
         mysql_result = PLSQLAnalysisResult(
@@ -321,7 +321,7 @@ class TestPLSQLAnalysisResult:
             code_complexity=1.5,
             oracle_features=1.0,
             business_logic=0.3,
-            ai_difficulty=0.2,
+            conversion_difficulty=0.2,
             mysql_constraints=0.5,
             app_migration_penalty=2.0,
         )
@@ -331,7 +331,7 @@ class TestPLSQLAnalysisResult:
         assert hasattr(mysql_result, 'code_complexity')
         assert hasattr(mysql_result, 'oracle_features')
         assert hasattr(mysql_result, 'business_logic')
-        assert hasattr(mysql_result, 'ai_difficulty')
+        assert hasattr(mysql_result, 'conversion_difficulty')
         assert hasattr(mysql_result, 'mysql_constraints')
         assert hasattr(mysql_result, 'app_migration_penalty')
         
@@ -362,7 +362,7 @@ class TestPLSQLAnalysisResult:
                 code_complexity=1.0,
                 oracle_features=0.5,
                 business_logic=0.3,
-                ai_difficulty=0.2,
+                conversion_difficulty=0.2,
             )
             
             assert result.object_type == obj_type

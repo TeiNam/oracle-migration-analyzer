@@ -266,7 +266,7 @@ class ResultFormatter:
         md.append(f"| 코드 복잡도 | {result.code_complexity:.2f} |")
         md.append(f"| Oracle 특화 기능 | {result.oracle_features:.2f} |")
         md.append(f"| 비즈니스 로직 | {result.business_logic:.2f} |")
-        md.append(f"| AI 변환 난이도 | {result.ai_difficulty:.2f} |")
+        md.append(f"| 변환 난이도 | {result.conversion_difficulty:.2f} |")
         
         # MySQL 타겟인 경우 추가 점수 표시
         if result.target_database == TargetDatabase.MYSQL:

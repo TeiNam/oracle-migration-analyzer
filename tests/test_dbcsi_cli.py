@@ -339,7 +339,7 @@ class TestMainFunction:
             pytest.skip("샘플 파일이 없습니다")
         
         # sys.argv 모킹
-        with patch('sys.argv', ['statspack-analyzer', '--file', sample_file]):
+        with patch('sys.argv', ['dbcsi-analyzer', '--file', sample_file]):
             with patch('sys.stdout', new=StringIO()):
                 exit_code = main()
         
@@ -358,7 +358,7 @@ class TestMainFunction:
         shutil.copy(sample_file, dest_file)
         
         # sys.argv 모킹
-        with patch('sys.argv', ['statspack-analyzer', '--directory', str(tmp_path)]):
+        with patch('sys.argv', ['dbcsi-analyzer', '--directory', str(tmp_path)]):
             with patch('sys.stdout', new=StringIO()):
                 exit_code = main()
         
@@ -367,7 +367,7 @@ class TestMainFunction:
     def test_main_exit_code_on_error(self):
         """오류 시 exit code 1 반환"""
         # sys.argv 모킹 (존재하지 않는 파일)
-        with patch('sys.argv', ['statspack-analyzer', '--file', 'nonexistent.out']):
+        with patch('sys.argv', ['dbcsi-analyzer', '--file', 'nonexistent.out']):
             with pytest.raises(SystemExit) as exc_info:
                 exit_code = main()
         
@@ -387,7 +387,7 @@ class TestCLIOptionCombinations:
         output_file = tmp_path / "output.json"
         
         with patch('sys.argv', [
-            'statspack-analyzer',
+            'dbcsi-analyzer',
             '--file', sample_file,
             '--format', 'json',
             '--output', str(output_file)
@@ -410,7 +410,7 @@ class TestCLIOptionCombinations:
             pytest.skip("샘플 파일이 없습니다")
         
         with patch('sys.argv', [
-            'statspack-analyzer',
+            'dbcsi-analyzer',
             '--file', sample_file,
             '--analyze-migration',
             '--target', 'all'
@@ -435,7 +435,7 @@ class TestCLIOptionCombinations:
         shutil.copy(sample_file, dest_file)
         
         with patch('sys.argv', [
-            'statspack-analyzer',
+            'dbcsi-analyzer',
             '--directory', str(tmp_path),
             '--analyze-migration',
             '--target', 'aurora-postgresql'

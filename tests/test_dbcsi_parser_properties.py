@@ -43,7 +43,7 @@ def valid_statspack_section(draw, section_name="TEST-SECTION"):
     return "\n".join(lines)
 
 
-# Feature: statspack-analyzer, Property 1: 파일 파싱 시작
+# Feature: dbcsi-analyzer, Property 1: 파일 파싱 시작
 @given(st.text(min_size=50, max_size=1000))
 @settings(max_examples=100)
 def test_property_file_parsing_starts(content):
@@ -77,7 +77,7 @@ def test_property_file_parsing_starts(content):
             os.unlink(temp_path)
 
 
-# Feature: statspack-analyzer, Property 2: 파일 읽기 오류 처리
+# Feature: dbcsi-analyzer, Property 2: 파일 읽기 오류 처리
 def test_property_file_not_found_error():
     """
     Property 2: 파일 읽기 오류 처리
@@ -156,7 +156,7 @@ def test_property_permission_error():
             pass
 
 
-# Feature: statspack-analyzer, Property 3: 인코딩 자동 처리
+# Feature: dbcsi-analyzer, Property 3: 인코딩 자동 처리
 @given(st.text(min_size=10, max_size=500, alphabet=st.characters(
     min_codepoint=0x20, max_codepoint=0x7E  # ASCII 출력 가능 문자
 )))
@@ -228,7 +228,7 @@ def test_property_latin1_fallback():
             os.unlink(temp_path)
 
 
-# Feature: statspack-analyzer, Property 3: 인코딩 자동 처리 (혼합)
+# Feature: dbcsi-analyzer, Property 3: 인코딩 자동 처리 (혼합)
 def test_property_encoding_auto_detection():
     """
     Property 3: 인코딩 자동 처리 (자동 감지)
@@ -269,7 +269,7 @@ def test_property_encoding_auto_detection():
 # 섹션 추출 속성 테스트
 # ============================================================================
 
-# Feature: statspack-analyzer, Property 4: 최소 섹션 데이터 추출
+# Feature: dbcsi-analyzer, Property 4: 최소 섹션 데이터 추출
 @given(valid_statspack_section())
 @settings(max_examples=100)
 def test_property_minimum_section_extraction(section_content):
@@ -301,7 +301,7 @@ def test_property_minimum_section_extraction(section_content):
             os.unlink(temp_path)
 
 
-# Feature: statspack-analyzer, Property 5: 섹션 마커 인식
+# Feature: dbcsi-analyzer, Property 5: 섹션 마커 인식
 @given(
     section_name=st.text(min_size=1, max_size=50, alphabet=st.characters(
         whitelist_categories=('Lu', 'Ll', 'Nd'),  # 대문자, 소문자, 숫자
@@ -367,7 +367,7 @@ def test_property_section_marker_recognition(section_name, data_lines):
             os.unlink(temp_path)
 
 
-# Feature: statspack-analyzer, Property 6: 섹션 데이터 추출
+# Feature: dbcsi-analyzer, Property 6: 섹션 데이터 추출
 @given(
     data_lines=st.lists(
         st.text(
@@ -430,7 +430,7 @@ def test_property_section_data_extraction(data_lines):
             os.unlink(temp_path)
 
 
-# Feature: statspack-analyzer, Property 7: 빈 라인 제거
+# Feature: dbcsi-analyzer, Property 7: 빈 라인 제거
 @given(
     data_lines=st.lists(
         st.one_of(

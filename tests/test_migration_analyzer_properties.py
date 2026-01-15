@@ -59,7 +59,7 @@ def character_set_strategy(draw):
     return draw(st.sampled_from(charsets))
 
 
-# Feature: statspack-analyzer, Property 15: Oracle 에디션 감지
+# Feature: dbcsi-analyzer, Property 15: Oracle 에디션 감지
 @given(oracle_edition_banner())
 @settings(max_examples=100)
 def test_property_oracle_edition_detection(banner_and_edition):
@@ -87,7 +87,7 @@ def test_property_oracle_edition_detection(banner_and_edition):
         f"BANNER '{banner}'에서 {expected_edition}을 감지해야 하지만 {detected_edition}이 감지됨"
 
 
-# Feature: statspack-analyzer, Property 16: RAC 환경 감지
+# Feature: dbcsi-analyzer, Property 16: RAC 환경 감지
 @given(st.integers(min_value=1, max_value=10))
 @settings(max_examples=100)
 def test_property_rac_detection(instances):
@@ -112,7 +112,7 @@ def test_property_rac_detection(instances):
         f"INSTANCES={instances}일 때 RAC={expected_rac}이어야 하지만 {is_rac}로 감지됨"
 
 
-# Feature: statspack-analyzer, Property 17: 캐릭터셋 변환 필요성 감지
+# Feature: dbcsi-analyzer, Property 17: 캐릭터셋 변환 필요성 감지
 @given(character_set_strategy())
 @settings(max_examples=100)
 def test_property_charset_conversion_detection(charset):
@@ -187,7 +187,7 @@ def test_charset_conversion_empty_charset():
 
 
 
-# Feature: statspack-analyzer, Property 18: 캐릭터셋 변환 난이도 가중치
+# Feature: dbcsi-analyzer, Property 18: 캐릭터셋 변환 난이도 가중치
 @given(character_set_strategy())
 @settings(max_examples=100)
 def test_property_charset_complexity_weight(charset):
@@ -274,7 +274,7 @@ def test_charset_warnings_generation():
     assert "테스트" in warning_text
 
 
-# Feature: statspack-analyzer, Property 13: 난이도 점수 범위
+# Feature: dbcsi-analyzer, Property 13: 난이도 점수 범위
 @given(
     st.builds(
         OSInformation,
@@ -332,7 +332,7 @@ def test_property_complexity_score_range(os_info):
         f"Aurora MySQL 난이도 점수 {aurora_mysql_complexity.score}는 0-10 범위를 벗어남"
 
 
-# Feature: statspack-analyzer, Property 14: 난이도 요인 제공
+# Feature: dbcsi-analyzer, Property 14: 난이도 요인 제공
 @given(
     st.builds(
         OSInformation,
@@ -460,7 +460,7 @@ def test_complexity_level_classification():
 
 
 
-# Feature: statspack-analyzer, Property 19: 인스턴스 추천 리소스 만족
+# Feature: dbcsi-analyzer, Property 19: 인스턴스 추천 리소스 만족
 @given(
     st.builds(
         OSInformation,
@@ -558,7 +558,7 @@ def test_property_instance_recommendation_resource_satisfaction(os_info, main_me
             f"{complexity.target.value}: 추천 메모리({recommendation.memory_gib}GB)가 요구사항({required_memory_gb}GB)보다 작음"
 
 
-# Feature: statspack-analyzer, Property 20: 난이도 기반 타겟 필터링
+# Feature: dbcsi-analyzer, Property 20: 난이도 기반 타겟 필터링
 @given(
     st.builds(
         OSInformation,

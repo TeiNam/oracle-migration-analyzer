@@ -28,7 +28,7 @@ def create_parser() -> argparse.ArgumentParser:
         argparse.ArgumentParser: 설정된 인자 파서
     """
     parser = argparse.ArgumentParser(
-        prog="statspack-analyzer",
+        prog="dbcsi-analyzer",
         description="DBCSI Statspack/AWR 결과 파일을 분석하여 마이그레이션 난이도를 평가합니다.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -308,6 +308,22 @@ def process_single_file(args: argparse.Namespace) -> int:
         Exit code (0: 성공, 1: 실패)
     """
     try:
+        # 출력 경로 자동 생성 (--output이 지정되지 않은 경우)
+        if not args.output:
+            # 파일이 있는 폴더명 추출
+            file_path = Path(args.file)
+            folder_name = file_path.parent.name if file_path.parent.name else "default"
+            
+            # reports/{폴더명}/ 경로 생성
+            output_dir = Path("reports") / folder_name
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 파일명 생성 (원본 파일명에서 확장자를 .md로 변경)
+            output_filename = file_path.stem + ".md"
+            args.output = str(output_dir / output_filename)
+            
+            print(f"출력 경로 자동 설정: {args.output}", file=sys.stderr)
+        
         # 파일 크기 확인
         file_size = os.path.getsize(args.file)
         is_large_file = file_size > 5 * 1024 * 1024  # 5MB 이상
@@ -380,6 +396,10 @@ def process_single_file(args: argparse.Namespace) -> int:
         
         # 결과 출력 또는 저장
         if args.output:
+            # 출력 디렉토리가 없으면 생성
+            output_path = Path(args.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
             with open(args.output, 'w', encoding='utf-8') as f:
                 f.write(output)
             print(f"✓ 결과 저장 완료: {args.output}", file=sys.stderr)
@@ -409,6 +429,22 @@ def process_directory(args: argparse.Namespace) -> int:
         Exit code (0: 성공, 1: 실패)
     """
     try:
+        # 출력 경로 자동 생성 (--output이 지정되지 않은 경우)
+        if not args.output:
+            # 디렉토리 이름 추출
+            dir_path = Path(args.directory)
+            folder_name = dir_path.name if dir_path.name else "default"
+            
+            # reports/{폴더명}/ 경로 생성
+            output_dir = Path("reports") / folder_name
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 파일명 생성 (배치 요약 리포트)
+            output_filename = "batch_summary.md"
+            args.output = str(output_dir / output_filename)
+            
+            print(f"출력 경로 자동 설정: {args.output}", file=sys.stderr)
+        
         print(f"[1/3] 디렉토리 스캔 중: {args.directory}", file=sys.stderr)
         
         # .out 파일 개수 확인
@@ -445,6 +481,10 @@ def process_directory(args: argparse.Namespace) -> int:
         
         # 결과 출력 또는 저장
         if args.output:
+            # 출력 디렉토리가 없으면 생성
+            output_path = Path(args.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
             with open(args.output, 'w', encoding='utf-8') as f:
                 f.write(output)
             print(f"✓ 결과 저장 완료: {args.output}", file=sys.stderr)
@@ -472,6 +512,25 @@ def process_compare(args: argparse.Namespace) -> int:
         Exit code (0: 성공, 1: 실패)
     """
     try:
+        # 출력 경로 자동 생성 (--output이 지정되지 않은 경우)
+        if not args.output:
+            file1, file2 = args.compare
+            # 첫 번째 파일이 있는 폴더명 추출
+            file_path = Path(file1)
+            folder_name = file_path.parent.name if file_path.parent.name else "default"
+            
+            # reports/{폴더명}/ 경로 생성
+            output_dir = Path("reports") / folder_name
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 파일명 생성 (비교 리포트)
+            file1_stem = Path(file1).stem
+            file2_stem = Path(file2).stem
+            output_filename = f"comparison_{file1_stem}_vs_{file2_stem}.md"
+            args.output = str(output_dir / output_filename)
+            
+            print(f"출력 경로 자동 설정: {args.output}", file=sys.stderr)
+        
         file1, file2 = args.compare
         
         print(f"[1/4] 첫 번째 파일 파싱 중: {file1}", file=sys.stderr)
@@ -513,6 +572,10 @@ def process_compare(args: argparse.Namespace) -> int:
         # 결과 출력 또는 저장
         print(f"[4/4] 리포트 생성 중...", file=sys.stderr)
         if args.output:
+            # 출력 디렉토리가 없으면 생성
+            output_path = Path(args.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
             with open(args.output, 'w', encoding='utf-8') as f:
                 f.write(output)
             print(f"✓ 결과 저장 완료: {args.output}", file=sys.stderr)

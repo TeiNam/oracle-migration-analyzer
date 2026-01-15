@@ -121,7 +121,7 @@ class TestOracleComplexityAnalyzer:
         assert result.code_complexity >= 0
         assert result.oracle_features >= 0
         assert result.business_logic >= 0
-        assert result.ai_difficulty >= 0
+        assert result.conversion_difficulty >= 0
     
     def test_analyze_plsql_empty(self):
         """빈 PL/SQL 코드 분석 테스트"""

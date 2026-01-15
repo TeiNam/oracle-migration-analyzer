@@ -60,7 +60,7 @@ def plsql_analysis_result(draw):
         code_complexity=0.0,
         oracle_features=0.0,
         business_logic=0.0,
-        ai_difficulty=0.0,
+        conversion_difficulty=0.0,
         bulk_operations_count=bulk_ops
     )
 
@@ -305,7 +305,7 @@ def test_integrate_with_plsql_only():
             code_complexity=0.0,
             oracle_features=0.0,
             business_logic=0.0,
-            ai_difficulty=0.0,
+            conversion_difficulty=0.0,
             bulk_operations_count=5
         )
     ]

@@ -458,7 +458,7 @@ class TestMigrationRecommendationScenarios:
                 code_complexity=1.0,
                 oracle_features=0.5,
                 business_logic=0.5,
-                ai_difficulty=0.0,
+                conversion_difficulty=0.0,
                 bulk_operations_count=0  # BULK 연산 없음
             )
             for i in range(15)
@@ -566,7 +566,7 @@ class TestMigrationRecommendationScenarios:
                 code_complexity=1.5,
                 oracle_features=1.0,
                 business_logic=0.5,
-                ai_difficulty=0.0,
+                conversion_difficulty=0.0,
                 bulk_operations_count=1 if i < 12 else 0  # 12개 BULK 연산
             )
             for i in range(40)
@@ -671,7 +671,7 @@ class TestMigrationRecommendationScenarios:
                 code_complexity=2.0,
                 oracle_features=1.5,
                 business_logic=1.0,
-                ai_difficulty=0.5,
+                conversion_difficulty=0.5,
                 bulk_operations_count=1 if i < 20 else 0
             )
             for i in range(60)

@@ -350,7 +350,7 @@ def awr_data_strategy(draw):
     )
 
 
-# Feature: statspack-analyzer, Property 9: JSON Round-trip
+# Feature: dbcsi-analyzer, Property 9: JSON Round-trip
 @settings(max_examples=100)
 @given(statspack_data_strategy())
 def test_property_9_statspack_data_json_roundtrip(statspack_data):
@@ -442,7 +442,7 @@ def test_property_9_statspack_data_json_roundtrip(statspack_data):
 
 
 
-# Feature: statspack-analyzer, Property 9: JSON Round-trip (MigrationComplexity)
+# Feature: dbcsi-analyzer, Property 9: JSON Round-trip (MigrationComplexity)
 @settings(max_examples=100)
 @given(migration_complexity_strategy())
 def test_property_9_migration_complexity_json_roundtrip(migration_complexity):

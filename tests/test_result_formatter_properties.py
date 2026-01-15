@@ -120,7 +120,7 @@ def migration_complexity_strategy(draw):
 
 
 # Property 8: JSON 직렬화 유효성
-# Feature: statspack-analyzer, Property 8: JSON 직렬화 유효성
+# Feature: dbcsi-analyzer, Property 8: JSON 직렬화 유효성
 @settings(max_examples=100)
 @given(statspack_data_strategy())
 def test_property_json_serialization_validity(statspack_data):
@@ -143,7 +143,7 @@ def test_property_json_serialization_validity(statspack_data):
 
 
 # Property 9: JSON Round-trip
-# Feature: statspack-analyzer, Property 9: JSON Round-trip
+# Feature: dbcsi-analyzer, Property 9: JSON Round-trip
 @settings(max_examples=100)
 @given(statspack_data_strategy())
 def test_property_json_roundtrip(statspack_data):
@@ -174,7 +174,7 @@ def test_property_json_roundtrip(statspack_data):
 
 
 # Property 9 (MigrationComplexity): JSON Round-trip
-# Feature: statspack-analyzer, Property 9: JSON Round-trip (MigrationComplexity)
+# Feature: dbcsi-analyzer, Property 9: JSON Round-trip (MigrationComplexity)
 @settings(max_examples=100)
 @given(st.dictionaries(
     st.sampled_from(list(TargetDatabase)),
@@ -207,7 +207,7 @@ def test_property_migration_complexity_json_roundtrip(complexity_dict):
 
 
 # Property 10: Markdown 필수 섹션
-# Feature: statspack-analyzer, Property 10: Markdown 필수 섹션
+# Feature: dbcsi-analyzer, Property 10: Markdown 필수 섹션
 @settings(max_examples=100)
 @given(statspack_data_strategy())
 def test_property_markdown_required_sections(statspack_data):
@@ -233,7 +233,7 @@ def test_property_markdown_required_sections(statspack_data):
 
 
 # Property 11: 리포트 저장 경로
-# Feature: statspack-analyzer, Property 11: 리포트 저장 경로
+# Feature: dbcsi-analyzer, Property 11: 리포트 저장 경로
 @settings(max_examples=50)
 @given(st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd'))))
 def test_property_report_save_path(filename):
@@ -268,7 +268,7 @@ def test_property_report_save_path(filename):
 
 
 # Property 12: 폴더 자동 생성
-# Feature: statspack-analyzer, Property 12: 폴더 자동 생성
+# Feature: dbcsi-analyzer, Property 12: 폴더 자동 생성
 @settings(max_examples=50)
 @given(st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd'))))
 def test_property_folder_auto_creation(filename):
