@@ -178,48 +178,116 @@ class StatspackResultFormatter:
         # 2. 메모리 사용량 통계
         if statspack_data.memory_metrics:
             md.append("## 2. 메모리 사용량 통계\n")
+            
+            # 통계 요약 계산
+            total_gbs = [m.total_gb for m in statspack_data.memory_metrics]
+            sga_gbs = [m.sga_gb for m in statspack_data.memory_metrics]
+            pga_gbs = [m.pga_gb for m in statspack_data.memory_metrics]
+            
+            md.append("**요약:**")
+            md.append(f"- **총 스냅샷 수**: {len(statspack_data.memory_metrics)}개")
+            md.append(f"- **평균 메모리 사용량**: {sum(total_gbs)/len(total_gbs):.2f} GB (SGA: {sum(sga_gbs)/len(sga_gbs):.2f} GB, PGA: {sum(pga_gbs)/len(pga_gbs):.2f} GB)")
+            md.append(f"- **최소 메모리 사용량**: {min(total_gbs):.2f} GB")
+            md.append(f"- **최대 메모리 사용량**: {max(total_gbs):.2f} GB")
+            md.append("")
+            
+            # 상위 10개만 표시
+            md.append("**상세 데이터 (최근 10개):**\n")
             md.append("| Snap ID | Instance | SGA (GB) | PGA (GB) | Total (GB) |")
             md.append("|---------|----------|----------|----------|------------|")
-            for metric in statspack_data.memory_metrics[:10]:  # 최대 10개만 표시
+            for metric in statspack_data.memory_metrics[:10]:
                 md.append(f"| {metric.snap_id} | {metric.instance_number} | "
                          f"{metric.sga_gb:.2f} | {metric.pga_gb:.2f} | {metric.total_gb:.2f} |")
             if len(statspack_data.memory_metrics) > 10:
-                md.append(f"\n*({len(statspack_data.memory_metrics) - 10}개 항목 더 있음)*")
+                md.append(f"\n*전체 {len(statspack_data.memory_metrics)}개 중 10개만 표시*")
             md.append("")
         
         # 3. 디스크 사용량 통계
         if statspack_data.disk_sizes:
             md.append("## 3. 디스크 사용량 통계\n")
+            
+            # 통계 요약 계산
+            sizes = [d.size_gb for d in statspack_data.disk_sizes]
+            
+            md.append("**요약:**")
+            md.append(f"- **총 스냅샷 수**: {len(statspack_data.disk_sizes)}개")
+            md.append(f"- **평균 디스크 사용량**: {sum(sizes)/len(sizes):.2f} GB")
+            md.append(f"- **최소 디스크 사용량**: {min(sizes):.2f} GB")
+            md.append(f"- **최대 디스크 사용량**: {max(sizes):.2f} GB")
+            md.append("")
+            
+            # 상위 10개만 표시
+            md.append("**상세 데이터 (최근 10개):**\n")
             md.append("| Snap ID | Size (GB) |")
             md.append("|---------|-----------|")
-            for disk in statspack_data.disk_sizes[:10]:  # 최대 10개만 표시
+            for disk in statspack_data.disk_sizes[:10]:
                 md.append(f"| {disk.snap_id} | {disk.size_gb:.2f} |")
             if len(statspack_data.disk_sizes) > 10:
-                md.append(f"\n*({len(statspack_data.disk_sizes) - 10}개 항목 더 있음)*")
+                md.append(f"\n*전체 {len(statspack_data.disk_sizes)}개 중 10개만 표시*")
             md.append("")
         
         # 4. 주요 성능 메트릭 요약
         if statspack_data.main_metrics:
             md.append("## 4. 주요 성능 메트릭 요약\n")
+            
+            # 통계 요약 계산
+            cpu_values = [m.cpu_per_s for m in statspack_data.main_metrics]
+            read_iops_values = [m.read_iops for m in statspack_data.main_metrics]
+            write_iops_values = [m.write_iops for m in statspack_data.main_metrics]
+            commits_values = [m.commits_s for m in statspack_data.main_metrics]
+            
+            # 시간 범위
+            if statspack_data.main_metrics:
+                first_time = statspack_data.main_metrics[0].end
+                last_time = statspack_data.main_metrics[-1].end
+                md.append(f"**분석 기간**: {first_time} ~ {last_time}")
+                md.append("")
+            
+            md.append("**요약:**")
+            md.append(f"- **총 스냅샷 수**: {len(statspack_data.main_metrics)}개")
+            md.append(f"- **평균 CPU/s**: {sum(cpu_values)/len(cpu_values):.2f} (최소: {min(cpu_values):.2f}, 최대: {max(cpu_values):.2f})")
+            md.append(f"- **평균 Read IOPS**: {sum(read_iops_values)/len(read_iops_values):.2f} (최소: {min(read_iops_values):.2f}, 최대: {max(read_iops_values):.2f})")
+            md.append(f"- **평균 Write IOPS**: {sum(write_iops_values)/len(write_iops_values):.2f} (최소: {min(write_iops_values):.2f}, 최대: {max(write_iops_values):.2f})")
+            md.append(f"- **평균 Commits/s**: {sum(commits_values)/len(commits_values):.2f} (최소: {min(commits_values):.2f}, 최대: {max(commits_values):.2f})")
+            md.append("")
+            
+            # 상위 10개만 표시
+            md.append("**상세 데이터 (최근 10개):**\n")
             md.append("| 시간 | Duration (m) | CPU/s | Read IOPS | Write IOPS | Commits/s |")
             md.append("|------|--------------|-------|-----------|------------|-----------|")
-            for metric in statspack_data.main_metrics[:10]:  # 최대 10개만 표시
+            for metric in statspack_data.main_metrics[:10]:
                 md.append(f"| {metric.end} | {metric.dur_m:.1f} | {metric.cpu_per_s:.2f} | "
                          f"{metric.read_iops:.2f} | {metric.write_iops:.2f} | {metric.commits_s:.2f} |")
             if len(statspack_data.main_metrics) > 10:
-                md.append(f"\n*({len(statspack_data.main_metrics) - 10}개 항목 더 있음)*")
+                md.append(f"\n*전체 {len(statspack_data.main_metrics)}개 중 10개만 표시*")
             md.append("")
         
         # 5. Top 대기 이벤트
         if statspack_data.wait_events:
             md.append("## 5. Top 대기 이벤트\n")
+            
+            md.append("**요약:**")
+            md.append(f"- **총 대기 이벤트 수**: {len(statspack_data.wait_events)}개")
+            
+            # 대기 클래스별 집계
+            wait_class_times = {}
+            for event in statspack_data.wait_events:
+                if event.wait_class not in wait_class_times:
+                    wait_class_times[event.wait_class] = 0
+                wait_class_times[event.wait_class] += event.total_time_s
+            
+            md.append(f"- **주요 대기 클래스**: {', '.join([f'{k} ({v:.0f}s)' for k, v in sorted(wait_class_times.items(), key=lambda x: x[1], reverse=True)[:3]])}")
+            md.append("")
+            
+            # 상위 20개만 표시
+            md.append("**상세 데이터 (상위 20개):**\n")
             md.append("| Snap ID | Wait Class | Event Name | % DBT | Total Time (s) |")
             md.append("|---------|------------|------------|-------|----------------|")
-            for event in statspack_data.wait_events[:20]:  # 최대 20개만 표시
+            for event in statspack_data.wait_events[:20]:
                 md.append(f"| {event.snap_id} | {event.wait_class} | {event.event_name} | "
                          f"{event.pctdbt:.2f} | {event.total_time_s:.2f} |")
             if len(statspack_data.wait_events) > 20:
-                md.append(f"\n*({len(statspack_data.wait_events) - 20}개 항목 더 있음)*")
+                md.append(f"\n*전체 {len(statspack_data.wait_events)}개 중 20개만 표시*")
             md.append("")
         
         # 6. 사용된 Oracle 기능 목록
@@ -235,13 +303,30 @@ class StatspackResultFormatter:
         # 7. SGA 조정 권장사항
         if statspack_data.sga_advice:
             md.append("## 7. SGA 조정 권장사항\n")
+            
+            md.append("**요약:**")
+            md.append(f"- **총 권장사항 수**: {len(statspack_data.sga_advice)}개")
+            
+            # 현재 SGA 크기 찾기 (Size Factor = 1.0)
+            current_sga = next((a for a in statspack_data.sga_advice if abs(a.sga_size_factor - 1.0) < 0.01), None)
+            if current_sga:
+                md.append(f"- **현재 SGA 크기**: {current_sga.sga_size} MB (예상 DB Time: {current_sga.estd_db_time}, 예상 Physical Reads: {current_sga.estd_physical_reads})")
+            
+            # 최적 SGA 크기 찾기 (Est. DB Time이 가장 낮은 것)
+            optimal_sga = min(statspack_data.sga_advice, key=lambda x: x.estd_db_time)
+            if optimal_sga and optimal_sga != current_sga:
+                md.append(f"- **권장 SGA 크기**: {optimal_sga.sga_size} MB (예상 DB Time: {optimal_sga.estd_db_time}, 예상 Physical Reads: {optimal_sga.estd_physical_reads})")
+            md.append("")
+            
+            # 상위 10개만 표시
+            md.append("**상세 데이터 (10개 샘플):**\n")
             md.append("| SGA Size (MB) | Size Factor | Est. DB Time | Est. Physical Reads |")
             md.append("|---------------|-------------|--------------|---------------------|")
-            for advice in statspack_data.sga_advice[:10]:  # 최대 10개만 표시
+            for advice in statspack_data.sga_advice[:10]:
                 md.append(f"| {advice.sga_size} | {advice.sga_size_factor:.2f} | "
                          f"{advice.estd_db_time} | {advice.estd_physical_reads} |")
             if len(statspack_data.sga_advice) > 10:
-                md.append(f"\n*({len(statspack_data.sga_advice) - 10}개 항목 더 있음)*")
+                md.append(f"\n*전체 {len(statspack_data.sga_advice)}개 중 10개만 표시*")
             md.append("")
         
         # 8. 마이그레이션 분석 결과
