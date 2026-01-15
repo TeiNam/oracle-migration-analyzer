@@ -332,6 +332,31 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
     
     def _format_metrics(self, metrics: AnalysisMetrics, language: str) -> str:
         """분석 메트릭 섹션 포맷"""
+        # AWR/Statspack PL/SQL 통계 섹션 생성
+        awr_plsql_section = ""
+        if any([metrics.awr_plsql_lines, metrics.awr_procedure_count, 
+                metrics.awr_function_count, metrics.awr_package_count]):
+            if language == "ko":
+                awr_plsql_section = "\n## AWR/Statspack PL/SQL 통계 (데이터베이스 실제 오브젝트)\n\n"
+                if metrics.awr_plsql_lines is not None:
+                    awr_plsql_section += f"- **PL/SQL 코드 라인 수**: {metrics.awr_plsql_lines:,}\n"
+                if metrics.awr_procedure_count is not None:
+                    awr_plsql_section += f"- **프로시저 수**: {metrics.awr_procedure_count}\n"
+                if metrics.awr_function_count is not None:
+                    awr_plsql_section += f"- **함수 수**: {metrics.awr_function_count}\n"
+                if metrics.awr_package_count is not None:
+                    awr_plsql_section += f"- **패키지 수**: {metrics.awr_package_count}\n"
+            else:
+                awr_plsql_section = "\n## AWR/Statspack PL/SQL Statistics (Actual Database Objects)\n\n"
+                if metrics.awr_plsql_lines is not None:
+                    awr_plsql_section += f"- **PL/SQL Code Lines**: {metrics.awr_plsql_lines:,}\n"
+                if metrics.awr_procedure_count is not None:
+                    awr_plsql_section += f"- **Procedure Count**: {metrics.awr_procedure_count}\n"
+                if metrics.awr_function_count is not None:
+                    awr_plsql_section += f"- **Function Count**: {metrics.awr_function_count}\n"
+                if metrics.awr_package_count is not None:
+                    awr_plsql_section += f"- **Package Count**: {metrics.awr_package_count}\n"
+        
         if language == "ko":
             return f"""# 분석 메트릭 (부록)
 
@@ -341,7 +366,7 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
 - **평균 I/O 부하**: {metrics.avg_io_load:.1f} IOPS
 - **평균 메모리 사용량**: {metrics.avg_memory_usage:.1f} GB
 
-## 코드 복잡도 메트릭
+## 코드 복잡도 메트릭 (분석된 소스 파일 기준)
 
 - **평균 SQL 복잡도**: {metrics.avg_sql_complexity:.2f}
 - **평균 PL/SQL 복잡도**: {metrics.avg_plsql_complexity:.2f}
@@ -349,7 +374,7 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
 - **복잡도 7.0 이상 PL/SQL 개수**: {metrics.high_complexity_plsql_count} / {metrics.total_plsql_count}
 - **복잡 오브젝트 비율**: {metrics.high_complexity_ratio*100:.1f}%
 - **BULK 연산 개수**: {metrics.bulk_operation_count}
-"""
+{awr_plsql_section}"""
         else:
             return f"""# Analysis Metrics (Appendix)
 
@@ -359,7 +384,7 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
 - **Average I/O Load**: {metrics.avg_io_load:.1f} IOPS
 - **Average Memory Usage**: {metrics.avg_memory_usage:.1f} GB
 
-## Code Complexity Metrics
+## Code Complexity Metrics (Based on Analyzed Source Files)
 
 - **Average SQL Complexity**: {metrics.avg_sql_complexity:.2f}
 - **Average PL/SQL Complexity**: {metrics.avg_plsql_complexity:.2f}
@@ -367,7 +392,7 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
 - **High Complexity PL/SQL Count**: {metrics.high_complexity_plsql_count} / {metrics.total_plsql_count}
 - **High Complexity Ratio**: {metrics.high_complexity_ratio*100:.1f}%
 - **BULK Operation Count**: {metrics.bulk_operation_count}
-"""
+{awr_plsql_section}"""
     
     def _format_list(self, items: List[str]) -> str:
         """리스트 항목 포맷"""

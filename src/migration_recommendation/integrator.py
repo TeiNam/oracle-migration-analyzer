@@ -90,9 +90,19 @@ class AnalysisResultIntegrator:
         if dbcsi_result:
             avg_cpu, avg_io, avg_memory = self._extract_performance_metrics(dbcsi_result)
             rac_detected = dbcsi_result.os_info.instances is not None and dbcsi_result.os_info.instances > 1
+            
+            # AWR/Statspack PL/SQL 통계 추출
+            awr_plsql_lines = dbcsi_result.os_info.count_lines_plsql
+            awr_procedure_count = dbcsi_result.os_info.count_procedures
+            awr_function_count = dbcsi_result.os_info.count_functions
+            awr_package_count = dbcsi_result.os_info.count_packages
         else:
             avg_cpu, avg_io, avg_memory = 0.0, 0.0, 0.0
             rac_detected = False
+            awr_plsql_lines = None
+            awr_procedure_count = None
+            awr_function_count = None
+            awr_package_count = None
         
         # 코드 복잡도 메트릭 추출
         avg_sql_complexity = self._calculate_avg_complexity(sql_analysis)
@@ -124,7 +134,11 @@ class AnalysisResultIntegrator:
             total_plsql_count=total_plsql_count,
             high_complexity_ratio=high_complexity_ratio,
             bulk_operation_count=bulk_operation_count,
-            rac_detected=rac_detected
+            rac_detected=rac_detected,
+            awr_plsql_lines=awr_plsql_lines,
+            awr_procedure_count=awr_procedure_count,
+            awr_function_count=awr_function_count,
+            awr_package_count=awr_package_count
         )
     
     def _extract_performance_metrics(

@@ -16,13 +16,21 @@ class MigrationDecisionEngine:
     """
     마이그레이션 의사결정 엔진
     
-    의사결정 트리를 기반으로 최적의 마이그레이션 전략을 결정합니다.
+    PL/SQL 개수와 복잡도를 2차원으로 고려하여 최적의 전략을 결정합니다.
     
-    의사결정 우선순위:
-    1. 코드 복잡도 평가 (최우선)
-    2. Replatform 조건 확인 (복잡도 >= 7.0 또는 복잡 오브젝트 >= 30%)
-    3. Aurora MySQL 조건 확인 (복잡도 <= 5.0, PL/SQL 단순)
-    4. Aurora PostgreSQL 조건 확인 (BULK 많음 또는 중간 복잡도)
+    의사결정 매트릭스 (PL/SQL 개수 x 복잡도):
+    
+    복잡도 높음(7.0+) + 많음(100+)  → Replatform (변환 불가능)
+    복잡도 높음(7.0+) + 중간(50-100) → Replatform (위험 높음)
+    복잡도 높음(7.0+) + 적음(50-)   → PostgreSQL (신중한 변환)
+    
+    복잡도 중간(5.0-7.0) + 많음(100+)  → PostgreSQL (변환 가능)
+    복잡도 중간(5.0-7.0) + 중간(50-100) → PostgreSQL (적합)
+    복잡도 중간(5.0-7.0) + 적음(50-)   → PostgreSQL (권장)
+    
+    복잡도 낮음(5.0-) + 많음(100+)  → PostgreSQL (변환 용이하나 작업량 많음)
+    복잡도 낮음(5.0-) + 중간(50-100) → PostgreSQL 또는 MySQL
+    복잡도 낮음(5.0-) + 적음(50-)   → MySQL (강력 추천)
     """
     
     def decide_strategy(
@@ -32,11 +40,12 @@ class MigrationDecisionEngine:
         """
         최적의 마이그레이션 전략을 결정합니다.
         
-        의사결정 트리:
-        1. 복잡도 7.0 이상 또는 복잡 오브젝트 30% 이상 → Replatform
-        2. BULK 연산 많음 (10개 이상) → Aurora PostgreSQL (우선)
-        3. 복잡도 5.0 이하 + PL/SQL 단순 → Aurora MySQL
-        4. 복잡도 5.0-7.0 + PL/SQL 복잡 → Aurora PostgreSQL
+        의사결정 로직:
+        1. PL/SQL 개수와 복잡도를 2차원으로 평가
+        2. 복잡도가 높고 개수가 많으면 → Replatform
+        3. 복잡도가 낮고 개수가 적으면 → MySQL (강력 추천)
+        4. 중간 영역 → PostgreSQL
+        5. BULK 연산이 많으면 PostgreSQL 우선
         
         Args:
             integrated_result: 통합 분석 결과
@@ -46,104 +55,124 @@ class MigrationDecisionEngine:
         """
         metrics = integrated_result.metrics
         
-        # 1. Replatform 조건 확인 (최우선)
-        if self._should_replatform(metrics):
+        # PL/SQL 개수 (AWR 통계 우선, 없으면 분석 파일 개수)
+        plsql_count = self._get_plsql_count(metrics)
+        plsql_complexity = metrics.avg_plsql_complexity
+        
+        # 1. Replatform 조건: 복잡도 높음 + 개수 많음
+        if self._should_replatform(metrics, plsql_count, plsql_complexity):
             return MigrationStrategy.REPLATFORM
         
         # 2. BULK 연산이 많으면 PostgreSQL 우선 (MySQL은 BULK 미지원)
         if metrics.bulk_operation_count >= 10:
             return MigrationStrategy.REFACTOR_POSTGRESQL
         
-        # 3. Aurora MySQL 조건 확인
-        if self._should_refactor_mysql(metrics):
+        # 3. MySQL 조건: 복잡도 낮음 + 개수 적음
+        if self._should_refactor_mysql(metrics, plsql_count, plsql_complexity):
             return MigrationStrategy.REFACTOR_MYSQL
         
-        # 4. Aurora PostgreSQL 조건 확인
-        if self._should_refactor_postgresql(metrics):
-            return MigrationStrategy.REFACTOR_POSTGRESQL
-        
-        # 5. 기본값: Aurora PostgreSQL (중간 복잡도)
+        # 4. 기본값: PostgreSQL (중간 영역)
         return MigrationStrategy.REFACTOR_POSTGRESQL
     
-    def _should_replatform(self, metrics: AnalysisMetrics) -> bool:
+    def _get_plsql_count(self, metrics: AnalysisMetrics) -> int:
         """
-        Replatform 조건 확인
+        PL/SQL 오브젝트 개수 계산
         
-        조건:
-        - 평균 SQL 복잡도 >= 7.0 또는
-        - 평균 PL/SQL 복잡도 >= 7.0 또는
-        - 복잡도 7.0 이상 오브젝트가 30% 이상
+        AWR 통계가 있으면 우선 사용, 없으면 분석 파일 개수 사용
         
         Args:
             metrics: 분석 메트릭
+            
+        Returns:
+            int: PL/SQL 오브젝트 개수
+        """
+        # AWR 통계 우선 (프로시저 + 함수 + 패키지)
+        if any([metrics.awr_procedure_count, metrics.awr_function_count, metrics.awr_package_count]):
+            count = 0
+            if metrics.awr_procedure_count:
+                count += metrics.awr_procedure_count
+            if metrics.awr_function_count:
+                count += metrics.awr_function_count
+            if metrics.awr_package_count:
+                count += metrics.awr_package_count
+            return count
+        
+        # AWR 통계 없으면 분석 파일 개수
+        return metrics.total_plsql_count
+    
+    def _should_replatform(
+        self, 
+        metrics: AnalysisMetrics,
+        plsql_count: int,
+        plsql_complexity: float
+    ) -> bool:
+        """
+        Replatform 조건 확인 (2차원 평가)
+        
+        조건 (OR 관계):
+        1. 복잡도 매우 높음 (평균 8.0 이상)
+        2. 복잡도 높음 (7.0 이상) + 개수 많음 (100개 이상)
+        3. 복잡도 높음 (7.0 이상) + 개수 중간 (50-100개)
+        4. 복잡 오브젝트 비율 40% 이상
+        
+        Args:
+            metrics: 분석 메트릭
+            plsql_count: PL/SQL 오브젝트 개수
+            plsql_complexity: PL/SQL 평균 복잡도
             
         Returns:
             bool: Replatform 조건 만족 여부
         """
-        # 평균 복잡도 7.0 이상
-        if metrics.avg_sql_complexity >= 7.0 or metrics.avg_plsql_complexity >= 7.0:
+        # 1. 복잡도 매우 높음 (변환 거의 불가능)
+        if plsql_complexity >= 8.0 or metrics.avg_sql_complexity >= 8.0:
             return True
         
-        # 복잡도 7.0 이상 오브젝트가 30% 이상
-        if metrics.high_complexity_ratio >= 0.3:
+        # 2. 복잡도 높음 + 개수 많음 (변환 불가능)
+        if plsql_complexity >= 7.0 and plsql_count >= 100:
+            return True
+        
+        # 3. 복잡도 높음 + 개수 중간 (위험 높음)
+        if plsql_complexity >= 7.0 and plsql_count >= 50:
+            return True
+        
+        # 4. 복잡 오브젝트 비율 매우 높음
+        if metrics.high_complexity_ratio >= 0.4:
             return True
         
         return False
     
-    def _should_refactor_mysql(self, metrics: AnalysisMetrics) -> bool:
+    def _should_refactor_mysql(
+        self,
+        metrics: AnalysisMetrics,
+        plsql_count: int,
+        plsql_complexity: float
+    ) -> bool:
         """
-        Aurora MySQL 조건 확인
+        Aurora MySQL 조건 확인 (2차원 평가)
         
-        조건:
-        - 평균 SQL 복잡도 <= 5.0 그리고
-        - 평균 PL/SQL 복잡도 <= 5.0 그리고
-        - PL/SQL 오브젝트 < 50개
+        조건 (AND 관계):
+        1. 복잡도 낮음 (평균 5.0 이하)
+        2. 개수 적음 (50개 미만)
+        3. BULK 연산 적음 (10개 미만)
         
         Args:
             metrics: 분석 메트릭
+            plsql_count: PL/SQL 오브젝트 개수
+            plsql_complexity: PL/SQL 평균 복잡도
             
         Returns:
             bool: Aurora MySQL 조건 만족 여부
         """
-        # 평균 SQL 복잡도 5.0 이하
-        if metrics.avg_sql_complexity > 5.0:
+        # 1. 복잡도 낮음
+        if plsql_complexity > 5.0 or metrics.avg_sql_complexity > 5.0:
             return False
         
-        # PL/SQL이 단순 (평균 5.0 이하)
-        if metrics.avg_plsql_complexity > 5.0:
+        # 2. 개수 적음 (강력 추천 조건)
+        if plsql_count >= 50:
             return False
         
-        # PL/SQL 오브젝트가 적음
-        if metrics.total_plsql_count >= 50:
+        # 3. BULK 연산 적음
+        if metrics.bulk_operation_count >= 10:
             return False
         
         return True
-    
-    def _should_refactor_postgresql(self, metrics: AnalysisMetrics) -> bool:
-        """
-        Aurora PostgreSQL 조건 확인
-        
-        조건:
-        - BULK 연산 >= 10개 또는
-        - 복잡도 5.0-7.0 범위 또는
-        - PL/SQL이 복잡 (평균 5.0 이상)
-        
-        Args:
-            metrics: 분석 메트릭
-            
-        Returns:
-            bool: Aurora PostgreSQL 조건 만족 여부
-        """
-        # BULK 연산이 많음 (10개 이상)
-        if metrics.bulk_operation_count >= 10:
-            return True
-        
-        # 복잡도 5.0-7.0 범위
-        if 5.0 <= metrics.avg_sql_complexity < 7.0:
-            return True
-        
-        # PL/SQL이 복잡 (평균 5.0 이상)
-        if metrics.avg_plsql_complexity >= 5.0:
-            return True
-        
-        return False

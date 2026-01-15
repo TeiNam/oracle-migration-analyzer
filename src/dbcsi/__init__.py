@@ -27,8 +27,9 @@ from .exceptions import (
     MigrationAnalysisError,
 )
 
-from .parser import (
+from .parsers import (
     StatspackParser,
+    AWRParser,
 )
 
 from .migration_analyzer import (
@@ -59,6 +60,7 @@ __all__ = [
     "StatspackFileError",
     "MigrationAnalysisError",
     "StatspackParser",
+    "AWRParser",
     "MigrationAnalyzer",
     "setup_logging",
     "get_logger",

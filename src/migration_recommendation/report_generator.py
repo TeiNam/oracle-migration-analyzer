@@ -173,16 +173,40 @@ class RecommendationReportGenerator:
         """Replatform 전략 근거 생성"""
         rationales = []
         
-        # 1. 코드 복잡도 근거
+        # PL/SQL 개수 계산 (AWR 우선)
+        plsql_count = self._get_plsql_count(metrics)
+        
+        # 1. 코드 복잡도 + 개수 근거
         if metrics.avg_sql_complexity >= 7.0 or metrics.avg_plsql_complexity >= 7.0:
-            rationales.append(Rationale(
-                category="complexity",
-                reason=f"평균 코드 복잡도가 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높아 대규모 코드 변경이 필요합니다",
-                supporting_data={
-                    "avg_sql_complexity": metrics.avg_sql_complexity,
-                    "avg_plsql_complexity": metrics.avg_plsql_complexity
-                }
-            ))
+            if plsql_count >= 100:
+                rationales.append(Rationale(
+                    category="complexity",
+                    reason=f"평균 코드 복잡도가 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높고, PL/SQL 오브젝트가 {plsql_count}개로 많아 변환이 거의 불가능합니다",
+                    supporting_data={
+                        "avg_sql_complexity": metrics.avg_sql_complexity,
+                        "avg_plsql_complexity": metrics.avg_plsql_complexity,
+                        "plsql_count": plsql_count
+                    }
+                ))
+            elif plsql_count >= 50:
+                rationales.append(Rationale(
+                    category="complexity",
+                    reason=f"평균 코드 복잡도가 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높고, PL/SQL 오브젝트가 {plsql_count}개로 변환 위험이 높습니다",
+                    supporting_data={
+                        "avg_sql_complexity": metrics.avg_sql_complexity,
+                        "avg_plsql_complexity": metrics.avg_plsql_complexity,
+                        "plsql_count": plsql_count
+                    }
+                ))
+            else:
+                rationales.append(Rationale(
+                    category="complexity",
+                    reason=f"평균 코드 복잡도가 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높아 대규모 코드 변경이 필요합니다",
+                    supporting_data={
+                        "avg_sql_complexity": metrics.avg_sql_complexity,
+                        "avg_plsql_complexity": metrics.avg_plsql_complexity
+                    }
+                ))
         
         # 2. 복잡 오브젝트 비율 근거
         if metrics.high_complexity_ratio >= 0.3:
@@ -221,26 +245,50 @@ class RecommendationReportGenerator:
         
         return rationales[:5]  # 최대 5개
     
+    def _get_plsql_count(self, metrics: AnalysisMetrics) -> int:
+        """PL/SQL 오브젝트 개수 계산 (AWR 우선)"""
+        if any([metrics.awr_procedure_count, metrics.awr_function_count, metrics.awr_package_count]):
+            count = 0
+            if metrics.awr_procedure_count:
+                count += metrics.awr_procedure_count
+            if metrics.awr_function_count:
+                count += metrics.awr_function_count
+            if metrics.awr_package_count:
+                count += metrics.awr_package_count
+            return count
+        return metrics.total_plsql_count
+    
     def _generate_mysql_rationales(self, metrics: AnalysisMetrics) -> List[Rationale]:
         """Aurora MySQL 전략 근거 생성"""
         rationales = []
         
-        # 1. 단순 코드 근거
+        # PL/SQL 개수 계산
+        plsql_count = self._get_plsql_count(metrics)
+        
+        # 1. 단순 코드 + 적은 개수 근거 (강력 추천)
         rationales.append(Rationale(
             category="complexity",
-            reason=f"평균 SQL 복잡도({metrics.avg_sql_complexity:.1f})와 PL/SQL 복잡도({metrics.avg_plsql_complexity:.1f})가 낮아 애플리케이션 레벨 이관이 용이합니다",
+            reason=f"평균 SQL 복잡도({metrics.avg_sql_complexity:.1f})와 PL/SQL 복잡도({metrics.avg_plsql_complexity:.1f})가 낮고, PL/SQL 오브젝트가 {plsql_count}개로 적어 애플리케이션 레벨 이관이 매우 용이합니다",
             supporting_data={
                 "avg_sql_complexity": metrics.avg_sql_complexity,
-                "avg_plsql_complexity": metrics.avg_plsql_complexity
+                "avg_plsql_complexity": metrics.avg_plsql_complexity,
+                "plsql_count": plsql_count
             }
         ))
         
-        # 2. PL/SQL 애플리케이션 이관 근거
-        rationales.append(Rationale(
-            category="complexity",
-            reason=f"PL/SQL 오브젝트가 {metrics.total_plsql_count}개로 적어 애플리케이션 레벨로 이관이 가능합니다",
-            supporting_data={"total_plsql_count": metrics.total_plsql_count}
-        ))
+        # 2. 작업 기간 근거
+        if plsql_count < 20:
+            rationales.append(Rationale(
+                category="operations",
+                reason=f"PL/SQL 오브젝트가 {plsql_count}개로 매우 적어 단기간 내 이관이 가능합니다",
+                supporting_data={"plsql_count": plsql_count}
+            ))
+        else:
+            rationales.append(Rationale(
+                category="operations",
+                reason=f"PL/SQL 오브젝트가 {plsql_count}개로 적어 애플리케이션 레벨로 이관이 가능합니다",
+                supporting_data={"plsql_count": plsql_count}
+            ))
         
         # 3. 비용 절감 근거
         rationales.append(Rationale(
@@ -271,12 +319,43 @@ class RecommendationReportGenerator:
         """Aurora PostgreSQL 전략 근거 생성"""
         rationales = []
         
-        # 1. PL/pgSQL 호환성 근거
-        rationales.append(Rationale(
-            category="complexity",
-            reason="PL/pgSQL은 Oracle PL/SQL의 70-75%를 커버하여 대부분의 로직을 변환할 수 있습니다",
-            supporting_data={}
-        ))
+        # PL/SQL 개수 계산
+        plsql_count = self._get_plsql_count(metrics)
+        
+        # 1. PL/pgSQL 호환성 + 개수/복잡도 근거
+        if plsql_count >= 100:
+            rationales.append(Rationale(
+                category="complexity",
+                reason=f"PL/SQL 오브젝트가 {plsql_count}개로 많지만, 평균 복잡도({metrics.avg_plsql_complexity:.1f})가 중간 수준으로 PL/pgSQL 변환이 가능합니다. PL/pgSQL은 Oracle PL/SQL의 70-75%를 커버합니다",
+                supporting_data={
+                    "plsql_count": plsql_count,
+                    "avg_plsql_complexity": metrics.avg_plsql_complexity
+                }
+            ))
+        elif plsql_count >= 50:
+            rationales.append(Rationale(
+                category="complexity",
+                reason=f"PL/SQL 오브젝트가 {plsql_count}개이고 평균 복잡도({metrics.avg_plsql_complexity:.1f})가 중간 수준으로, PL/pgSQL로 대부분 변환이 가능합니다",
+                supporting_data={
+                    "plsql_count": plsql_count,
+                    "avg_plsql_complexity": metrics.avg_plsql_complexity
+                }
+            ))
+        elif metrics.avg_plsql_complexity >= 7.0:
+            rationales.append(Rationale(
+                category="complexity",
+                reason=f"PL/SQL 오브젝트가 {plsql_count}개로 적지만 평균 복잡도({metrics.avg_plsql_complexity:.1f})가 높아 신중한 변환이 필요합니다. PL/pgSQL은 Oracle PL/SQL의 70-75%를 커버합니다",
+                supporting_data={
+                    "plsql_count": plsql_count,
+                    "avg_plsql_complexity": metrics.avg_plsql_complexity
+                }
+            ))
+        else:
+            rationales.append(Rationale(
+                category="complexity",
+                reason="PL/pgSQL은 Oracle PL/SQL의 70-75%를 커버하여 대부분의 로직을 변환할 수 있습니다",
+                supporting_data={}
+            ))
         
         # 2. BULK 연산 성능 근거
         if metrics.bulk_operation_count >= 10:
@@ -965,13 +1044,26 @@ class RecommendationReportGenerator:
     
     def _generate_replatform_summary(self, metrics: AnalysisMetrics) -> str:
         """Replatform Executive Summary 생성"""
+        plsql_count = self._get_plsql_count(metrics)
+        
+        # 복잡도와 개수에 따른 메시지 생성
+        if plsql_count >= 100:
+            complexity_msg = f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높고, PL/SQL 오브젝트가 {plsql_count}개로 많아 변환이 거의 불가능합니다."
+        elif plsql_count >= 50:
+            complexity_msg = f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높고, PL/SQL 오브젝트가 {plsql_count}개로 변환 위험이 높습니다."
+        else:
+            complexity_msg = f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높은 수준입니다."
+        
+        if metrics.high_complexity_ratio >= 0.3:
+            complexity_msg += f" 전체 오브젝트 중 {metrics.high_complexity_ratio*100:.1f}%가 복잡도 7.0 이상으로 분류되어, 대규모 코드 변경 시 높은 위험이 예상됩니다."
+        
         return f"""## 마이그레이션 추천: RDS for Oracle SE2 (Replatform)
 
 귀사의 Oracle 데이터베이스 시스템을 분석한 결과, **RDS for Oracle SE2로의 Replatform 전략**을 추천드립니다.
 
 ### 추천 배경
 
-현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높은 수준입니다. 전체 오브젝트 중 {metrics.high_complexity_ratio*100:.1f}%가 복잡도 7.0 이상으로 분류되어, 대규모 코드 변경 시 높은 위험이 예상됩니다.
+{complexity_msg}
 
 ### 전략 개요
 
@@ -991,13 +1083,21 @@ RDS for Oracle SE2는 기존 Oracle 데이터베이스를 AWS 클라우드로 �
 
 ### 권장 사항
 
-현재 시스템의 복잡도를 고려할 때, Replatform은 가장 안전하고 빠른 클라우드 이전 방법입니다. 마이그레이션 완료 후, 시스템 안정화를 거쳐 장기적으로 Refactoring 전략을 재검토하시기를 권장드립니다."""
+현재 시스템의 복잡도와 PL/SQL 오브젝트 개수를 고려할 때, Replatform은 가장 안전하고 빠른 클라우드 이전 방법입니다. 마이그레이션 완료 후, 시스템 안정화를 거쳐 장기적으로 Refactoring 전략을 재검토하시기를 권장드립니다."""
     
     def _generate_mysql_summary(self, metrics: AnalysisMetrics) -> str:
         """Aurora MySQL Executive Summary 생성"""
+        plsql_count = self._get_plsql_count(metrics)
+        
         bulk_warning = ""
         if metrics.bulk_operation_count >= 10:
             bulk_warning = f"\n\n**주의**: BULK 연산이 {metrics.bulk_operation_count}개 발견되었습니다. MySQL은 BULK 연산을 지원하지 않으므로, 애플리케이션 레벨에서 배치 처리로 대체해야 합니다."
+        
+        # 개수에 따른 메시지
+        if plsql_count < 20:
+            plsql_msg = f"PL/SQL 오브젝트가 {plsql_count}개로 매우 적어, 애플리케이션 레벨로 이관이 매우 용이합니다."
+        else:
+            plsql_msg = f"PL/SQL 오브젝트가 {plsql_count}개로 적어, 애플리케이션 레벨로 이관이 충분히 가능합니다."
         
         return f"""## 마이그레이션 추천: Aurora MySQL (Refactoring)
 
@@ -1005,7 +1105,7 @@ RDS for Oracle SE2는 기존 Oracle 데이터베이스를 AWS 클라우드로 �
 
 ### 추천 배경
 
-현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 비교적 낮은 수준입니다. PL/SQL 오브젝트가 {metrics.total_plsql_count}개로 적어, 애플리케이션 레벨로 이관이 충분히 가능합니다.{bulk_warning}
+현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 비교적 낮은 수준입니다. {plsql_msg}{bulk_warning}
 
 ### 전략 개요
 
@@ -1029,9 +1129,21 @@ Aurora MySQL은 오픈소스 기반의 관계형 데이터베이스로, Oracle �
     
     def _generate_postgresql_summary(self, metrics: AnalysisMetrics) -> str:
         """Aurora PostgreSQL Executive Summary 생성"""
+        plsql_count = self._get_plsql_count(metrics)
+        
         bulk_info = ""
         if metrics.bulk_operation_count >= 10:
             bulk_info = f"\n\nBULK 연산이 {metrics.bulk_operation_count}개 발견되었으며, PostgreSQL에서는 순수 SQL 또는 Chunked Batch 방식으로 대체할 수 있습니다."
+        
+        # 개수와 복잡도에 따른 메시지
+        if plsql_count >= 100:
+            plsql_msg = f"PL/SQL 오브젝트가 {plsql_count}개로 많지만, 평균 복잡도({metrics.avg_plsql_complexity:.1f})가 중간 수준으로 PL/pgSQL로 대부분 변환이 가능합니다."
+        elif plsql_count >= 50:
+            plsql_msg = f"PL/SQL 오브젝트가 {plsql_count}개이고 평균 복잡도({metrics.avg_plsql_complexity:.1f})가 중간 수준으로, PL/pgSQL로 대부분 변환이 가능합니다."
+        elif metrics.avg_plsql_complexity >= 7.0:
+            plsql_msg = f"PL/SQL 오브젝트가 {plsql_count}개로 적지만 평균 복잡도({metrics.avg_plsql_complexity:.1f})가 높아 신중한 변환이 필요합니다."
+        else:
+            plsql_msg = f"PL/SQL 오브젝트가 {plsql_count}개로 많지만, PL/pgSQL로 대부분 변환이 가능합니다."
         
         return f"""## 마이그레이션 추천: Aurora PostgreSQL (Refactoring)
 
@@ -1039,7 +1151,7 @@ Aurora MySQL은 오픈소스 기반의 관계형 데이터베이스로, Oracle �
 
 ### 추천 배경
 
-현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 중간 수준입니다. PL/SQL 오브젝트가 {metrics.total_plsql_count}개로 많지만, PL/pgSQL로 대부분 변환이 가능합니다.{bulk_info}
+현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 중간 수준입니다. {plsql_msg}{bulk_info}
 
 ### 전략 개요
 

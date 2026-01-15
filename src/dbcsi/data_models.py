@@ -152,6 +152,12 @@ class StatspackData:
     system_stats: List[SystemStat] = field(default_factory=list)
     features: List[FeatureUsage] = field(default_factory=list)
     sga_advice: List[SGAAdvice] = field(default_factory=list)
+    # AWR 전용 필드
+    iostat_functions: List[IOStatFunction] = field(default_factory=list)
+    percentile_cpu: List[PercentileCPU] = field(default_factory=list)
+    percentile_io: List[PercentileIO] = field(default_factory=list)
+    workload_profiles: List[WorkloadProfile] = field(default_factory=list)
+    buffer_cache: List[BufferCache] = field(default_factory=list)
 
 
 # AWR 특화 데이터 모델
@@ -177,6 +183,50 @@ class PercentileCPU:
     snap_shots: int
     days: float
     avg_snaps_per_day: float
+
+
+@dataclass
+class PercentileIO:
+    """I/O 백분위수 통계"""
+    metric: str  # "Maximum_or_peak", "99th_percentile", etc.
+    instance_number: Optional[int]
+    read_iops: int
+    write_iops: int
+    read_mb_s: float
+    write_mb_s: float
+
+
+@dataclass
+class WorkloadProfile:
+    """워크로드 프로파일"""
+    sample_start: str
+    topn: int
+    module: str
+    program: str
+    event: str
+    total_dbtime_sum: int
+    aas_comp: float
+    aas_contribution_pct: float
+    session_type: str
+    wait_class: str
+    delta_read_io_requests: int
+    delta_write_io_requests: int
+    delta_read_io_bytes: int
+    delta_write_io_bytes: int
+
+
+@dataclass
+class BufferCache:
+    """버퍼 캐시 효율성"""
+    snap_id: int
+    instance_number: int
+    block_size: int
+    db_cache_gb: float
+    dsk_reads: int
+    block_gets: int
+    consistent: int
+    buf_got_gb: float
+    hit_ratio: float
 
 
 @dataclass

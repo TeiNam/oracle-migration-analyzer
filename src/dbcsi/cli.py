@@ -11,9 +11,9 @@ import os
 from pathlib import Path
 from typing import Optional, List
 
-from .parser import StatspackParser, AWRParser
+from .parsers import StatspackParser, AWRParser
 from .migration_analyzer import MigrationAnalyzer, TargetDatabase
-from .result_formatter import StatspackResultFormatter
+from .formatters import StatspackResultFormatter, EnhancedResultFormatter
 from .batch_analyzer import BatchAnalyzer
 from .logging_config import setup_logging, get_logger
 
@@ -350,20 +350,7 @@ def process_single_file(args: argparse.Namespace) -> int:
         migration_analysis = None
         if args.analyze_migration:
             print(f"[3/4] 마이그레이션 분석 중...", file=sys.stderr)
-            
-            # AWR 데이터면 EnhancedMigrationAnalyzer 사용 시도
-            if is_awr:
-                try:
-                    from .migration_analyzer import EnhancedMigrationAnalyzer
-                    analyzer = EnhancedMigrationAnalyzer(data)
-                except (ImportError, AttributeError):
-                    # EnhancedMigrationAnalyzer가 없으면 기본 분석기 사용
-                    print(f"경고: 고급 AWR 분석 기능을 사용할 수 없습니다. 기본 분석을 수행합니다.", 
-                          file=sys.stderr)
-                    analyzer = MigrationAnalyzer(data)
-            else:
-                analyzer = MigrationAnalyzer(data)
-            
+            analyzer = MigrationAnalyzer(data)
             target_dbs = get_target_databases(args.target)
             migration_analysis = analyzer.analyze(target_dbs)
             print(f"[3/4] 분석 완료", file=sys.stderr)
@@ -378,17 +365,11 @@ def process_single_file(args: argparse.Namespace) -> int:
             else:
                 output = StatspackResultFormatter.to_json(data)
         else:  # markdown
-            # AWR 상세 리포트 옵션 확인
-            if args.detailed and is_awr:
-                try:
-                    from .result_formatter import EnhancedResultFormatter
-                    output = EnhancedResultFormatter.to_detailed_markdown(
-                        data, migration_analysis, args.language
-                    )
-                except (ImportError, AttributeError):
-                    print(f"경고: 상세 AWR 리포트 기능을 사용할 수 없습니다. 기본 리포트를 생성합니다.", 
-                          file=sys.stderr)
-                    output = StatspackResultFormatter.to_markdown(data, migration_analysis)
+            # AWR 데이터는 항상 상세 리포트 생성, Statspack은 기본 리포트
+            if is_awr:
+                output = EnhancedResultFormatter.to_detailed_markdown(
+                    data, migration_analysis, args.language
+                )
             else:
                 output = StatspackResultFormatter.to_markdown(data, migration_analysis)
         
@@ -552,20 +533,10 @@ def process_compare(args: argparse.Namespace) -> int:
         # 비교 리포트 생성
         print(f"[3/4] 비교 분석 중...", file=sys.stderr)
         
-        # EnhancedResultFormatter가 있는지 확인하고 사용
-        try:
-            from .result_formatter import EnhancedResultFormatter
-            output = EnhancedResultFormatter.compare_awr_reports(
-                data1, data2, args.language
-            )
-        except (ImportError, AttributeError):
-            # EnhancedResultFormatter가 없으면 기본 비교 수행
-            print(f"경고: 상세 비교 기능을 사용할 수 없습니다. 기본 비교를 수행합니다.", file=sys.stderr)
-            output = f"# AWR 파일 비교\n\n"
-            output += f"## 파일 1: {file1}\n"
-            output += StatspackResultFormatter.to_markdown(data1, None)
-            output += f"\n\n## 파일 2: {file2}\n"
-            output += StatspackResultFormatter.to_markdown(data2, None)
+        # 비교 리포트 생성
+        output = EnhancedResultFormatter.compare_awr_reports(
+            data1, data2, args.language
+        )
         
         print(f"[3/4] 비교 완료", file=sys.stderr)
         

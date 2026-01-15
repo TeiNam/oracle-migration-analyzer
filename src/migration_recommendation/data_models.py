@@ -43,6 +43,12 @@ class AnalysisMetrics:
     
     # RAC 정보 (참고용, 의사결정에 미사용)
     rac_detected: bool
+    
+    # AWR/Statspack PL/SQL 통계 (데이터베이스에 실제 존재하는 오브젝트)
+    awr_plsql_lines: Optional[int] = None
+    awr_procedure_count: Optional[int] = None
+    awr_function_count: Optional[int] = None
+    awr_package_count: Optional[int] = None
 
 
 @dataclass

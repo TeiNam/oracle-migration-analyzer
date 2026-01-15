@@ -296,66 +296,68 @@ MYSQL_WEIGHTS = WeightConfig(
 # ============================================================================
 
 # Oracle 특화 문법 및 기능 (Requirements 2.1-2.5)
+# 변환 난이도에 따라 가중치 상향 조정
 ORACLE_SPECIFIC_SYNTAX = {
-    'CONNECT BY': 1.0,          # 계층적 쿼리
-    'START WITH': 1.0,          # 계층적 쿼리 시작점
-    'PRIOR': 1.0,               # 계층적 쿼리 부모 참조
-    'MODEL': 1.0,               # MODEL 절
-    'PIVOT': 1.0,               # PIVOT 연산
-    'UNPIVOT': 1.0,             # UNPIVOT 연산
-    'FLASHBACK': 1.0,           # FLASHBACK 쿼리
-    'SYS_CONNECT_BY_PATH': 1.0, # 계층적 경로
-    'ROWID': 1.0,               # 물리적 행 주소
-    'ROWNUM': 1.0,              # 행 번호
-    'LEVEL': 1.0,               # 계층적 레벨
-    'MERGE': 1.5,               # MERGE 문
-    '(+)': 1.0,                 # OUTER JOIN (구식 문법)
-    'NEXTVAL': 0.8,             # 시퀀스 다음 값
-    'CURRVAL': 0.8,             # 시퀀스 현재 값
-    'RETURNING': 0.8,           # RETURNING 절
-    'DUAL': 0.3,                # DUAL 테이블
+    'CONNECT BY': 2.0,          # 계층적 쿼리 (매우 어려움)
+    'START WITH': 1.5,          # 계층적 쿼리 시작점
+    'PRIOR': 1.5,               # 계층적 쿼리 부모 참조
+    'MODEL': 2.5,               # MODEL 절 (매우 어려움)
+    'PIVOT': 1.5,               # PIVOT 연산 (어려움)
+    'UNPIVOT': 1.5,             # UNPIVOT 연산 (어려움)
+    'FLASHBACK': 2.0,           # FLASHBACK 쿼리 (매우 어려움)
+    'SYS_CONNECT_BY_PATH': 1.5, # 계층적 경로
+    'ROWID': 1.5,               # 물리적 행 주소 (어려움)
+    'ROWNUM': 1.5,              # 행 번호 (어려움)
+    'LEVEL': 1.5,               # 계층적 레벨
+    'MERGE': 2.0,               # MERGE 문 (어려움)
+    '(+)': 1.5,                 # OUTER JOIN (구식 문법, 어려움)
+    'NEXTVAL': 1.0,             # 시퀀스 다음 값
+    'CURRVAL': 1.0,             # 시퀀스 현재 값
+    'RETURNING': 1.0,           # RETURNING 절
+    'DUAL': 0.5,                # DUAL 테이블 (쉬움)
 }
 
 # Oracle 특화 함수 (Requirements 3.1, 3.2)
+# 변환 난이도에 따라 가중치 상향 조정
 ORACLE_SPECIFIC_FUNCTIONS = {
     # 조건/변환 함수
-    'DECODE': 0.5,              # DECODE 함수
-    'NVL': 0.5,                 # NULL 처리
-    'NVL2': 0.5,                # NULL 조건부 처리
+    'DECODE': 0.8,              # DECODE 함수 (CASE 변환 필요)
+    'NVL': 0.6,                 # NULL 처리
+    'NVL2': 0.7,                # NULL 조건부 처리
     
     # 집계 함수
-    'LISTAGG': 0.5,             # 문자열 집계
+    'LISTAGG': 1.0,             # 문자열 집계 (어려움)
     
     # 정규식 함수
-    'REGEXP_LIKE': 0.5,         # 정규식 매칭
-    'REGEXP_SUBSTR': 0.5,       # 정규식 부분 문자열
-    'REGEXP_REPLACE': 0.5,      # 정규식 치환
-    'REGEXP_INSTR': 0.5,        # 정규식 위치
+    'REGEXP_LIKE': 0.7,         # 정규식 매칭
+    'REGEXP_SUBSTR': 0.8,       # 정규식 부분 문자열
+    'REGEXP_REPLACE': 0.8,      # 정규식 치환
+    'REGEXP_INSTR': 0.8,        # 정규식 위치
     
     # 시스템 함수
-    'SYS_CONTEXT': 0.5,         # 시스템 컨텍스트
-    'EXTRACT': 0.5,             # 날짜/시간 추출
+    'SYS_CONTEXT': 1.5,         # 시스템 컨텍스트 (매우 어려움)
+    'EXTRACT': 0.6,             # 날짜/시간 추출
     
     # 변환 함수
-    'TO_CHAR': 0.5,             # 문자열 변환
-    'TO_DATE': 0.5,             # 날짜 변환
-    'TO_NUMBER': 0.5,           # 숫자 변환
-    'TRUNC': 0.5,               # 절삭
+    'TO_CHAR': 0.7,             # 문자열 변환 (포맷 차이)
+    'TO_DATE': 0.7,             # 날짜 변환 (포맷 차이)
+    'TO_NUMBER': 0.7,           # 숫자 변환 (포맷 차이)
+    'TRUNC': 0.7,               # 절삭 (날짜/숫자 모두 처리)
     
     # 날짜 함수
-    'ADD_MONTHS': 0.5,          # 월 더하기
-    'MONTHS_BETWEEN': 0.5,      # 월 차이
-    'NEXT_DAY': 0.5,            # 다음 요일
-    'LAST_DAY': 0.5,            # 월 마지막 날
-    'SYSDATE': 0.5,             # 시스템 날짜
-    'SYSTIMESTAMP': 0.5,        # 시스템 타임스탬프
+    'ADD_MONTHS': 0.7,          # 월 더하기
+    'MONTHS_BETWEEN': 0.7,      # 월 차이
+    'NEXT_DAY': 0.8,            # 다음 요일
+    'LAST_DAY': 0.7,            # 월 마지막 날
+    'SYSDATE': 0.6,             # 시스템 날짜
+    'SYSTIMESTAMP': 0.6,        # 시스템 타임스탬프
     'CURRENT_DATE': 0.5,        # 현재 날짜
     
     # 문자열 함수
-    'SUBSTR': 0.5,              # 부분 문자열
-    'INSTR': 0.5,               # 문자열 위치
-    'CHR': 0.5,                 # 문자 코드 변환
-    'TRANSLATE': 0.5,           # 문자 치환
+    'SUBSTR': 0.6,              # 부분 문자열 (인덱스 차이)
+    'INSTR': 0.6,               # 문자열 위치 (인덱스 차이)
+    'CHR': 0.6,                 # 문자 코드 변환
+    'TRANSLATE': 0.7,           # 문자 치환
 }
 
 # 분석 함수 (Requirements 2.2)

@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import statistics
 
-from .parser import StatspackParser
+from .parsers import StatspackParser, AWRParser
 from .exceptions import StatspackParseError, StatspackFileError
 from .data_models import StatspackData, AWRData
 from .migration_analyzer import MigrationAnalyzer, MigrationComplexity, TargetDatabase
@@ -212,7 +212,6 @@ class BatchAnalyzer:
             
             # 적절한 파서 선택
             if file_type == "awr":
-                from src.dbcsi.parser import AWRParser
                 parser = AWRParser(str(filepath))
             else:
                 parser = StatspackParser(str(filepath))
@@ -226,13 +225,7 @@ class BatchAnalyzer:
             # 마이그레이션 분석 (선택적)
             migration_analysis = None
             if analyze_migration:
-                # AWR 데이터인 경우 EnhancedMigrationAnalyzer 사용
-                if hasattr(statspack_data, 'is_awr') and statspack_data.is_awr():
-                    from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
-                    analyzer = EnhancedMigrationAnalyzer(statspack_data)
-                else:
-                    analyzer = MigrationAnalyzer(statspack_data)
-                
+                analyzer = MigrationAnalyzer(statspack_data)
                 migration_analysis = analyzer.analyze(target=target)
             
             return BatchFileResult(
