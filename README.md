@@ -13,6 +13,326 @@ DBCSI Statspack 결과 파일을 파싱하여 Oracle 데이터베이스의 성�
 ### 3. AWR Analyzer
 DBCSI AWR(Automatic Workload Repository) 결과 파일을 파싱하여 Oracle 데이터베이스의 상세한 성능 메트릭을 분석합니다. Statspack보다 더 정확한 백분위수 기반 성능 데이터를 제공하며, 함수별 I/O 통계, 워크로드 패턴, 버퍼 캐시 효율성 등 고급 분석 기능을 포함합니다.
 
+### 4. Migration Recommendation Engine
+DBCSI 분석기(성능 메트릭)와 SQL/PL-SQL 분석기(코드 복잡도)의 결과를 통합하여 최적의 마이그레이션 전략을 추천합니다. Replatform(RDS for Oracle SE2), Refactoring to Aurora MySQL, Refactoring to Aurora PostgreSQL 중 가장 적합한 전략을 의사결정 트리 기반으로 선택하고, 추천 근거, 대안 전략, 위험 요소, 마이그레이션 로드맵을 포함한 종합 리포트를 생성합니다.
+
+---
+
+## Migration Recommendation Engine
+
+### 주요 기능
+
+- ✅ **분석 결과 통합**: DBCSI(성능 메트릭)와 SQL/PL-SQL(코드 복잡도) 분석 결과 통합
+- ✅ **의사결정 엔진**: 코드 복잡도와 성능 메트릭 기반 최적 전략 자동 결정
+- ✅ **3가지 마이그레이션 전략**:
+  - **Replatform**: RDS for Oracle SE2 Single (코드 변경 최소화)
+  - **Refactor to Aurora MySQL**: 단순 SQL/PL-SQL을 애플리케이션 레벨로 이관
+  - **Refactor to Aurora PostgreSQL**: 복잡한 PL/SQL을 PL/pgSQL로 변환
+- ✅ **종합 추천 리포트**: 추천 근거, 대안 전략, 위험 요소, 마이그레이션 로드맵 포함
+- ✅ **Executive Summary**: 비기술적 언어로 작성된 경영진용 요약
+- ✅ **다양한 출력 형식**: Markdown, JSON 리포트 생성
+- ✅ **한국어/영어 지원**: 다국어 리포트 생성
+
+### 설치
+
+```bash
+# 저장소 클론
+git clone <repository-url>
+cd oracle-migration-analyzer
+
+# 가상 환경 생성 (권장)
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 의존성 설치
+pip install -r requirements.txt
+
+# 패키지 설치 (개발 모드)
+pip install -e .
+```
+
+### 사용 방법
+
+#### CLI 명령어
+
+```bash
+# 기본 사용법 (DBCSI + SQL/PL-SQL 분석 결과 필요)
+migration-recommend \
+  --dbcsi sample_code/dbcsi_awr_sample01.out \
+  --sql-dir sample_code \
+  --output reports/recommendation.md
+
+# JSON 형식으로 출력
+migration-recommend \
+  --dbcsi sample_code/dbcsi_statspack_sample01.out \
+  --sql-dir sample_code \
+  --format json \
+  --output reports/recommendation.json
+
+# 영어 리포트 생성
+migration-recommend \
+  --dbcsi sample_code/dbcsi_awr_sample01.out \
+  --sql-dir sample_code \
+  --language en \
+  --output reports/recommendation_en.md
+
+# DBCSI 없이 SQL/PL-SQL 분석만으로 추천 (성능 메트릭 제외)
+migration-recommend \
+  --sql-dir sample_code \
+  --output reports/recommendation.md
+```
+
+#### 명령줄 옵션
+
+**필수 옵션 (최소 하나 필요)**:
+- `--dbcsi FILE`: DBCSI 분석 결과 파일 경로 (AWR 또는 Statspack .out 파일)
+- `--sql-dir DIR`: SQL/PL-SQL 파일이 있는 디렉토리 경로
+
+**선택 옵션**:
+- `--format FORMAT`: 출력 형식 선택
+  - `markdown`: Markdown 형식 (기본값)
+  - `json`: JSON 형식
+  
+- `--output PATH`: 출력 파일 경로 (지정하지 않으면 표준 출력)
+
+- `--language LANG`: 리포트 언어
+  - `ko`: 한국어 (기본값)
+  - `en`: 영어
+
+- `--target TARGET`: SQL/PL-SQL 분석 시 타겟 DB (기본값: postgresql)
+  - `postgresql`: Aurora PostgreSQL
+  - `mysql`: Aurora MySQL
+
+### Python API 사용
+
+```python
+from src.migration_recommendation import (
+    AnalysisResultIntegrator,
+    MigrationDecisionEngine,
+    RecommendationReportGenerator,
+    MarkdownReportFormatter,
+    JSONReportFormatter
+)
+from src.dbcsi.parser import StatspackParser
+from src.oracle_complexity_analyzer import OracleComplexityAnalyzer, BatchAnalyzer
+
+# 1. DBCSI 분석 결과 파싱
+dbcsi_parser = StatspackParser("sample_code/dbcsi_awr_sample01.out")
+dbcsi_result = dbcsi_parser.parse()
+
+# 2. SQL/PL-SQL 분석
+sql_analyzer = OracleComplexityAnalyzer(target_database="postgresql")
+batch_analyzer = BatchAnalyzer(sql_analyzer)
+batch_result = batch_analyzer.analyze_folder("sample_code")
+
+# 3. 분석 결과 통합
+integrator = AnalysisResultIntegrator()
+integrated_result = integrator.integrate(
+    dbcsi_result=dbcsi_result,
+    sql_analysis=batch_result.sql_results,
+    plsql_analysis=batch_result.plsql_results
+)
+
+# 4. 마이그레이션 전략 결정
+decision_engine = MigrationDecisionEngine()
+strategy = decision_engine.decide_strategy(integrated_result)
+print(f"추천 전략: {strategy.value}")
+
+# 5. 추천 리포트 생성
+report_generator = RecommendationReportGenerator(decision_engine)
+recommendation = report_generator.generate_recommendation(integrated_result)
+
+# 6. 리포트 출력
+# Markdown 형식
+markdown_formatter = MarkdownReportFormatter()
+markdown_report = markdown_formatter.format(recommendation, language="ko")
+print(markdown_report)
+
+# JSON 형식
+json_formatter = JSONReportFormatter()
+json_report = json_formatter.format(recommendation)
+print(json_report)
+
+# 7. 파일로 저장
+with open("recommendation.md", "w", encoding="utf-8") as f:
+    f.write(markdown_report)
+
+with open("recommendation.json", "w", encoding="utf-8") as f:
+    f.write(json_report)
+```
+
+### 의사결정 트리
+
+마이그레이션 전략은 다음 의사결정 트리를 따릅니다:
+
+```
+시작
+  │
+  ▼
+평균 SQL 복잡도 >= 7.0?  ───YES──┐
+  │                              │
+  NO                             │
+  │                              │
+  ▼                              │
+평균 PL/SQL 복잡도 >= 7.0? ─YES──┤
+  │                              │
+  NO                             │
+  │                              │
+  ▼                              │
+복잡 오브젝트 비율 >= 30%? ──YES──┤
+  │                              │
+  NO                             │
+  │                              ▼
+  │                         REPLATFORM
+  │                         (RDS Oracle SE2)
+  │
+  ▼
+평균 SQL 복잡도 <= 5.0? ───NO───┐
+  │                             │
+  YES                           │
+  │                             │
+  ▼                             │
+평균 PL/SQL 복잡도 <= 5.0? ─NO──┤
+  │                             │
+  YES                           │
+  │                             │
+  ▼                             │
+PL/SQL 오브젝트 < 50개? ───NO───┤
+  │                             │
+  YES                           │
+  │                             │
+  ▼                             ▼
+AURORA MYSQL              AURORA POSTGRESQL
+(애플리케이션 이관)        (PL/pgSQL 변환)
+  │                             ▲
+  │                             │
+  ▼                             │
+BULK 연산 >= 10개? ───YES────────┘
+  │
+  NO
+  │
+  ▼
+(Aurora MySQL 유지)
+```
+
+### 출력 예시
+
+#### Markdown 리포트 구조
+
+```markdown
+# Oracle 마이그레이션 추천 리포트
+
+## 목차
+1. Executive Summary
+2. 추천 전략
+3. 추천 근거
+4. 대안 전략
+5. 위험 요소 및 완화 방안
+6. 마이그레이션 로드맵
+7. 분석 메트릭
+
+## Executive Summary
+
+**추천 전략**: Aurora PostgreSQL로 Refactoring
+
+**예상 기간**: 12-16주
+
+**주요 이점**:
+- PL/pgSQL은 Oracle PL/SQL의 70-75%를 커버하여 대부분의 로직을 변환할 수 있습니다
+- 오픈소스 기반으로 라이선스 비용이 없어 TCO를 절감할 수 있습니다
+- AWS 관리형 서비스로 운영 부담이 감소합니다
+
+**주요 위험**:
+- PL/SQL을 PL/pgSQL로 변환 시 일부 기능 미지원 (패키지 변수, PRAGMA 등)
+- BULK 연산 대체 시 성능 차이 발생 (20-50% 느림)
+- 외부 프로시저 호출(UTL_*) 미지원으로 애플리케이션 레벨 처리 필요
+
+## 추천 전략
+
+**전략**: Refactoring to Aurora PostgreSQL
+**신뢰도**: High
+
+### 추천 근거
+
+1. **PL/pgSQL 호환성** (카테고리: complexity)
+   - PL/pgSQL은 Oracle PL/SQL의 70-75%를 커버하여 대부분의 로직을 변환할 수 있습니다
+
+2. **BULK 연산 성능** (카테고리: performance)
+   - BULK 연산이 15개 발견되었습니다. PostgreSQL은 순수 SQL 또는 Chunked Batch로 대체 가능합니다 (성능 차이 20-50%)
+   - 지원 데이터: {"bulk_operation_count": 15}
+
+3. **중간 복잡도 범위** (카테고리: complexity)
+   - 평균 SQL 복잡도(5.8)가 중간 수준으로 PostgreSQL 변환이 적합합니다
+   - 지원 데이터: {"avg_sql_complexity": 5.8}
+
+...
+```
+
+### 전략별 특징
+
+#### Replatform (RDS for Oracle SE2)
+
+**장점**:
+- 코드 변경 최소화
+- 빠른 마이그레이션 (8-12주)
+- 높은 호환성
+
+**단점**:
+- Oracle 라이선스 비용 지속
+- Single 인스턴스만 지원 (RAC 미지원)
+- 장기적 TCO 높음
+
+**적합한 경우**:
+- 평균 복잡도 >= 7.0
+- 복잡 오브젝트 비율 >= 30%
+- 코드 변경 위험이 높은 경우
+
+#### Refactor to Aurora MySQL
+
+**장점**:
+- 오픈소스 기반 (라이선스 비용 없음)
+- 낮은 TCO
+- 간단한 SQL 처리에 최적
+
+**단점**:
+- 모든 PL/SQL을 애플리케이션 레벨로 이관 필요
+- MySQL Stored Procedure 사용 불가
+- BULK 연산 미지원
+
+**적합한 경우**:
+- 평균 SQL 복잡도 <= 5.0
+- 평균 PL/SQL 복잡도 <= 5.0
+- PL/SQL 오브젝트 < 50개
+- BULK 연산 < 10개
+
+#### Refactor to Aurora PostgreSQL
+
+**장점**:
+- PL/pgSQL 70-75% Oracle 호환
+- BULK 연산 대체 가능
+- 고급 기능 지원
+
+**단점**:
+- PL/SQL 변환 작업 필요
+- BULK 연산 성능 차이 (20-50%)
+- 일부 Oracle 기능 미지원
+
+**적합한 경우**:
+- 평균 복잡도 5.0-7.0
+- BULK 연산 >= 10개
+- 평균 PL/SQL 복잡도 >= 5.0
+
+### 예제 스크립트
+
+- `example_migration_recommendation.py`: 기본 사용 예제
+- `example_migration_recommendation_full_workflow.py`: 전체 워크플로우 예제
+
+### 관련 문서
+
+- `.kiro/specs/migration-recommendation/requirements.md`: 요구사항 문서
+- `.kiro/specs/migration-recommendation/design.md`: 설계 문서
+- `.kiro/specs/migration-recommendation/tasks.md`: 구현 계획
+
 ---
 
 ## AWR Analyzer

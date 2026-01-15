@@ -1,3 +1,4 @@
+-- 벌크 연산(Bulk Collect/FORALL)과 예외 처리를 결합한 성능 최적화형 배치 처리 패턴
 CREATE OR REPLACE PROCEDURE PROCESS_EMPLOYEE_BONUSES (
     p_department_id IN NUMBER,
     p_log_message OUT VARCHAR2
