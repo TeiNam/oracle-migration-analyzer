@@ -128,6 +128,9 @@ class MigrationRoadmap:
     """
     phases: List[RoadmapPhase]
     total_estimated_duration: str
+    ai_assisted: bool = True  # AI 도구 활용 여부 (기본값: True)
+    ai_time_saving_pct: float = 40.0  # AI 활용 시 시간 절감률 (기본값: 40%)
+    ai_cost_saving_pct: float = 35.0  # AI 활용 시 비용 절감률 (기본값: 35%)
 
 
 @dataclass

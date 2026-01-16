@@ -22,6 +22,18 @@ from .data_models import (
 class MarkdownReportFormatter:
     """Markdown 리포트 포맷터"""
     
+    @staticmethod
+    def _extract_number(value) -> int:
+        """문자열이나 숫자에서 숫자 값 추출"""
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            import re
+            numbers = re.findall(r'\d+', value)
+            if numbers:
+                return int(numbers[-1])
+        return 0
+    
     def format(
         self,
         recommendation: MigrationRecommendation,
@@ -201,9 +213,42 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
                 content += f"## {i}. {rationale.reason}\n\n"
                 content += f"**카테고리**: {rationale.category}\n\n"
                 if rationale.supporting_data:
-                    content += "**근거 데이터**:\n"
-                    for key, value in rationale.supporting_data.items():
-                        content += f"- {key}: {value}\n"
+                    # 근거 산출 기준과 근거 데이터 분리
+                    calculation_keys = ['refactor_calculation', 'replatform_calculation', 'refactor_tasks', 'replatform_tasks', 'refactor_basis', 'reference', 'team_size']
+                    data_keys = [k for k in rationale.supporting_data.keys() if k not in calculation_keys]
+                    
+                    # 근거 데이터 먼저 표시
+                    if data_keys:
+                        content += "**근거 데이터**:\n"
+                        for key in data_keys:
+                            value = rationale.supporting_data[key]
+                            # 소수점 두 자리로 반올림
+                            if isinstance(value, float):
+                                value = round(value, 2)
+                            content += f"- {key}: {value}\n"
+                        content += "\n"
+                    
+                    # 근거 산출 기준 표시
+                    if any(k in rationale.supporting_data for k in calculation_keys):
+                        content += "**근거 산출 기준**:\n"
+                        if 'team_size' in rationale.supporting_data:
+                            content += f"- 팀 구성: {rationale.supporting_data['team_size']}명 (시니어 개발자 2명, 주니어 개발자 1명, QA 1명)\n"
+                        if 'refactor_calculation' in rationale.supporting_data:
+                            content += f"- Refactor 시간 산정: {rationale.supporting_data['refactor_calculation']}\n"
+                        if 'refactor_basis' in rationale.supporting_data:
+                            content += f"- 산정 근거: {rationale.supporting_data['refactor_basis']}\n"
+                        if 'replatform_calculation' in rationale.supporting_data:
+                            content += f"- Replatform 시간 산정: {rationale.supporting_data['replatform_calculation']}\n"
+                        if 'reference' in rationale.supporting_data:
+                            content += f"- 참고 자료: {rationale.supporting_data['reference']}\n"
+                        if 'refactor_tasks' in rationale.supporting_data:
+                            content += "- Refactor 주요 작업:\n"
+                            for task in rationale.supporting_data['refactor_tasks']:
+                                content += f"  - {task}\n"
+                        if 'replatform_tasks' in rationale.supporting_data:
+                            content += "- Replatform 주요 작업:\n"
+                            for task in rationale.supporting_data['replatform_tasks']:
+                                content += f"  - {task}\n"
                 content += "\n"
         else:
             content = "# Rationales\n\n"
@@ -211,9 +256,42 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
                 content += f"## {i}. {rationale.reason}\n\n"
                 content += f"**Category**: {rationale.category}\n\n"
                 if rationale.supporting_data:
-                    content += "**Supporting Data**:\n"
-                    for key, value in rationale.supporting_data.items():
-                        content += f"- {key}: {value}\n"
+                    # 근거 산출 기준과 근거 데이터 분리
+                    calculation_keys = ['refactor_calculation', 'replatform_calculation', 'refactor_tasks', 'replatform_tasks', 'refactor_basis', 'reference', 'team_size']
+                    data_keys = [k for k in rationale.supporting_data.keys() if k not in calculation_keys]
+                    
+                    # 근거 데이터 먼저 표시
+                    if data_keys:
+                        content += "**Supporting Data**:\n"
+                        for key in data_keys:
+                            value = rationale.supporting_data[key]
+                            # 소수점 두 자리로 반올림
+                            if isinstance(value, float):
+                                value = round(value, 2)
+                            content += f"- {key}: {value}\n"
+                        content += "\n"
+                    
+                    # 근거 산출 기준 표시
+                    if any(k in rationale.supporting_data for k in calculation_keys):
+                        content += "**Calculation Basis**:\n"
+                        if 'team_size' in rationale.supporting_data:
+                            content += f"- Team composition: {rationale.supporting_data['team_size']} members (2 senior developers, 1 junior developer, 1 QA)\n"
+                        if 'refactor_calculation' in rationale.supporting_data:
+                            content += f"- Refactor time estimation: {rationale.supporting_data['refactor_calculation']}\n"
+                        if 'refactor_basis' in rationale.supporting_data:
+                            content += f"- Estimation basis: {rationale.supporting_data['refactor_basis']}\n"
+                        if 'replatform_calculation' in rationale.supporting_data:
+                            content += f"- Replatform time estimation: {rationale.supporting_data['replatform_calculation']}\n"
+                        if 'reference' in rationale.supporting_data:
+                            content += f"- Reference: {rationale.supporting_data['reference']}\n"
+                        if 'refactor_tasks' in rationale.supporting_data:
+                            content += "- Refactor key tasks:\n"
+                            for task in rationale.supporting_data['refactor_tasks']:
+                                content += f"  - {task}\n"
+                        if 'replatform_tasks' in rationale.supporting_data:
+                            content += "- Replatform key tasks:\n"
+                            for task in rationale.supporting_data['replatform_tasks']:
+                                content += f"  - {task}\n"
                 content += "\n"
         
         return content
@@ -268,6 +346,15 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
             content = f"# 마이그레이션 로드맵\n\n"
             content += f"**총 예상 기간**: {roadmap.total_estimated_duration}\n\n"
             
+            # AI 활용 정보 추가
+            if roadmap.ai_assisted:
+                content += f"**AI 도구 활용**: 예 (Amazon Q Developer, Bedrock)\n\n"
+                content += f"**AI 효과**:\n"
+                content += f"- 시간 단축: 약 {roadmap.ai_time_saving_pct:.0f}%\n"
+                content += f"- 비용 절감: 약 {roadmap.ai_cost_saving_pct:.0f}%\n"
+                content += f"- 품질 향상: 자동 테스트 생성, 코드 리뷰, 버그 조기 발견\n\n"
+                content += "**참고**: 위 일정은 AI 도구를 적극 활용하는 것을 전제로 합니다. AI 도구 미사용 시 기간이 약 2배 소요될 수 있습니다.\n\n"
+            
             for phase in roadmap.phases:
                 content += f"## Phase {phase.phase_number}: {phase.phase_name}\n\n"
                 content += f"**예상 기간**: {phase.estimated_duration}\n\n"
@@ -278,6 +365,15 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
         else:
             content = f"# Migration Roadmap\n\n"
             content += f"**Total Estimated Duration**: {roadmap.total_estimated_duration}\n\n"
+            
+            # AI 활용 정보 추가
+            if roadmap.ai_assisted:
+                content += f"**AI Tools Utilized**: Yes (Amazon Q Developer, Bedrock)\n\n"
+                content += f"**AI Benefits**:\n"
+                content += f"- Time Saving: Approximately {roadmap.ai_time_saving_pct:.0f}%\n"
+                content += f"- Cost Saving: Approximately {roadmap.ai_cost_saving_pct:.0f}%\n"
+                content += f"- Quality Improvement: Automated test generation, code review, early bug detection\n\n"
+                content += "**Note**: The above schedule assumes active use of AI tools. Without AI tools, the duration may be approximately doubled.\n\n"
             
             for phase in roadmap.phases:
                 content += f"## Phase {phase.phase_number}: {phase.phase_name}\n\n"
@@ -339,23 +435,31 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
             if language == "ko":
                 awr_plsql_section = "\n## AWR/Statspack PL/SQL 통계 (데이터베이스 실제 오브젝트)\n\n"
                 if metrics.awr_plsql_lines is not None:
-                    awr_plsql_section += f"- **PL/SQL 코드 라인 수**: {metrics.awr_plsql_lines:,}\n"
+                    plsql_lines = self._extract_number(metrics.awr_plsql_lines)
+                    awr_plsql_section += f"- **PL/SQL 코드 라인 수**: {plsql_lines:,}\n"
                 if metrics.awr_procedure_count is not None:
-                    awr_plsql_section += f"- **프로시저 수**: {metrics.awr_procedure_count}\n"
+                    proc_count = self._extract_number(metrics.awr_procedure_count)
+                    awr_plsql_section += f"- **프로시저 수**: {proc_count}\n"
                 if metrics.awr_function_count is not None:
-                    awr_plsql_section += f"- **함수 수**: {metrics.awr_function_count}\n"
+                    func_count = self._extract_number(metrics.awr_function_count)
+                    awr_plsql_section += f"- **함수 수**: {func_count}\n"
                 if metrics.awr_package_count is not None:
-                    awr_plsql_section += f"- **패키지 수**: {metrics.awr_package_count}\n"
+                    pkg_count = self._extract_number(metrics.awr_package_count)
+                    awr_plsql_section += f"- **패키지 수**: {pkg_count}\n"
             else:
                 awr_plsql_section = "\n## AWR/Statspack PL/SQL Statistics (Actual Database Objects)\n\n"
                 if metrics.awr_plsql_lines is not None:
-                    awr_plsql_section += f"- **PL/SQL Code Lines**: {metrics.awr_plsql_lines:,}\n"
+                    plsql_lines = self._extract_number(metrics.awr_plsql_lines)
+                    awr_plsql_section += f"- **PL/SQL Code Lines**: {plsql_lines:,}\n"
                 if metrics.awr_procedure_count is not None:
-                    awr_plsql_section += f"- **Procedure Count**: {metrics.awr_procedure_count}\n"
+                    proc_count = self._extract_number(metrics.awr_procedure_count)
+                    awr_plsql_section += f"- **Procedure Count**: {proc_count}\n"
                 if metrics.awr_function_count is not None:
-                    awr_plsql_section += f"- **Function Count**: {metrics.awr_function_count}\n"
+                    func_count = self._extract_number(metrics.awr_function_count)
+                    awr_plsql_section += f"- **Function Count**: {func_count}\n"
                 if metrics.awr_package_count is not None:
-                    awr_plsql_section += f"- **Package Count**: {metrics.awr_package_count}\n"
+                    pkg_count = self._extract_number(metrics.awr_package_count)
+                    awr_plsql_section += f"- **Package Count**: {pkg_count}\n"
         
         if language == "ko":
             return f"""# 분석 메트릭 (부록)

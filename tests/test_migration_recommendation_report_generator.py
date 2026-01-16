@@ -334,7 +334,8 @@ def test_executive_summary_required_elements_property(
     # 검증: 필수 요소 포함
     assert summary.recommended_strategy, "추천 전략이 비어있습니다"
     assert summary.estimated_duration, "예상 기간이 비어있습니다"
-    assert len(summary.key_benefits) == 3, f"주요 이점은 3개여야 하지만 {len(summary.key_benefits)}개입니다"
+    # AI 도구 활용으로 key_benefits가 4-5개로 증가
+    assert 3 <= len(summary.key_benefits) <= 5, f"주요 이점은 3-5개여야 하지만 {len(summary.key_benefits)}개입니다"
     assert len(summary.key_risks) == 3, f"주요 위험은 3개여야 하지만 {len(summary.key_risks)}개입니다"
     assert summary.summary_text, "요약 텍스트가 비어있습니다"
 

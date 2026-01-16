@@ -19,6 +19,26 @@ class StatspackResultFormatter(BaseFormatter):
     """Statspack 분석 결과 포맷터"""
     
     @staticmethod
+    def _extract_number(value) -> int:
+        """문자열이나 숫자에서 숫자 값만 추출
+        
+        Args:
+            value: 숫자 또는 문자열 (예: "BODY 318", 318)
+            
+        Returns:
+            int: 추출된 숫자 값
+        """
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            import re
+            # 문자열에서 모든 숫자를 찾아서 마지막 숫자 반환
+            numbers = re.findall(r'\d+', value)
+            if numbers:
+                return int(numbers[-1])
+        return 0
+    
+    @staticmethod
     def to_markdown(statspack_data: StatspackData, 
                     migration_analysis: Dict[TargetDatabase, MigrationComplexity] = None) -> str:
         """분석 결과를 Markdown 형식으로 변환
@@ -61,11 +81,14 @@ class StatspackResultFormatter(BaseFormatter):
                 if os_info.count_lines_plsql:
                     md.append(f"- **PL/SQL 코드 라인 수**: {os_info.count_lines_plsql:,}")
                 if os_info.count_packages:
-                    md.append(f"- **패키지 수**: {os_info.count_packages}")
+                    pkg_count = StatspackResultFormatter._extract_number(os_info.count_packages)
+                    md.append(f"- **패키지 수**: {pkg_count}")
                 if os_info.count_procedures:
-                    md.append(f"- **프로시저 수**: {os_info.count_procedures}")
+                    proc_count = StatspackResultFormatter._extract_number(os_info.count_procedures)
+                    md.append(f"- **프로시저 수**: {proc_count}")
                 if os_info.count_functions:
-                    md.append(f"- **함수 수**: {os_info.count_functions}")
+                    func_count = StatspackResultFormatter._extract_number(os_info.count_functions)
+                    md.append(f"- **함수 수**: {func_count}")
             
             # 스키마 및 테이블 통계
             if os_info.count_schemas or os_info.count_tables:

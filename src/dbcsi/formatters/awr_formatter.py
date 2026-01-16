@@ -389,8 +389,18 @@ class EnhancedResultFormatter(StatspackResultFormatter):
             ]
             
             for key, label in percentile_order:
+                # 인스턴스 번호 없는 키 우선, 있으면 _1 등의 키도 확인
+                cpu_data = None
                 if key in awr_data.percentile_cpu:
                     cpu_data = awr_data.percentile_cpu[key]
+                else:
+                    # 인스턴스 번호가 있는 키 찾기 (예: "99th_percentile_1")
+                    for k, v in awr_data.percentile_cpu.items():
+                        if k.startswith(key + "_"):
+                            cpu_data = v
+                            break
+                
+                if cpu_data:
                     md.append(f"| {label} | {cpu_data.on_cpu} |")
             md.append("")
         
@@ -411,8 +421,18 @@ class EnhancedResultFormatter(StatspackResultFormatter):
             ]
             
             for key, label in percentile_order:
+                # 인스턴스 번호 없는 키 우선, 있으면 _1 등의 키도 확인
+                io_data = None
                 if key in awr_data.percentile_io:
                     io_data = awr_data.percentile_io[key]
+                else:
+                    # 인스턴스 번호가 있는 키 찾기
+                    for k, v in awr_data.percentile_io.items():
+                        if k.startswith(key + "_"):
+                            io_data = v
+                            break
+                
+                if io_data:
                     md.append(f"| {label} | {io_data.rw_iops:,} | {io_data.rw_mbps} |")
             md.append("")
         
