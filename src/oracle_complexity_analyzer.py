@@ -911,9 +911,12 @@ class OracleComplexityAnalyzer:
         # 날짜 폴더 생성
         date_folder = self._get_date_folder()
         
-        # 파일명 생성 (확장자를 .json으로 변경)
+        # 타겟 데이터베이스 접미사 추가
+        target_suffix = f"_{self.target.value}"
+        
+        # 파일명 생성 (확장자를 .json으로 변경, 타겟 DB 추가)
         source_path = Path(source_filename)
-        filename = source_path.stem + '.json'
+        filename = source_path.stem + target_suffix + '.json'
         file_path = date_folder / filename
         
         # 파일 저장
@@ -938,9 +941,12 @@ class OracleComplexityAnalyzer:
         # 날짜 폴더 생성
         date_folder = self._get_date_folder()
         
-        # 파일명 생성 (확장자를 .md로 변경)
+        # 타겟 데이터베이스 접미사 추가
+        target_suffix = f"_{self.target.value}"
+        
+        # 파일명 생성 (확장자를 .md로 변경, 타겟 DB 추가)
         source_path = Path(source_filename)
-        filename = source_path.stem + '.md'
+        filename = source_path.stem + target_suffix + '.md'
         file_path = date_folder / filename
         
         # 파일 저장
