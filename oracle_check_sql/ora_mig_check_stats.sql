@@ -1006,3 +1006,5 @@ select to_char(sysdate,'yyyy-mm-dd   HH24:MI:SS') "date" from dual
 
 set head on
 set feedback on
+
+spool off
