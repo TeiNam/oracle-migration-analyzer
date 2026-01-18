@@ -49,7 +49,7 @@ class OracleComplexityAnalyzer:
         self.output_dir = Path(output_dir)
         
         # 필요한 모듈 import (지연 import로 순환 참조 방지)
-        from src.calculators.complexity_calculator import ComplexityCalculator
+        from src.calculators import ComplexityCalculator
         from src.formatters.conversion_guide_provider import ConversionGuideProvider
         
         self.calculator = ComplexityCalculator(target_database)
