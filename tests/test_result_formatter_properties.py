@@ -16,7 +16,7 @@ from pathlib import Path
 from datetime import datetime
 from hypothesis import given, strategies as st, settings
 
-from src.dbcsi.data_models import (
+from src.dbcsi.models import (
     StatspackData,
     OSInformation,
     MemoryMetric,
@@ -456,7 +456,7 @@ def test_property_detailed_report_required_sections(statspack_data):
     Validates: Requirements 15.1
     """
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData
+    from src.dbcsi.models import AWRData
     
     # StatspackData를 AWRData로 변환
     awr_data = AWRData(
@@ -487,7 +487,7 @@ def test_property_detailed_report_required_sections(statspack_data):
 def test_enhanced_result_formatter_detailed_markdown():
     """AWR 상세 리포트 생성 기본 테스트"""
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData, PercentileCPU, PercentileIO
+    from src.dbcsi.models import AWRData, PercentileCPU, PercentileIO
     
     # AWR 데이터 생성
     awr_data = AWRData(
@@ -564,7 +564,7 @@ def test_enhanced_result_formatter_detailed_markdown():
 def test_enhanced_result_formatter_workload_analysis():
     """워크로드 분석 섹션 생성 테스트"""
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData, WorkloadProfile
+    from src.dbcsi.models import AWRData, WorkloadProfile
     
     # AWR 데이터 생성
     awr_data = AWRData(
@@ -605,7 +605,7 @@ def test_enhanced_result_formatter_workload_analysis():
 def test_enhanced_result_formatter_buffer_cache_analysis():
     """버퍼 캐시 분석 섹션 생성 테스트"""
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData, BufferCacheStats
+    from src.dbcsi.models import AWRData, BufferCacheStats
     
     # AWR 데이터 생성
     awr_data = AWRData(
@@ -640,7 +640,7 @@ def test_enhanced_result_formatter_buffer_cache_analysis():
 def test_enhanced_result_formatter_io_function_analysis():
     """I/O 함수별 분석 섹션 생성 테스트"""
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData, IOStatFunction
+    from src.dbcsi.models import AWRData, IOStatFunction
     
     # AWR 데이터 생성
     awr_data = AWRData(
@@ -674,7 +674,7 @@ def test_enhanced_result_formatter_io_function_analysis():
 def test_enhanced_result_formatter_percentile_charts():
     """백분위수 차트 생성 테스트"""
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData, PercentileCPU, PercentileIO
+    from src.dbcsi.models import AWRData, PercentileCPU, PercentileIO
     
     # AWR 데이터 생성
     awr_data = AWRData(
@@ -726,7 +726,7 @@ def test_enhanced_result_formatter_percentile_charts():
 def test_enhanced_result_formatter_compare_reports():
     """AWR 리포트 비교 테스트"""
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData
+    from src.dbcsi.models import AWRData
     
     # 첫 번째 AWR 데이터
     awr1 = AWRData(
@@ -788,7 +788,7 @@ def test_property_trend_analysis_anomaly_detection(metrics_list):
     Validates: Requirements 17.3
     """
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData, PercentileCPU, PercentileIO, BufferCacheStats
+    from src.dbcsi.models import AWRData, PercentileCPU, PercentileIO, BufferCacheStats
     
     # AWR 데이터 리스트 생성
     awr_list = []
@@ -889,7 +889,7 @@ def test_property_trend_analysis_anomaly_detection(metrics_list):
 def test_enhanced_result_formatter_trend_report():
     """추세 분석 리포트 생성 기본 테스트"""
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData, PercentileCPU
+    from src.dbcsi.models import AWRData, PercentileCPU
     
     # 여러 AWR 데이터 생성
     awr_list = []
@@ -931,7 +931,7 @@ def test_enhanced_result_formatter_trend_report():
 def test_trend_analysis_cpu_spike_detection():
     """CPU 급증 이상 징후 감지 테스트"""
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData, PercentileCPU
+    from src.dbcsi.models import AWRData, PercentileCPU
     
     # 첫 번째 AWR: 정상 CPU
     awr1 = AWRData(
@@ -980,7 +980,7 @@ def test_trend_analysis_cpu_spike_detection():
 def test_trend_analysis_buffer_cache_drop_detection():
     """버퍼 캐시 히트율 하락 이상 징후 감지 테스트"""
     from src.dbcsi.result_formatter import EnhancedResultFormatter
-    from src.dbcsi.data_models import AWRData, BufferCacheStats
+    from src.dbcsi.models import AWRData, BufferCacheStats
     
     # 첫 번째 AWR: 높은 히트율
     awr1 = AWRData(

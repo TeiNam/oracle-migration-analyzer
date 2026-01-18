@@ -5,7 +5,7 @@ PL/SQL 코드 라인 수와 패키지 수를 기반으로 복잡도를 계산합
 """
 
 from typing import Dict, Any
-from ..data_models import StatspackData, TargetDatabase
+from ..models import StatspackData, TargetDatabase
 
 
 def evaluate_plsql_complexity(

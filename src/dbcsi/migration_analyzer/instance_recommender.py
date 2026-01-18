@@ -5,7 +5,7 @@
 """
 
 from typing import Optional, Dict, Tuple
-from ..data_models import TargetDatabase, InstanceRecommendation
+from ..models import TargetDatabase, InstanceRecommendation
 
 
 # r6i 인스턴스 패밀리 스펙 (vCPU, Memory GiB)

@@ -18,7 +18,7 @@ from pathlib import Path
 from src.dbcsi.parser import StatspackParser
 from src.dbcsi.migration_analyzer import MigrationAnalyzer
 from src.dbcsi.result_formatter import StatspackResultFormatter
-from src.dbcsi.data_models import TargetDatabase
+from src.dbcsi.models import TargetDatabase
 
 
 class TestEndToEnd:
@@ -210,7 +210,7 @@ class TestEndToEnd:
         edition = analyzer._detect_oracle_edition()
         
         # 샘플 파일은 Standard Edition 2
-        from src.dbcsi.data_models import OracleEdition
+        from src.dbcsi.models import OracleEdition
         assert edition == OracleEdition.STANDARD_2
     
     def test_rac_detection(self, sample_statspack_file):

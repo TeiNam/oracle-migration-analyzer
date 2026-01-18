@@ -11,7 +11,7 @@ import tempfile
 import os
 
 from src.dbcsi.parser import AWRParser
-from src.dbcsi.data_models import (
+from src.dbcsi.models import (
     IOStatFunction, PercentileCPU, PercentileIO,
     WorkloadProfile, BufferCacheStats, AWRData
 )

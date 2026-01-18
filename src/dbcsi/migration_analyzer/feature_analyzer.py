@@ -5,7 +5,7 @@ Oracle 기능의 타겟 데이터베이스별 호환성을 분석합니다.
 """
 
 from typing import Dict, Any, List
-from ..data_models import StatspackData, TargetDatabase
+from ..models import StatspackData, TargetDatabase
 
 
 def analyze_feature_compatibility(

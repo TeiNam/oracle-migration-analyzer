@@ -7,7 +7,7 @@ DBCSI 분석기와 SQL/PL-SQL 분석기의 결과를 통합하고 메트릭을 �
 from typing import List, Optional, Union, Tuple
 from datetime import datetime
 
-from src.dbcsi.data_models import StatspackData, AWRData
+from src.dbcsi.models import StatspackData, AWRData
 from src.oracle_complexity_analyzer.data_models import SQLAnalysisResult, PLSQLAnalysisResult
 from src.migration_recommendation.data_models import (
     IntegratedAnalysisResult,

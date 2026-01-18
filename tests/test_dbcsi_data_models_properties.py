@@ -10,7 +10,7 @@ from hypothesis import given, strategies as st, settings
 from hypothesis.strategies import composite
 import pytest
 
-from src.dbcsi.data_models import (
+from src.dbcsi.models import (
     OracleEdition,
     TargetDatabase,
     OSInformation,

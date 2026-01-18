@@ -7,7 +7,7 @@ AWR Executive Summary 생성 모듈
 from typing import Dict
 import statistics
 
-from ...data_models import MigrationComplexity, TargetDatabase
+from ...models import MigrationComplexity, TargetDatabase
 
 
 class ExecutiveSummaryMixin:

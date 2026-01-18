@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, strategies as st, assume
 from typing import List
 
-from src.dbcsi.data_models import (
+from src.dbcsi.models import (
     StatspackData, AWRData, OSInformation, MainMetric, MemoryMetric
 )
 from src.oracle_complexity_analyzer import (

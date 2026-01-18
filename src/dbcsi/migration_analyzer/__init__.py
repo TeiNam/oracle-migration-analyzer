@@ -57,8 +57,8 @@ from .instance_recommender import (
     R6I_INSTANCES,
 )
 
-# data_models에서 필요한 클래스들 import
-from ..data_models import MigrationComplexity, TargetDatabase, InstanceRecommendation
+# models에서 필요한 클래스들 import
+from ..models import MigrationComplexity, TargetDatabase, InstanceRecommendation
 
 # MigrationAnalyzer 클래스에 R6I_INSTANCES 속성 추가 (하위 호환성)
 if not hasattr(MigrationAnalyzer, 'R6I_INSTANCES'):

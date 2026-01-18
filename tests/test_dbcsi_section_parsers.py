@@ -6,7 +6,7 @@ Statspack 섹션별 파서 단위 테스트
 
 import pytest
 from src.dbcsi.parser import StatspackParser
-from src.dbcsi.data_models import (
+from src.dbcsi.models import (
     OSInformation, MemoryMetric, DiskSize, MainMetric,
     WaitEvent, SystemStat, FeatureUsage, SGAAdvice
 )

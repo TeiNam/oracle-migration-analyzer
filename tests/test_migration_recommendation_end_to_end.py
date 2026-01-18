@@ -408,7 +408,7 @@ class TestMigrationRecommendationScenarios:
             IntegratedAnalysisResult,
             AnalysisMetrics
         )
-        from src.dbcsi.data_models import StatspackData, OSInformation
+        from src.dbcsi.models import StatspackData, OSInformation
         
         # 단순 시스템 데이터 생성
         # DBCSI 결과 (선택적)
@@ -517,7 +517,7 @@ class TestMigrationRecommendationScenarios:
             IntegratedAnalysisResult,
             AnalysisMetrics
         )
-        from src.dbcsi.data_models import StatspackData, OSInformation
+        from src.dbcsi.models import StatspackData, OSInformation
         
         # 중간 복잡도 시스템 데이터 생성
         os_info = OSInformation(
@@ -622,7 +622,7 @@ class TestMigrationRecommendationScenarios:
             IntegratedAnalysisResult,
             AnalysisMetrics
         )
-        from src.dbcsi.data_models import StatspackData, OSInformation
+        from src.dbcsi.models import StatspackData, OSInformation
         
         # 복잡한 시스템 데이터 생성
         os_info = OSInformation(

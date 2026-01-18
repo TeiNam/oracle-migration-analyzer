@@ -273,7 +273,7 @@ def process_single_file(args: argparse.Namespace) -> int:
         print_progress(1, 4, "파싱 완료")
         
         # AWR 데이터인지 확인
-        from .data_models import AWRData
+        from .models import AWRData
         is_awr = isinstance(data, AWRData) and data.is_awr()
         
         if is_awr:
@@ -451,7 +451,7 @@ def process_compare(args: argparse.Namespace) -> int:
         print_progress(2, 4, "파싱 완료")
         
         # AWR 데이터인지 확인
-        from .data_models import AWRData
+        from .models import AWRData
         if not isinstance(data1, AWRData) or not isinstance(data2, AWRData):
             logger.warning("비교 기능은 AWR 파일에 최적화되어 있습니다.")
         

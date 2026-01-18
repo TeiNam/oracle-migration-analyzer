@@ -30,7 +30,7 @@ class AWRParser(StatspackParser):
         Raises:
             StatspackParseError: 파싱 실패 시
         """
-        from ..data_models import AWRData
+        from ..models import AWRData
         
         # 기본 Statspack 섹션 파싱
         statspack_data = super().parse()
@@ -66,7 +66,7 @@ class AWRParser(StatspackParser):
     
     def _parse_iostat_function(self, lines: List[str]) -> List:
         """IOSTAT-FUNCTION 섹션 파싱"""
-        from ..data_models import IOStatFunction
+        from ..models import IOStatFunction
         
         section_lines = self._extract_section(lines, "IOSTAT-FUNCTION")
         iostat_functions = []
@@ -104,7 +104,7 @@ class AWRParser(StatspackParser):
     
     def _parse_percentile_cpu(self, lines: List[str]) -> Dict:
         """PERCENT-CPU 섹션 파싱"""
-        from ..data_models import PercentileCPU
+        from ..models import PercentileCPU
         
         section_lines = self._extract_section(lines, "PERCENT-CPU")
         percentile_cpu = {}
@@ -173,7 +173,7 @@ class AWRParser(StatspackParser):
     
     def _parse_percentile_io(self, lines: List[str]) -> Dict:
         """PERCENT-IO 섹션 파싱"""
-        from ..data_models import PercentileIO
+        from ..models import PercentileIO
         
         section_lines = self._extract_section(lines, "PERCENT-IO")
         percentile_io = {}
@@ -248,7 +248,7 @@ class AWRParser(StatspackParser):
     
     def _parse_workload(self, lines: List[str]) -> List:
         """WORKLOAD 섹션 파싱"""
-        from ..data_models import WorkloadProfile
+        from ..models import WorkloadProfile
         
         section_lines = self._extract_section(lines, "WORKLOAD")
         workload_profiles = []
@@ -349,7 +349,7 @@ class AWRParser(StatspackParser):
     
     def _parse_buffer_cache(self, lines: List[str]) -> List:
         """BUFFER-CACHE 섹션 파싱"""
-        from ..data_models import BufferCacheStats
+        from ..models import BufferCacheStats
         
         section_lines = self._extract_section(lines, "BUFFER-CACHE")
         buffer_cache_stats = []

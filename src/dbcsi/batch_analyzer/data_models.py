@@ -7,7 +7,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple, Union
 
-from ..data_models import StatspackData, AWRData
+from ..models import StatspackData, AWRData
 from ..migration_analyzer import MigrationComplexity, TargetDatabase
 
 

@@ -7,7 +7,7 @@
 import statistics
 from typing import List, Optional
 
-from ..data_models import AWRData
+from ..models import AWRData
 from .data_models import BatchFileResult, TrendMetrics
 
 

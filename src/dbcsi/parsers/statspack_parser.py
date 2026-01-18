@@ -34,7 +34,7 @@ class StatspackParser(BaseParser):
         Returns:
             (FeatureUsage 객체 리스트, Character Set 정보)
         """
-        from ..data_models import FeatureUsage
+        from ..models import FeatureUsage
         
         features = []
         data_started = False
@@ -158,7 +158,7 @@ class StatspackParser(BaseParser):
     
     def _parse_sga_advice(self, lines: List[str]) -> list:
         """SGA-ADVICE 섹션 파싱"""
-        from ..data_models import SGAAdvice
+        from ..models import SGAAdvice
         
         sga_advice = []
         data_started = False
@@ -201,7 +201,7 @@ class StatspackParser(BaseParser):
         Raises:
             StatspackParseError: 파싱 실패 시
         """
-        from ..data_models import StatspackData, OSInformation
+        from ..models import StatspackData, OSInformation
         
         lines = self._read_file()
         

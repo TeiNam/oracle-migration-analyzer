@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Optional, List, Union
 
 from ..dbcsi.parser import StatspackParser, AWRParser
-from ..dbcsi.data_models import StatspackData, AWRData
+from ..dbcsi.models import StatspackData, AWRData
 from ..oracle_complexity_analyzer import OracleComplexityAnalyzer
 from ..utils.cli_helpers import detect_file_type, print_progress
 from ..utils.file_utils import find_files_by_extension, read_file_with_encoding

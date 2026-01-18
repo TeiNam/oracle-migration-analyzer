@@ -4,7 +4,7 @@ Statspack 분석기 패키지
 DBCSI Statspack 결과 파일을 파싱하고 마이그레이션 난이도를 분석합니다.
 """
 
-from .data_models import (
+from .models import (
     OracleEdition,
     TargetDatabase,
     OSInformation,

@@ -5,7 +5,7 @@ MigrationAnalyzer 클래스를 포함합니다.
 """
 
 from typing import Dict, Optional, Any, List
-from ..data_models import (
+from ..models import (
     StatspackData,
     OracleEdition,
     TargetDatabase,

@@ -5,7 +5,7 @@
 """
 
 from typing import Dict, Any, List
-from ..data_models import StatspackData, TargetDatabase, MigrationComplexity, OracleEdition
+from ..models import StatspackData, TargetDatabase, MigrationComplexity, OracleEdition
 
 
 def calculate_charset_complexity(

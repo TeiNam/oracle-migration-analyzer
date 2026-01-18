@@ -13,7 +13,7 @@ from src.dbcsi.batch_analyzer import (
     BatchAnalyzer, BatchAnalysisResult, BatchFileResult,
     TrendAnalysisResult, TrendMetrics, Anomaly
 )
-from src.dbcsi.data_models import TargetDatabase
+from src.dbcsi.models import TargetDatabase
 
 
 class TestBatchAnalyzer:

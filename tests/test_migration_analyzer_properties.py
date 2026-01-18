@@ -6,7 +6,7 @@ Property-based testing을 사용하여 MigrationAnalyzer의 정확성을 검증�
 
 import pytest
 from hypothesis import given, strategies as st, settings
-from src.dbcsi.data_models import (
+from src.dbcsi.models import (
     StatspackData,
     OSInformation,
     OracleEdition,
@@ -690,7 +690,7 @@ def test_property_read_intensive_workload_classification(read_iops, write_iops):
     
     Validates: Requirements 4.7
     """
-    from src.dbcsi.data_models import AWRData, PercentileIO
+    from src.dbcsi.models import AWRData, PercentileIO
     from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
     
     # 읽기 IOPS가 쓰기 IOPS의 3배 이상인 경우만 테스트
@@ -749,7 +749,7 @@ def test_property_cpu_intensive_workload_instance_recommendation(cpu_pct):
     
     Validates: Requirements 9.2
     """
-    from src.dbcsi.data_models import AWRData, WorkloadProfile
+    from src.dbcsi.models import AWRData, WorkloadProfile
     from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
     
     # AWRData 생성 (CPU 집약적 워크로드)
@@ -827,7 +827,7 @@ def test_property_buffer_cache_efficiency_evaluation(hit_ratio):
     
     Validates: Requirements 6.3
     """
-    from src.dbcsi.data_models import AWRData, BufferCacheStats
+    from src.dbcsi.models import AWRData, BufferCacheStats
     from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
     
     # AWRData 생성
@@ -885,7 +885,7 @@ def test_property_buffer_cache_optimization_recommendation(hit_ratio):
     
     Validates: Requirements 6.4, 10.1
     """
-    from src.dbcsi.data_models import AWRData, BufferCacheStats
+    from src.dbcsi.models import AWRData, BufferCacheStats
     from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
     
     # AWRData 생성
@@ -947,7 +947,7 @@ def test_property_lgwr_io_optimization_recommendation(lgwr_mb_per_s):
     
     Validates: Requirements 11.1
     """
-    from src.dbcsi.data_models import AWRData, IOStatFunction
+    from src.dbcsi.models import AWRData, IOStatFunction
     from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
     
     # AWRData 생성
@@ -1021,7 +1021,7 @@ def test_property_peak_hour_identification(hour_loads):
     
     Validates: Requirements 14.2
     """
-    from src.dbcsi.data_models import AWRData, WorkloadProfile
+    from src.dbcsi.models import AWRData, WorkloadProfile
     from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
     
     # AWRData 생성
@@ -1082,7 +1082,7 @@ def test_property_p99_cpu_priority(p99_cpu, avg_cpu_pct):
     
     Validates: Requirements 3.7, 8.2
     """
-    from src.dbcsi.data_models import AWRData, PercentileCPU, MainMetric
+    from src.dbcsi.models import AWRData, PercentileCPU, MainMetric
     from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
     
     # AWRData 생성
@@ -1161,7 +1161,7 @@ def test_property_p99_io_priority(p99_iops, avg_iops):
     
     Validates: Requirements 4.6, 8.3
     """
-    from src.dbcsi.data_models import AWRData, PercentileIO
+    from src.dbcsi.models import AWRData, PercentileIO
     from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
     
     # AWRData 생성
@@ -1217,7 +1217,7 @@ def test_property_buffer_cache_complexity_impact(hit_ratio):
     
     Validates: Requirements 8.4
     """
-    from src.dbcsi.data_models import AWRData, BufferCacheStats
+    from src.dbcsi.models import AWRData, BufferCacheStats
     from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
     
     # AWRData 생성
@@ -1273,7 +1273,7 @@ def test_property_p99_based_instance_sizing(p99_cpu, memory_gb):
     
     Validates: Requirements 12.1
     """
-    from src.dbcsi.data_models import AWRData, PercentileCPU, MemoryMetric
+    from src.dbcsi.models import AWRData, PercentileCPU, MemoryMetric
     from src.dbcsi.migration_analyzer import EnhancedMigrationAnalyzer
     
     # AWRData 생성

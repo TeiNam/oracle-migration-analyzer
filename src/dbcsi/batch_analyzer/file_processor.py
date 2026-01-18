@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Union
 from datetime import datetime
 
-from ..data_models import StatspackData, AWRData
+from ..models import StatspackData, AWRData
 from ..logging_config import get_logger
 
 # 로거 초기화

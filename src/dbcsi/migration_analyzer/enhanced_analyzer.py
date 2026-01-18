@@ -6,7 +6,7 @@ EnhancedMigrationAnalyzer 클래스를 포함합니다 - AWR 데이터 기반 �
 
 from typing import Optional, Dict, Any
 import statistics
-from ..data_models import (
+from ..models import (
     TargetDatabase,
     EnhancedMigrationComplexity,
     WorkloadPattern,

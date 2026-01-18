@@ -196,7 +196,7 @@ class BaseParser:
     
     def _parse_memory(self, lines: List[str]) -> list:
         """MEMORY 섹션 파싱"""
-        from ..data_models import MemoryMetric
+        from ..models import MemoryMetric
         
         memory_metrics = []
         data_started = False
@@ -229,7 +229,7 @@ class BaseParser:
     
     def _parse_size_on_disk(self, lines: List[str]) -> list:
         """SIZE-ON-DISK 섹션 파싱"""
-        from ..data_models import DiskSize
+        from ..models import DiskSize
         
         disk_sizes = []
         data_started = False
@@ -259,7 +259,7 @@ class BaseParser:
     
     def _parse_main_metrics(self, lines: List[str]) -> list:
         """MAIN-METRICS 섹션 파싱"""
-        from ..data_models import MainMetric
+        from ..models import MainMetric
         
         main_metrics = []
         data_started = False
@@ -314,7 +314,7 @@ class BaseParser:
     
     def _parse_wait_events(self, lines: List[str]) -> list:
         """TOP-N-TIMED-EVENTS 섹션 파싱"""
-        from ..data_models import WaitEvent
+        from ..models import WaitEvent
         
         wait_events = []
         data_started = False
@@ -353,7 +353,7 @@ class BaseParser:
     
     def _parse_sysstat(self, lines: List[str]) -> list:
         """SYSSTAT 섹션 파싱"""
-        from ..data_models import SystemStat
+        from ..models import SystemStat
         
         system_stats = []
         data_started = False

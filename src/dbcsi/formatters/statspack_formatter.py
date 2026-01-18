@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict
 
 from .base_formatter import BaseFormatter
-from ..data_models import (
+from ..models import (
     StatspackData,
     MigrationComplexity,
     TargetDatabase,

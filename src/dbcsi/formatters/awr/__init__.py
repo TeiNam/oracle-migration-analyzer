@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Dict
 
 from ..statspack_formatter import StatspackResultFormatter
-from ...data_models import MigrationComplexity, TargetDatabase
+from ...models import MigrationComplexity, TargetDatabase
 
 from .executive_summary import ExecutiveSummaryMixin
 from .workload_analysis import WorkloadAnalysisMixin

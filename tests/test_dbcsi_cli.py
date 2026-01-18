@@ -20,7 +20,7 @@ from src.dbcsi.cli import (
     process_directory,
     main
 )
-from src.dbcsi.data_models import TargetDatabase
+from src.dbcsi.models import TargetDatabase
 
 
 class TestCLIParser:

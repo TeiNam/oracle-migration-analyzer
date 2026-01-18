@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Union, Dict, Any
 from pathlib import Path
 
-from ..data_models import (
+from ..models import (
     StatspackData,
     MigrationComplexity,
     TargetDatabase,
