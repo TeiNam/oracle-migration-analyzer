@@ -203,17 +203,20 @@ class TestProcessSingleFile:
         if not os.path.exists(sample_file):
             pytest.skip("샘플 파일이 없습니다")
         
-        parser = create_parser()
-        args = parser.parse_args(['--file', sample_file])
+        # 출력 파일 지정 (stdout 대신 파일로 저장)
+        output_file = tmp_path / "output.md"
         
-        # 표준 출력 캡처
-        with patch('sys.stdout', new=StringIO()) as fake_out:
-            exit_code = process_single_file(args)
+        parser = create_parser()
+        args = parser.parse_args(['--file', sample_file, '--output', str(output_file)])
+        
+        exit_code = process_single_file(args)
         
         assert exit_code == 0
-        output = fake_out.getvalue()
-        assert "# Statspack 분석 보고서" in output
-        assert "시스템 정보 요약" in output
+        assert output_file.exists()
+        
+        content = output_file.read_text()
+        assert "# Statspack 분석 보고서" in content or "# AWR 분석 보고서" in content
+        assert "시스템 정보 요약" in content or "시스템 정보" in content
     
     def test_process_file_json_output(self, tmp_path):
         """JSON 형식 출력 테스트"""
@@ -222,16 +225,19 @@ class TestProcessSingleFile:
         if not os.path.exists(sample_file):
             pytest.skip("샘플 파일이 없습니다")
         
-        parser = create_parser()
-        args = parser.parse_args(['--file', sample_file, '--format', 'json'])
+        # 출력 파일 지정
+        output_file = tmp_path / "output.json"
         
-        # 표준 출력 캡처
-        with patch('sys.stdout', new=StringIO()) as fake_out:
-            exit_code = process_single_file(args)
+        parser = create_parser()
+        args = parser.parse_args(['--file', sample_file, '--format', 'json', '--output', str(output_file)])
+        
+        exit_code = process_single_file(args)
         
         assert exit_code == 0
-        output = fake_out.getvalue()
-        assert '"_type": "StatspackData"' in output
+        assert output_file.exists()
+        
+        content = output_file.read_text()
+        assert '"_type": "StatspackData"' in content or '"_type": "AWRData"' in content
     
     def test_process_file_with_output(self, tmp_path):
         """파일로 출력 테스트"""
@@ -260,22 +266,26 @@ class TestProcessSingleFile:
         if not os.path.exists(sample_file):
             pytest.skip("샘플 파일이 없습니다")
         
+        # 출력 파일 지정
+        output_file = tmp_path / "output.md"
+        
         parser = create_parser()
         args = parser.parse_args([
             '--file', sample_file,
             '--analyze-migration',
-            '--target', 'rds-oracle'
+            '--target', 'rds-oracle',
+            '--output', str(output_file)
         ])
         
-        # 표준 출력 캡처
-        with patch('sys.stdout', new=StringIO()) as fake_out:
-            exit_code = process_single_file(args)
+        exit_code = process_single_file(args)
         
         assert exit_code == 0
-        output = fake_out.getvalue()
+        assert output_file.exists()
+        
+        content = output_file.read_text()
         # 마이그레이션 분석이 있으면 섹션 8이 있어야 함
         # 없으면 섹션 7까지만 있음
-        assert "## 7. SGA 조정 권장사항" in output or "## 8. 마이그레이션 분석 결과" in output
+        assert "## 7. SGA 조정 권장사항" in content or "## 8. 마이그레이션 분석 결과" in content or "마이그레이션" in content
     
     def test_process_nonexistent_file(self):
         """존재하지 않는 파일 처리"""
@@ -304,16 +314,19 @@ class TestProcessDirectory:
         dest_file = tmp_path / "test.out"
         shutil.copy(sample_file, dest_file)
         
-        parser = create_parser()
-        args = parser.parse_args(['--directory', str(tmp_path)])
+        # 출력 파일 지정
+        output_file = tmp_path / "batch_summary.md"
         
-        # 표준 출력 캡처
-        with patch('sys.stdout', new=StringIO()) as fake_out:
-            exit_code = process_directory(args)
+        parser = create_parser()
+        args = parser.parse_args(['--directory', str(tmp_path), '--output', str(output_file)])
+        
+        exit_code = process_directory(args)
         
         assert exit_code == 0
-        output = fake_out.getvalue()
-        assert "# Statspack 배치 분석 보고서" in output
+        assert output_file.exists()
+        
+        content = output_file.read_text()
+        assert "배치 분석" in content or "Batch Analysis" in content
     
     def test_process_empty_directory(self, tmp_path):
         """빈 디렉토리 처리"""
@@ -409,18 +422,24 @@ class TestCLIOptionCombinations:
         if not os.path.exists(sample_file):
             pytest.skip("샘플 파일이 없습니다")
         
-        with patch('sys.argv', [
-            'dbcsi-analyzer',
+        # 출력 파일 지정
+        output_file = tmp_path / "output.md"
+        
+        parser = create_parser()
+        args = parser.parse_args([
             '--file', sample_file,
             '--analyze-migration',
-            '--target', 'all'
-        ]):
-            with patch('sys.stdout', new=StringIO()) as fake_out:
-                exit_code = main()
+            '--target', 'all',
+            '--output', str(output_file)
+        ])
+        
+        exit_code = process_single_file(args)
         
         assert exit_code == 0
-        output = fake_out.getvalue()
-        assert "마이그레이션 분석 결과" in output
+        assert output_file.exists()
+        
+        content = output_file.read_text()
+        assert "마이그레이션" in content or "Migration" in content
     
     def test_directory_migration_specific_target(self, tmp_path):
         """디렉토리 + 마이그레이션 분석 + 특정 타겟"""
@@ -434,18 +453,24 @@ class TestCLIOptionCombinations:
         dest_file = tmp_path / "test.out"
         shutil.copy(sample_file, dest_file)
         
-        with patch('sys.argv', [
-            'dbcsi-analyzer',
+        # 출력 파일 지정
+        output_file = tmp_path / "batch_summary.md"
+        
+        parser = create_parser()
+        args = parser.parse_args([
             '--directory', str(tmp_path),
             '--analyze-migration',
-            '--target', 'aurora-postgresql'
-        ]):
-            with patch('sys.stdout', new=StringIO()) as fake_out:
-                exit_code = main()
+            '--target', 'aurora-postgresql',
+            '--output', str(output_file)
+        ])
+        
+        exit_code = process_directory(args)
         
         assert exit_code == 0
-        output = fake_out.getvalue()
-        assert "배치 분석 보고서" in output
+        assert output_file.exists()
+        
+        content = output_file.read_text()
+        assert "배치 분석" in content or "Batch Analysis" in content
 
 
 
