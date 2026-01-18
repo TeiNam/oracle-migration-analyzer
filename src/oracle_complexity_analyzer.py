@@ -5,6 +5,7 @@ Oracle SQL 및 PL/SQL 코드의 복잡도를 분석하여 PostgreSQL 또는 MySQ
 마이그레이션 난이도를 0-10 척도로 평가하는 도구입니다.
 """
 
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict
@@ -640,11 +641,130 @@ class OracleComplexityAnalyzer:
         except Exception as e:
             raise IOError(f"파일 읽기 실패: {e}")
         
+        # 배치 PL/SQL 파일 여부 확인
+        if self._is_batch_plsql(content):
+            return self.analyze_batch_plsql_file(file_path)
+        
         # 파일 내용 기반으로 SQL/PL/SQL 판단
         if self._is_plsql(content):
             return self.analyze_plsql(content)
         else:
             return self.analyze_sql(content)
+    
+    def analyze_batch_plsql_file(self, file_path: str) -> Dict[str, any]:
+        """배치 PL/SQL 파일 분석
+        
+        여러 PL/SQL 객체가 포함된 파일을 분석합니다.
+        ora_plsql_full.sql 스크립트의 출력 형식을 지원합니다.
+        
+        Args:
+            file_path: 분석할 배치 PL/SQL 파일 경로
+            
+        Returns:
+            Dict: 배치 분석 결과
+                - total_objects: 전체 객체 수
+                - statistics: 객체 타입별 통계
+                - results: 개별 객체 분석 결과 리스트
+                - summary: 요약 정보
+                
+        Raises:
+            FileNotFoundError: 파일이 존재하지 않는 경우
+            IOError: 파일 읽기 실패
+        """
+        from .parsers.batch_plsql_parser import BatchPLSQLParser
+        
+        # 파일 존재 여부 확인
+        file_path_obj = Path(file_path)
+        if not file_path_obj.exists():
+            raise FileNotFoundError(f"파일을 찾을 수 없습니다: {file_path}")
+        
+        # 파일 읽기
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except Exception as e:
+            raise IOError(f"파일 읽기 실패: {e}")
+        
+        # 배치 파서로 객체 분리
+        batch_parser = BatchPLSQLParser(content)
+        objects = batch_parser.parse()
+        
+        if not objects:
+            return {
+                'total_objects': 0,
+                'statistics': {},
+                'results': [],
+                'summary': {
+                    'message': '분석 가능한 PL/SQL 객체를 찾을 수 없습니다.'
+                }
+            }
+        
+        # 각 객체 분석
+        results = []
+        failed_objects = []
+        
+        for obj in objects:
+            try:
+                # 개별 객체 분석
+                result = self.analyze_plsql(obj.ddl_code)
+                results.append({
+                    'owner': obj.owner,
+                    'object_type': obj.object_type,
+                    'object_name': obj.object_name,
+                    'line_range': f"{obj.line_start}-{obj.line_end}",
+                    'analysis': result
+                })
+            except Exception as e:
+                failed_objects.append({
+                    'owner': obj.owner,
+                    'object_type': obj.object_type,
+                    'object_name': obj.object_name,
+                    'error': str(e)
+                })
+        
+        # 통계 계산
+        statistics = batch_parser.get_statistics()
+        
+        # 복잡도 요약
+        complexity_summary = self._calculate_batch_complexity_summary(results)
+        
+        return {
+            'total_objects': len(objects),
+            'analyzed_objects': len(results),
+            'failed_objects': len(failed_objects),
+            'statistics': statistics,
+            'results': results,
+            'failed': failed_objects,
+            'summary': complexity_summary
+        }
+    
+    def _calculate_batch_complexity_summary(self, results: List[Dict]) -> Dict:
+        """배치 분석 결과의 복잡도 요약 계산
+        
+        Args:
+            results: 개별 객체 분석 결과 리스트
+            
+        Returns:
+            Dict: 복잡도 요약 정보
+        """
+        if not results:
+            return {}
+        
+        scores = [r['analysis'].normalized_score for r in results]
+        
+        return {
+            'average_score': sum(scores) / len(scores),
+            'max_score': max(scores),
+            'min_score': min(scores),
+            'complexity_distribution': {
+                'very_simple': sum(1 for s in scores if s <= 1),
+                'simple': sum(1 for s in scores if 1 < s <= 3),
+                'moderate': sum(1 for s in scores if 3 < s <= 5),
+                'complex': sum(1 for s in scores if 5 < s <= 7),
+                'very_complex': sum(1 for s in scores if 7 < s <= 9),
+                'extremely_complex': sum(1 for s in scores if s > 9)
+            }
+        }
     
     def _is_plsql(self, content: str) -> bool:
         """PL/SQL 여부 판단
@@ -679,6 +799,24 @@ class OracleComplexityAnalyzer:
         
         # PL/SQL 키워드가 있으면 PL/SQL로 판단
         return any(kw in upper_content for kw in plsql_keywords)
+    
+    def _is_batch_plsql(self, content: str) -> bool:
+        """배치 PL/SQL 파일 여부 판단
+        
+        여러 PL/SQL 객체가 포함된 배치 파일인지 판단합니다.
+        
+        Args:
+            content: 분석할 파일 내용
+            
+        Returns:
+            bool: 배치 PL/SQL 파일이면 True
+        """
+        # 배치 파일 헤더 패턴 확인
+        header_pattern = r'-- Owner:\s*\w+\s*\n-- Type:\s*\w+\s*\n-- Name:\s*\w+'
+        matches = re.findall(header_pattern, content, re.MULTILINE)
+        
+        # 2개 이상의 객체 헤더가 있으면 배치 파일로 판단
+        return len(matches) >= 2
     
     def export_json(self, result: Union[SQLAnalysisResult, PLSQLAnalysisResult], 
                     filename: str) -> str:
@@ -750,6 +888,60 @@ class OracleComplexityAnalyzer:
         
         # Markdown 변환
         markdown_str = ResultFormatter.to_markdown(result)
+        
+        # 파일 저장
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(markdown_str)
+        except Exception as e:
+            raise IOError(f"Markdown 파일 저장 실패: {e}")
+        
+        return str(file_path)
+    
+    def export_json_string(self, json_str: str, source_filename: str) -> str:
+        """JSON 문자열을 파일로 저장
+        
+        Args:
+            json_str: JSON 문자열
+            source_filename: 원본 파일명 (확장자 변경용)
+            
+        Returns:
+            str: 저장된 파일의 전체 경로
+        """
+        # 날짜 폴더 생성
+        date_folder = self._get_date_folder()
+        
+        # 파일명 생성 (확장자를 .json으로 변경)
+        source_path = Path(source_filename)
+        filename = source_path.stem + '.json'
+        file_path = date_folder / filename
+        
+        # 파일 저장
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(json_str)
+        except Exception as e:
+            raise IOError(f"JSON 파일 저장 실패: {e}")
+        
+        return str(file_path)
+    
+    def export_markdown_string(self, markdown_str: str, source_filename: str) -> str:
+        """Markdown 문자열을 파일로 저장
+        
+        Args:
+            markdown_str: Markdown 문자열
+            source_filename: 원본 파일명 (확장자 변경용)
+            
+        Returns:
+            str: 저장된 파일의 전체 경로
+        """
+        # 날짜 폴더 생성
+        date_folder = self._get_date_folder()
+        
+        # 파일명 생성 (확장자를 .md로 변경)
+        source_path = Path(source_filename)
+        filename = source_path.stem + '.md'
+        file_path = date_folder / filename
         
         # 파일 저장
         try:
@@ -1461,6 +1653,111 @@ def print_result_console(result: Union[SQLAnalysisResult, PLSQLAnalysisResult]):
         print(f"  - 비즈니스 로직: {result.business_logic:.2f}")
         print(f"  - 변환 난이도: {result.conversion_difficulty:.2f}")
         if hasattr(result, 'mysql_constraints') and result.mysql_constraints > 0:
+            print(f"  - MySQL 제약사항: {result.mysql_constraints:.2f}")
+    
+    print("\n" + "="*80 + "\n")
+
+
+def print_batch_result_console(batch_result: dict, target_db: TargetDatabase):
+    """배치 PL/SQL 분석 결과를 콘솔에 출력
+    
+    Args:
+        batch_result: 배치 분석 결과 딕셔너리
+        target_db: 타겟 데이터베이스
+    """
+    print("\n" + "="*80)
+    print("📊 배치 PL/SQL 분석 결과")
+    print("="*80)
+    
+    # 전체 요약
+    print(f"\n타겟 데이터베이스: {target_db.value}")
+    print(f"전체 객체 수: {batch_result['total_objects']}")
+    print(f"분석 성공: {batch_result['analyzed_objects']}")
+    print(f"분석 실패: {batch_result['failed_objects']}")
+    
+    # 객체 타입별 통계
+    if batch_result.get('statistics'):
+        print("\n📈 객체 타입별 통계:")
+        for obj_type, count in sorted(batch_result['statistics'].items()):
+            print(f"  - {obj_type}: {count}")
+    
+    # 복잡도 요약
+    if batch_result.get('summary'):
+        summary = batch_result['summary']
+        print("\n🎯 복잡도 요약:")
+        print(f"  - 평균 복잡도: {summary.get('average_score', 0):.2f}")
+        print(f"  - 최대 복잡도: {summary.get('max_score', 0):.2f}")
+        print(f"  - 최소 복잡도: {summary.get('min_score', 0):.2f}")
+        
+        # 복잡도 분포
+        if summary.get('complexity_distribution'):
+            dist = summary['complexity_distribution']
+            print("\n  복잡도 분포:")
+            print(f"    - 매우 간단 (0-1): {dist.get('very_simple', 0)}")
+            print(f"    - 간단 (1-3): {dist.get('simple', 0)}")
+            print(f"    - 중간 (3-5): {dist.get('moderate', 0)}")
+            print(f"    - 복잡 (5-7): {dist.get('complex', 0)}")
+            print(f"    - 매우 복잡 (7-9): {dist.get('very_complex', 0)}")
+            print(f"    - 극도로 복잡 (9-10): {dist.get('extremely_complex', 0)}")
+    
+    # 복잡도 높은 객체 Top 5
+    if batch_result.get('results'):
+        results = batch_result['results']
+        sorted_results = sorted(results, key=lambda x: x['analysis'].normalized_score, reverse=True)
+        
+        print("\n🔥 복잡도 높은 객체 Top 5:")
+        for i, obj in enumerate(sorted_results[:5], 1):
+            print(f"  {i}. {obj['owner']}.{obj['object_name']} ({obj['object_type']})")
+            print(f"     복잡도: {obj['analysis'].normalized_score:.2f}/10")
+    
+    # 실패한 객체
+    if batch_result.get('failed'):
+        print("\n❌ 분석 실패 객체:")
+        for failed in batch_result['failed'][:5]:  # 최대 5개만 표시
+            print(f"  - {failed['owner']}.{failed['object_name']} ({failed['object_type']})")
+            print(f"    에러: {failed['error']}")
+        if len(batch_result['failed']) > 5:
+            print(f"  ... 외 {len(batch_result['failed']) - 5}개")
+    
+    print("\n" + "="*80 + "\n")
+
+
+def print_result_console(result: Union[SQLAnalysisResult, PLSQLAnalysisResult]):
+    """분석 결과를 콘솔에 출력
+    
+    Args:
+        result: 분석 결과 객체
+    """
+    print("\n" + "="*80)
+    print("📊 Oracle 복잡도 분석 결과")
+    print("="*80)
+    
+    # 기본 정보
+    print(f"\n타겟 데이터베이스: {result.target_database.value}")
+    print(f"복잡도 점수: {result.normalized_score:.2f} / 10")
+    print(f"복잡도 레벨: {result.complexity_level.value}")
+    print(f"권장사항: {result.recommendation}")
+    
+    # 세부 점수
+    print("\n📈 세부 점수:")
+    
+    # SQL 결과인지 PL/SQL 결과인지 속성으로 판단
+    if hasattr(result, 'structural_complexity'):
+        # SQLAnalysisResult
+        print(f"  - 구조적 복잡성: {result.structural_complexity:.2f}")
+        print(f"  - Oracle 특화 기능: {result.oracle_specific_features:.2f}")
+        print(f"  - 함수/표현식: {result.functions_expressions:.2f}")
+        print(f"  - 데이터 볼륨: {result.data_volume:.2f}")
+        print(f"  - 실행 복잡성: {result.execution_complexity:.2f}")
+        print(f"  - 변환 난이도: {result.conversion_difficulty:.2f}")
+    else:
+        # PLSQLAnalysisResult
+        print(f"  - 기본 점수: {result.base_score:.2f}")
+        print(f"  - 코드 복잡도: {result.code_complexity:.2f}")
+        print(f"  - Oracle 특화 기능: {result.oracle_features:.2f}")
+        print(f"  - 비즈니스 로직: {result.business_logic:.2f}")
+        print(f"  - 변환 난이도: {result.conversion_difficulty:.2f}")
+        if hasattr(result, 'mysql_constraints') and result.mysql_constraints > 0:
             print(f"  - MySQL 제약: {result.mysql_constraints:.2f}")
         if hasattr(result, 'app_migration_penalty') and result.app_migration_penalty > 0:
             print(f"  - 애플리케이션 이관 페널티: {result.app_migration_penalty:.2f}")
@@ -1492,50 +1789,6 @@ def print_result_console(result: Union[SQLAnalysisResult, PLSQLAnalysisResult]):
     print("\n" + "="*80 + "\n")
 
 
-def print_batch_result_console(batch_result: BatchAnalysisResult):
-    """배치 분석 결과를 콘솔에 출력
-    
-    Args:
-        batch_result: 배치 분석 결과 객체
-    """
-    print("\n" + "="*80)
-    print("📊 Oracle 복잡도 분석 배치 리포트")
-    print("="*80)
-    
-    # 요약 통계
-    print(f"\n분석 시간: {batch_result.analysis_time}")
-    print(f"타겟 데이터베이스: {batch_result.target_database.value}")
-    print(f"\n전체 파일 수: {batch_result.total_files}")
-    print(f"분석 성공: {batch_result.success_count}")
-    print(f"분석 실패: {batch_result.failure_count}")
-    print(f"평균 복잡도 점수: {batch_result.average_score:.2f} / 10")
-    
-    # 복잡도 레벨별 분포
-    print("\n📈 복잡도 레벨별 분포:")
-    for level in ComplexityLevel:
-        count = batch_result.complexity_distribution.get(level.value, 0)
-        percentage = (count / batch_result.success_count * 100) if batch_result.success_count > 0 else 0
-        bar = "█" * int(percentage / 5)  # 5%당 1개 블록
-        print(f"  {level.value:15s}: {count:3d} ({percentage:5.1f}%) {bar}")
-    
-    # 복잡도 높은 파일 Top 10
-    print("\n🔥 복잡도 높은 파일 Top 10:")
-    batch_analyzer = BatchAnalyzer(None)  # analyzer는 필요 없음
-    top_files = batch_analyzer.get_top_complex_files(batch_result, 10)
-    
-    for idx, (file_name, score) in enumerate(top_files, 1):
-        print(f"  {idx:2d}. {file_name:60s} {score:5.2f}")
-    
-    # 실패한 파일 목록
-    if batch_result.failed_files:
-        print("\n❌ 분석 실패 파일:")
-        for file_name, error in batch_result.failed_files.items():
-            print(f"  - {file_name}")
-            print(f"    에러: {error}")
-    
-    print("\n" + "="*80 + "\n")
-
-
 def analyze_single_file(args):
     """단일 파일 분석 실행
     
@@ -1546,6 +1799,9 @@ def analyze_single_file(args):
         int: 종료 코드 (0: 성공, 1: 실패)
     """
     try:
+        # 필요한 모듈 import
+        from src.formatters.result_formatter import ResultFormatter
+        
         # 타겟 데이터베이스 설정
         target_db = normalize_target(args.target)
         
@@ -1559,7 +1815,25 @@ def analyze_single_file(args):
         print(f"📄 파일 분석 중: {args.file}")
         result = analyzer.analyze_file(args.file)
         
-        # 결과 출력
+        # 배치 분석 결과인지 확인
+        if isinstance(result, dict) and 'total_objects' in result:
+            # 배치 PL/SQL 분석 결과
+            print_batch_result_console(result, target_db)
+            
+            # 파일 출력
+            if args.output in ['json', 'both']:
+                json_output = ResultFormatter.batch_to_json(result)
+                json_file = analyzer.export_json_string(json_output, args.file)
+                print(f"✅ JSON 리포트 저장: {json_file}")
+            
+            if args.output in ['markdown', 'both']:
+                md_output = ResultFormatter.batch_to_markdown(result, target_db.value)
+                md_file = analyzer.export_markdown_string(md_output, args.file)
+                print(f"✅ Markdown 리포트 저장: {md_file}")
+            
+            return 0
+        
+        # 일반 분석 결과 (SQL 또는 단일 PL/SQL)
         if args.output in ['console', 'both']:
             print_result_console(result)
         

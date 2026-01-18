@@ -1,0 +1,922 @@
+============================================================================
+=                                                                          =
+=     AWS ProServe Migration ORACLE to RDS                                 =
+=     Oracle PLSQL Full CHECK SCRIPT Ver.1.0                               =
+=                                                                          =
+=     Made by - Tei Nam                                                    =
+=     Create date. 2026/01/16                                              =
+=     Modify date. 2026/01/16                                              =
+=                                                                          =
+============================================================================
+
+-- ============================================================
+-- Owner: IX
+-- Type: TYPE
+-- Name: ORDER_EVENT_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "IX"."ORDER_EVENT_TYP" AS OBJECT (
+	order_id 	NUMBER(12),
+	product_id  	NUMBER(6),
+	customer_id	NUMBER(6),
+	cust_first_name	VARCHAR2(20),
+	cust_last_name	VARCHAR2(20),
+	order_status  	NUMBER(2),
+	delivery_date	DATE
+);
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: FUNCTION
+-- Name: GET_PHONE_NUMBER_F
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE FUNCTION "OE"."GET_PHONE_NUMBER_F"
+  (p_in INTEGER, p_phonelist phone_list_typ)
+RETURN VARCHAR2 AS
+  TYPE phone_list IS VARRAY(5) OF VARCHAR2(25);
+  phone_out varchar2(25) := null;
+  v_size INTEGER;
+BEGIN
+    IF p_phonelist.FIRST IS NULL OR
+       p_in > (p_phonelist.LAST + 1) - p_phonelist.FIRST THEN
+      RETURN phone_out;
+    ELSE
+      phone_out := p_phonelist(p_in);
+      RETURN phone_out;
+    END IF;
+END;
+/
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: PROCEDURE
+-- Name: PROC_CLEANUP_OLD_ORDERS
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE PROCEDURE "OE"."PROC_CLEANUP_OLD_ORDERS" (
+    p_days_old    IN  NUMBER DEFAULT 365,
+    p_deleted_cnt OUT NUMBER
+) AS
+BEGIN
+    DELETE FROM oe.order_items
+    WHERE order_id IN (
+        SELECT order_id FROM oe.orders
+        WHERE order_date < SYSDATE - p_days_old
+    );
+
+    DELETE FROM oe.orders
+    WHERE order_date < SYSDATE - p_days_old;
+
+    p_deleted_cnt := SQL%ROWCOUNT;
+    COMMIT;
+END;
+/
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: PROCEDURE
+-- Name: PROC_SALES_REPORT
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE PROCEDURE "OE"."PROC_SALES_REPORT" (
+    p_start_date  IN  DATE,
+    p_end_date    IN  DATE,
+    p_total       OUT NUMBER,
+    p_order_cnt   OUT NUMBER
+) AS
+BEGIN
+    SELECT NVL(SUM(order_total), 0), COUNT(*)
+    INTO p_total, p_order_cnt
+    FROM oe.orders
+    WHERE order_date BETWEEN p_start_date AND p_end_date;
+END;
+/
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: PROCEDURE
+-- Name: PROC_UPDATE_CUSTOMER
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE PROCEDURE "OE"."PROC_UPDATE_CUSTOMER" (
+    p_customer_id   IN  NUMBER,
+    p_credit_limit  IN  NUMBER DEFAULT NULL,
+    p_email         IN  VARCHAR2 DEFAULT NULL
+) AS
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count
+    FROM oe.customers
+    WHERE customer_id = p_customer_id;
+
+    IF v_count = 0 THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Customer not found');
+    END IF;
+
+    UPDATE oe.customers
+    SET credit_limit = NVL(p_credit_limit, credit_limit),
+        cust_email = NVL(p_email, cust_email)
+    WHERE customer_id = p_customer_id;
+
+    COMMIT;
+END;
+/
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TRIGGER
+-- Name: INSERT_ORD_LINE
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TRIGGER "OE"."INSERT_ORD_LINE"
+  BEFORE INSERT ON order_items
+  FOR EACH ROW
+  DECLARE
+    new_line number;
+  BEGIN
+    SELECT (NVL(MAX(line_item_id),0)+1) INTO new_line
+      FROM order_items
+      WHERE order_id = :new.order_id;
+    :new.line_item_id := new_line;
+  END;
+/
+ALTER TRIGGER "OE"."INSERT_ORD_LINE" ENABLE;
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TRIGGER
+-- Name: ORDERS_ITEMS_TRG
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TRIGGER "OE"."ORDERS_ITEMS_TRG" INSTEAD OF INSERT ON NESTED
+ TABLE order_item_list OF oc_orders FOR EACH ROW
+DECLARE
+    prod  product_information_typ;
+BEGIN
+    SELECT DEREF(:NEW.product_ref) INTO prod FROM DUAL;
+    INSERT INTO order_items VALUES (prod.product_id, :NEW.order_id,
+                                    :NEW.line_item_id, :NEW.unit_price,
+                                    :NEW.quantity);
+END;
+/
+ALTER TRIGGER "OE"."ORDERS_ITEMS_TRG" ENABLE;
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TRIGGER
+-- Name: ORDERS_TRG
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TRIGGER "OE"."ORDERS_TRG" INSTEAD OF INSERT
+ ON oc_orders FOR EACH ROW
+BEGIN
+   INSERT INTO ORDERS (order_id, order_mode, order_total,
+                       sales_rep_id, order_status)
+               VALUES (:NEW.order_id, :NEW.order_mode,
+                       :NEW.order_total, :NEW.sales_rep_id,
+                       :NEW.order_status);
+END;
+/
+ALTER TRIGGER "OE"."ORDERS_TRG" ENABLE;
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TRIGGER
+-- Name: PURCHASEORDER$xd
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TRIGGER "OE"."PURCHASEORDER$xd" after delete or update on "OE"."PURCHASEORDER" for each row BEGIN  IF (deleting) THEN xdb.xdb_pitrig_pkg.pitrig_del('OE','PURCHASEORDER', :old.sys_nc_oid$, '481E89C4A1385B7FE065D5F3EDFC1B7E' ); END IF;   IF (updating) THEN xdb.xdb_pitrig_pkg.pitrig_upd('OE','PURCHASEORDER', :old.sys_nc_oid$, '481E89C4A1385B7FE065D5F3EDFC1B7E', user ); END IF; END;
+/
+ALTER TRIGGER "OE"."PURCHASEORDER$xd" ENABLE;
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: ACTIONS_T
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."ACTIONS_T" AS OBJECT ("SYS_XDBPD$" "XDB"."XDB$RAW_LIST_T","ACTION" "ACTION_V")NOT FINAL INSTANTIABLE
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: ACTION_T
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."ACTION_T" AS OBJECT ("SYS_XDBPD$" "XDB"."XDB$RAW_LIST_T","ACTIONED_BY" VARCHAR2(10 CHAR),"DATE_ACTIONED" DATE)FINAL INSTANTIABLE
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: ACTION_V
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."ACTION_V" AS VARRAY(4) OF "ACTION_T"
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: CATALOG_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."CATALOG_TYP"
+
+ UNDER composite_category_typ
+      (
+    MEMBER FUNCTION getCatalogName RETURN VARCHAR2
+       , OVERRIDING MEMBER FUNCTION category_describe RETURN VARCHAR2
+      );
+/
+CREATE OR REPLACE EDITIONABLE TYPE BODY "OE"."CATALOG_TYP" AS
+  OVERRIDING MEMBER FUNCTION category_describe RETURN varchar2 IS
+  BEGIN
+    RETURN 'catalog_typ';
+  END;
+  MEMBER FUNCTION getCatalogName RETURN varchar2 IS
+  BEGIN
+    -- Return the category name from the supertype
+    RETURN self.category_name;
+  END;
+END;
+/
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: CATALOG_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."CATALOG_TYP"
+
+ UNDER composite_category_typ
+      (
+    MEMBER FUNCTION getCatalogName RETURN VARCHAR2
+       , OVERRIDING MEMBER FUNCTION category_describe RETURN VARCHAR2
+      );
+/
+CREATE OR REPLACE EDITIONABLE TYPE BODY "OE"."CATALOG_TYP" AS
+  OVERRIDING MEMBER FUNCTION category_describe RETURN varchar2 IS
+  BEGIN
+    RETURN 'catalog_typ';
+  END;
+  MEMBER FUNCTION getCatalogName RETURN varchar2 IS
+  BEGIN
+    -- Return the category name from the supertype
+    RETURN self.category_name;
+  END;
+END;
+/
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: CATEGORY_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."CATEGORY_TYP"
+
+ AS OBJECT
+    ( category_name           VARCHAR2(50)
+    , category_description    VARCHAR2(1000)
+    , category_id             NUMBER(2)
+    , NOT instantiable
+      MEMBER FUNCTION category_describe RETURN VARCHAR2
+      )
+  NOT INSTANTIABLE NOT FINAL
+ ALTER TYPE "OE"."CATEGORY_TYP"
+ ADD ATTRIBUTE (parent_category_id number(2)) CASCADE
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: CATEGORY_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."CATEGORY_TYP"
+
+ AS OBJECT
+    ( category_name           VARCHAR2(50)
+    , category_description    VARCHAR2(1000)
+    , category_id             NUMBER(2)
+    , NOT instantiable
+      MEMBER FUNCTION category_describe RETURN VARCHAR2
+      )
+  NOT INSTANTIABLE NOT FINAL
+ ALTER TYPE "OE"."CATEGORY_TYP"
+ ADD ATTRIBUTE (parent_category_id number(2)) CASCADE
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: COMPOSITE_CATEGORY_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."COMPOSITE_CATEGORY_TYP"
+
+ UNDER category_typ
+      (
+    subcategory_ref_list subcategory_ref_list_typ
+      , OVERRIDING MEMBER FUNCTION  category_describe RETURN VARCHAR2
+      )
+  NOT FINAL;
+/
+CREATE OR REPLACE EDITIONABLE TYPE BODY "OE"."COMPOSITE_CATEGORY_TYP" AS
+    OVERRIDING MEMBER FUNCTION category_describe RETURN VARCHAR2 IS
+    BEGIN
+      RETURN 'composite_category_typ';
+    END;
+   END;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: COMPOSITE_CATEGORY_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."COMPOSITE_CATEGORY_TYP"
+
+ UNDER category_typ
+      (
+    subcategory_ref_list subcategory_ref_list_typ
+      , OVERRIDING MEMBER FUNCTION  category_describe RETURN VARCHAR2
+      )
+  NOT FINAL;
+/
+CREATE OR REPLACE EDITIONABLE TYPE BODY "OE"."COMPOSITE_CATEGORY_TYP" AS
+    OVERRIDING MEMBER FUNCTION category_describe RETURN VARCHAR2 IS
+    BEGIN
+      RETURN 'composite_category_typ';
+    END;
+   END;
+/
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: CORPORATE_CUSTOMER_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."CORPORATE_CUSTOMER_TYP"
+
+ UNDER customer_typ
+      ( account_mgr_id     NUMBER(6)
+      );
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: CUSTOMER_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."CUSTOMER_TYP"
+ AS OBJECT
+    ( customer_id        NUMBER(6)
+    , cust_first_name    VARCHAR2(20)
+    , cust_last_name     VARCHAR2(20)
+    , cust_address       cust_address_typ
+    , phone_numbers      phone_list_typ
+    , nls_language       VARCHAR2(3)
+    , nls_territory      VARCHAR2(40)
+    , credit_limit       NUMBER(9,2)
+    , cust_email         VARCHAR2(40)
+    , cust_orders        order_list_typ
+    )
+NOT FINAL;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: CUST_ADDRESS_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."CUST_ADDRESS_TYP"
+
+  AS OBJECT
+    ( street_address     VARCHAR2(40)
+    , postal_code        VARCHAR2(10)
+    , city               VARCHAR2(30)
+    , state_province     VARCHAR2(10)
+    , country_id         CHAR(2)
+    );
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: INVENTORY_LIST_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."INVENTORY_LIST_TYP"
+
+ AS TABLE OF inventory_typ;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: INVENTORY_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."INVENTORY_TYP"
+
+
+ AS OBJECT
+    ( product_id          NUMBER(6)
+    , warehouse           warehouse_typ
+    , quantity_on_hand    NUMBER(8)
+    ) ;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: LEAF_CATEGORY_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."LEAF_CATEGORY_TYP"
+
+ UNDER category_typ
+    (
+    product_ref_list    product_ref_list_typ
+    , OVERRIDING MEMBER FUNCTION  category_describe RETURN VARCHAR2
+    );
+/
+CREATE OR REPLACE EDITIONABLE TYPE BODY "OE"."LEAF_CATEGORY_TYP" AS
+    OVERRIDING MEMBER FUNCTION  category_describe RETURN VARCHAR2 IS
+    BEGIN
+       RETURN  'leaf_category_typ';
+    END;
+   END;
+/
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: LEAF_CATEGORY_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."LEAF_CATEGORY_TYP"
+
+ UNDER category_typ
+    (
+    product_ref_list    product_ref_list_typ
+    , OVERRIDING MEMBER FUNCTION  category_describe RETURN VARCHAR2
+    );
+/
+CREATE OR REPLACE EDITIONABLE TYPE BODY "OE"."LEAF_CATEGORY_TYP" AS
+    OVERRIDING MEMBER FUNCTION  category_describe RETURN VARCHAR2 IS
+    BEGIN
+       RETURN  'leaf_category_typ';
+    END;
+   END;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: LINEITEMS_T
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."LINEITEMS_T" AS OBJECT ("SYS_XDBPD$" "XDB"."XDB$RAW_LIST_T","LINEITEM" "LINEITEM_V")NOT FINAL INSTANTIABLE
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: LINEITEM_T
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."LINEITEM_T" AS OBJECT ("SYS_XDBPD$" "XDB"."XDB$RAW_LIST_T","ITEMNUMBER" NUMBER(38),"DESCRIPTION" VARCHAR2(256 CHAR),"PART" "PART_T")NOT FINAL INSTANTIABLE
+/
+
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: LINEITEM_V
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."LINEITEM_V" AS VARRAY(2147483647) OF "LINEITEM_T"
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: ORDER_ITEM_LIST_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."ORDER_ITEM_LIST_TYP"
+
+ AS TABLE OF order_item_typ;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: ORDER_ITEM_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."ORDER_ITEM_TYP"
+
+ AS OBJECT
+    ( order_id           NUMBER(12)
+    , line_item_id       NUMBER(3)
+    , unit_price         NUMBER(8,2)
+    , quantity           NUMBER(8)
+    , product_ref  REF   product_information_typ
+    ) ;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: ORDER_LIST_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."ORDER_LIST_TYP"
+
+ AS TABLE OF order_typ;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: ORDER_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."ORDER_TYP"
+
+ AS OBJECT
+    ( order_id           NUMBER(12)
+    , order_mode         VARCHAR2(8)
+    , customer_ref  REF  customer_typ
+    , order_status       NUMBER(2)
+    , order_total        NUMBER(8,2)
+    , sales_rep_id       NUMBER(6)
+    , order_item_list    order_item_list_typ
+    ) ;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: PART_T
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."PART_T" AS OBJECT ("SYS_XDBPD$" "XDB"."XDB$RAW_LIST_T","PART_NUMBER" VARCHAR2(14 CHAR),"QUANTITY" NUMBER(12,4),"UNITPRICE" NUMBER(14,2))NOT FINAL INSTANTIABLE
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: PHONE_LIST_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."PHONE_LIST_TYP"
+
+  AS VARRAY(5) OF VARCHAR2(25);
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: PRODUCT_INFORMATION_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."PRODUCT_INFORMATION_TYP"
+
+ AS OBJECT
+    ( product_id           NUMBER(6)
+    , product_name         VARCHAR2(50)
+    , product_description  VARCHAR2(2000)
+    , category_id          NUMBER(2)
+    , weight_class         NUMBER(1)
+    , warranty_period      INTERVAL YEAR(2) TO MONTH
+    , supplier_id          NUMBER(6)
+    , product_status       VARCHAR2(20)
+    , list_price           NUMBER(8,2)
+    , min_price            NUMBER(8,2)
+    , catalog_url          VARCHAR2(50)
+    , inventory_list       inventory_list_typ
+    ) ;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: PRODUCT_REF_LIST_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."PRODUCT_REF_LIST_TYP"
+
+ AS TABLE OF number(6);
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: PURCHASEORDER_T
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."PURCHASEORDER_T" AS OBJECT ("SYS_XDBPD$" "XDB"."XDB$RAW_LIST_T","REFERENCE" VARCHAR2(30 CHAR),"ACTIONS" "ACTIONS_T","REJECTION" "REJECTION_T","REQUESTOR" VARCHAR2(128 CHAR),"USERID" VARCHAR2(10 CHAR),"COST_CENTER" VARCHAR2(4 CHAR),"SHIPPING_INSTRUCTIONS" "SHIPPING_INSTRUCTIONS_T","SPECIAL_INSTRUCTIONS" VARCHAR2(2048 CHAR),"LINEITEMS" "LINEITEMS_T")NOT FINAL INSTANTIABLE
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: REJECTION_T
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."REJECTION_T" AS OBJECT ("SYS_XDBPD$" "XDB"."XDB$RAW_LIST_T","REJECTED_BY" VARCHAR2(10 CHAR),"DATE_REJECTED" DATE,"REASON_REJECTED" VARCHAR2(2048 CHAR))NOT FINAL INSTANTIABLE
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: SHIPPING_INSTRUCTIONS_T
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."SHIPPING_INSTRUCTIONS_T" AS OBJECT ("SYS_XDBPD$" "XDB"."XDB$RAW_LIST_T","SHIP_TO_NAME" VARCHAR2(20 CHAR),"SHIP_TO_ADDRESS" VARCHAR2(256 CHAR),"SHIP_TO_PHONE" VARCHAR2(24 CHAR))NOT FINAL INSTANTIABLE
+/
+
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: SUBCATEGORY_REF_LIST_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."SUBCATEGORY_REF_LIST_TYP"
+
+ AS TABLE OF REF category_typ;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE
+-- Name: WAREHOUSE_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "OE"."WAREHOUSE_TYP"
+
+ AS OBJECT
+    ( warehouse_id       NUMBER(3)
+    , warehouse_name     VARCHAR2(35)
+    , location_id        NUMBER(4)
+    ) ;
+/
+
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE BODY
+-- Name: CATALOG_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE BODY "OE"."CATALOG_TYP" AS
+  OVERRIDING MEMBER FUNCTION category_describe RETURN varchar2 IS
+  BEGIN
+    RETURN 'catalog_typ';
+  END;
+  MEMBER FUNCTION getCatalogName RETURN varchar2 IS
+  BEGIN
+    -- Return the category name from the supertype
+    RETURN self.category_name;
+  END;
+END;
+/
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE BODY
+-- Name: COMPOSITE_CATEGORY_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE BODY "OE"."COMPOSITE_CATEGORY_TYP" AS
+    OVERRIDING MEMBER FUNCTION category_describe RETURN VARCHAR2 IS
+    BEGIN
+      RETURN 'composite_category_typ';
+    END;
+   END;
+/
+
+
+-- ============================================================
+-- Owner: OE
+-- Type: TYPE BODY
+-- Name: LEAF_CATEGORY_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE BODY "OE"."LEAF_CATEGORY_TYP" AS
+    OVERRIDING MEMBER FUNCTION  category_describe RETURN VARCHAR2 IS
+    BEGIN
+       RETURN  'leaf_category_typ';
+    END;
+   END;
+/
+
+
+-- ============================================================
+-- Owner: PM
+-- Type: TYPE
+-- Name: ADHEADER_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "PM"."ADHEADER_TYP"
+
+  AS OBJECT
+    ( header_name        VARCHAR2(256)
+    , creation_date      DATE
+    , header_text        VARCHAR2(1024)
+    , logo               BLOB
+    );
+/
+
+
+
+-- ============================================================
+-- Owner: PM
+-- Type: TYPE
+-- Name: TEXTDOC_TAB
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "PM"."TEXTDOC_TAB"
+
+  AS TABLE OF textdoc_typ;
+/
+
+
+
+-- ============================================================
+-- Owner: PM
+-- Type: TYPE
+-- Name: TEXTDOC_TYP
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE TYPE "PM"."TEXTDOC_TYP"
+
+  AS OBJECT
+    ( document_typ      VARCHAR2(32)
+    , formatted_doc     BLOB
+    ) ;
+/
+
+
+
+-- ============================================================
+-- Owner: SH
+-- Type: PROCEDURE
+-- Name: PROC_AGGREGATE_SALES
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE PROCEDURE "SH"."PROC_AGGREGATE_SALES" (
+    p_year    IN  NUMBER,
+    p_quarter IN  NUMBER DEFAULT NULL
+) AS
+    v_total NUMBER;
+BEGIN
+    IF p_quarter IS NULL THEN
+        SELECT NVL(SUM(amount_sold), 0) INTO v_total
+        FROM sh.sales
+        WHERE EXTRACT(YEAR FROM time_id) = p_year;
+    ELSE
+        SELECT NVL(SUM(amount_sold), 0) INTO v_total
+        FROM sh.sales
+        WHERE EXTRACT(YEAR FROM time_id) = p_year
+          AND CEIL(EXTRACT(MONTH FROM time_id) / 3) = p_quarter;
+    END IF;
+
+    DBMS_OUTPUT.PUT_LINE('Total Sales: ' || TO_CHAR(v_total, '999,999,999.99'));
+END;
+/
+
+
+-- ============================================================
+-- Owner: SH
+-- Type: PROCEDURE
+-- Name: PROC_CHANNEL_PERFORMANCE
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE PROCEDURE "SH"."PROC_CHANNEL_PERFORMANCE" (
+    p_channel_id  IN  NUMBER,
+    p_start_date  IN  DATE,
+    p_end_date    IN  DATE,
+    p_revenue     OUT NUMBER,
+    p_trans_cnt   OUT NUMBER
+) AS
+BEGIN
+    SELECT NVL(SUM(amount_sold), 0), COUNT(*)
+    INTO p_revenue, p_trans_cnt
+    FROM sh.sales
+    WHERE channel_id = p_channel_id
+      AND time_id BETWEEN p_start_date AND p_end_date;
+END;
+/
+
+
+-- ============================================================
+-- Owner: SH
+-- Type: PROCEDURE
+-- Name: PROC_CUSTOMER_SEGMENT
+-- ============================================================
+
+  CREATE OR REPLACE EDITIONABLE PROCEDURE "SH"."PROC_CUSTOMER_SEGMENT" (
+    p_min_purchase  IN  NUMBER,
+    p_customer_cnt  OUT NUMBER
+) AS
+BEGIN
+    SELECT COUNT(DISTINCT cust_id) INTO p_customer_cnt
+    FROM sh.sales
+    GROUP BY cust_id
+    HAVING SUM(amount_sold) >= p_min_purchase;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        p_customer_cnt := 0;
+END;
+/
+
+
+
+Report Completed Time
+===============================================================
+2026-01-18   17:48:44

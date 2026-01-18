@@ -95,6 +95,10 @@ class PLSQLParser:
         if self._is_procedure(normalized):
             return PLSQLObjectType.PROCEDURE
         
+        # TYPE 확인 - Procedure로 분류
+        if self._is_type(normalized):
+            return PLSQLObjectType.PROCEDURE
+        
         # 감지 실패
         raise ValueError("PL/SQL 오브젝트 타입을 감지할 수 없습니다.")
     
@@ -107,10 +111,10 @@ class PLSQLParser:
         Returns:
             Package인 경우 True
         """
-        # CREATE OR REPLACE PACKAGE [BODY] 패턴
+        # CREATE OR REPLACE [EDITIONABLE] PACKAGE [BODY] 패턴
         package_patterns = [
-            r'\bCREATE\s+(?:OR\s+REPLACE\s+)?PACKAGE\s+BODY\b',
-            r'\bCREATE\s+(?:OR\s+REPLACE\s+)?PACKAGE\s+(?!BODY)\w+',
+            r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+)?PACKAGE\s+BODY\b',
+            r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+)?PACKAGE\s+(?!BODY)\w+',
         ]
         
         for pattern in package_patterns:
@@ -128,8 +132,8 @@ class PLSQLParser:
         Returns:
             Procedure인 경우 True
         """
-        # CREATE OR REPLACE PROCEDURE 패턴
-        pattern = r'\bCREATE\s+(?:OR\s+REPLACE\s+)?PROCEDURE\b'
+        # CREATE OR REPLACE [EDITIONABLE] PROCEDURE 패턴
+        pattern = r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+)?PROCEDURE\b'
         return bool(re.search(pattern, code))
     
     def _is_function(self, code: str) -> bool:
@@ -141,8 +145,8 @@ class PLSQLParser:
         Returns:
             Function인 경우 True
         """
-        # CREATE OR REPLACE FUNCTION 패턴
-        pattern = r'\bCREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\b'
+        # CREATE OR REPLACE [EDITIONABLE] FUNCTION 패턴
+        pattern = r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+)?FUNCTION\b'
         return bool(re.search(pattern, code))
     
     def _is_trigger(self, code: str) -> bool:
@@ -154,8 +158,8 @@ class PLSQLParser:
         Returns:
             Trigger인 경우 True
         """
-        # CREATE OR REPLACE TRIGGER 패턴
-        pattern = r'\bCREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\b'
+        # CREATE OR REPLACE [EDITIONABLE] TRIGGER 패턴
+        pattern = r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+)?TRIGGER\b'
         return bool(re.search(pattern, code))
     
     def _is_view(self, code: str) -> bool:
@@ -167,8 +171,8 @@ class PLSQLParser:
         Returns:
             View인 경우 True
         """
-        # CREATE OR REPLACE VIEW 패턴 (MATERIALIZED 제외)
-        pattern = r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?!MATERIALIZED\s+)VIEW\b'
+        # CREATE OR REPLACE [EDITIONABLE] VIEW 패턴 (MATERIALIZED 제외)
+        pattern = r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+)?(?!MATERIALIZED\s+)VIEW\b'
         return bool(re.search(pattern, code))
     
     def _is_materialized_view(self, code: str) -> bool:
@@ -182,6 +186,19 @@ class PLSQLParser:
         """
         # CREATE MATERIALIZED VIEW 패턴
         pattern = r'\bCREATE\s+MATERIALIZED\s+VIEW\b'
+        return bool(re.search(pattern, code))
+    
+    def _is_type(self, code: str) -> bool:
+        """TYPE 여부 확인
+        
+        Args:
+            code: 정규화된 코드
+            
+        Returns:
+            TYPE인 경우 True
+        """
+        # CREATE OR REPLACE [EDITIONABLE] TYPE 패턴
+        pattern = r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+)?TYPE\b'
         return bool(re.search(pattern, code))
     
     def count_lines(self) -> int:

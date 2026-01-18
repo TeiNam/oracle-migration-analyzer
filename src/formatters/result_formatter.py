@@ -314,3 +314,154 @@ class ResultFormatter:
         md.append("```\n")
         
         return "\n".join(md)
+
+    @staticmethod
+    def batch_to_markdown(batch_result: dict, target_db: str = "PostgreSQL") -> str:
+        """배치 PL/SQL 분석 결과를 Markdown 형식으로 변환
+        
+        Args:
+            batch_result: 배치 분석 결과 딕셔너리
+            target_db: 타겟 데이터베이스 이름
+            
+        Returns:
+            Markdown 형식의 문자열
+        """
+        md = []
+        
+        # 제목
+        md.append(f"# 배치 PL/SQL 분석 리포트\n")
+        md.append(f"**타겟 데이터베이스**: {target_db}\n")
+        
+        # 전체 요약
+        md.append("## 📊 전체 요약\n")
+        md.append(f"- **전체 객체 수**: {batch_result['total_objects']}")
+        md.append(f"- **분석 성공**: {batch_result['analyzed_objects']}")
+        md.append(f"- **분석 실패**: {batch_result['failed_objects']}\n")
+        
+        # 객체 타입별 통계
+        if batch_result.get('statistics'):
+            md.append("## 📈 객체 타입별 통계\n")
+            md.append("| 객체 타입 | 개수 |")
+            md.append("|----------|------|")
+            for obj_type, count in sorted(batch_result['statistics'].items()):
+                md.append(f"| {obj_type} | {count} |")
+            md.append("")
+        
+        # 복잡도 요약
+        if batch_result.get('summary'):
+            summary = batch_result['summary']
+            md.append("## 🎯 복잡도 요약\n")
+            md.append(f"- **평균 복잡도**: {summary.get('average_score', 0):.2f}")
+            md.append(f"- **최대 복잡도**: {summary.get('max_score', 0):.2f}")
+            md.append(f"- **최소 복잡도**: {summary.get('min_score', 0):.2f}\n")
+            
+            # 복잡도 분포
+            if summary.get('complexity_distribution'):
+                dist = summary['complexity_distribution']
+                md.append("### 복잡도 분포\n")
+                md.append("| 복잡도 레벨 | 객체 수 |")
+                md.append("|------------|---------|")
+                md.append(f"| 매우 간단 (0-1) | {dist.get('very_simple', 0)} |")
+                md.append(f"| 간단 (1-3) | {dist.get('simple', 0)} |")
+                md.append(f"| 중간 (3-5) | {dist.get('moderate', 0)} |")
+                md.append(f"| 복잡 (5-7) | {dist.get('complex', 0)} |")
+                md.append(f"| 매우 복잡 (7-9) | {dist.get('very_complex', 0)} |")
+                md.append(f"| 극도로 복잡 (9-10) | {dist.get('extremely_complex', 0)} |")
+                md.append("")
+        
+        # 개별 객체 분석 결과
+        if batch_result.get('results'):
+            md.append("## 📝 개별 객체 분석 결과\n")
+            
+            for i, obj_result in enumerate(batch_result['results'], 1):
+                analysis = obj_result['analysis']
+                
+                md.append(f"### {i}. {obj_result['owner']}.{obj_result['object_name']}\n")
+                md.append(f"- **타입**: {obj_result['object_type']}")
+                md.append(f"- **라인 범위**: {obj_result['line_range']}")
+                md.append(f"- **복잡도 점수**: {analysis.normalized_score:.2f}/10")
+                md.append(f"- **복잡도 레벨**: {analysis.complexity_level.value}")
+                md.append(f"- **추천사항**: {analysis.recommendation}\n")
+                
+                # 세부 점수
+                md.append("#### 세부 점수\n")
+                md.append("| 항목 | 점수 |")
+                md.append("|------|------|")
+                md.append(f"| 기본 점수 | {analysis.base_score:.2f} |")
+                md.append(f"| 코드 복잡도 | {analysis.code_complexity:.2f} |")
+                md.append(f"| Oracle 특화 기능 | {analysis.oracle_features:.2f} |")
+                md.append(f"| 비즈니스 로직 | {analysis.business_logic:.2f} |")
+                md.append(f"| 변환 난이도 | {analysis.conversion_difficulty:.2f} |")
+                md.append("")
+                
+                # 감지된 Oracle 특화 기능
+                if analysis.detected_oracle_features:
+                    md.append("**감지된 Oracle 특화 기능**:")
+                    for feature in analysis.detected_oracle_features[:5]:  # 상위 5개만
+                        md.append(f"- {feature}")
+                    if len(analysis.detected_oracle_features) > 5:
+                        md.append(f"- ... 외 {len(analysis.detected_oracle_features) - 5}개")
+                    md.append("")
+        
+        # 분석 실패 객체
+        if batch_result.get('failed'):
+            md.append("## ⚠️ 분석 실패 객체\n")
+            md.append("| Owner | Type | Name | Error |")
+            md.append("|-------|------|------|-------|")
+            for failed in batch_result['failed']:
+                md.append(f"| {failed['owner']} | {failed['object_type']} | {failed['object_name']} | {failed['error']} |")
+            md.append("")
+        
+        return "\n".join(md)
+    
+    @staticmethod
+    def batch_to_json(batch_result: dict) -> str:
+        """배치 PL/SQL 분석 결과를 JSON 형식으로 변환
+        
+        Args:
+            batch_result: 배치 분석 결과 딕셔너리
+            
+        Returns:
+            JSON 형식의 문자열
+        """
+        # 분석 결과 객체를 직렬화 가능한 형태로 변환
+        serializable_result = {
+            'total_objects': batch_result['total_objects'],
+            'analyzed_objects': batch_result['analyzed_objects'],
+            'failed_objects': batch_result['failed_objects'],
+            'statistics': batch_result.get('statistics', {}),
+            'summary': batch_result.get('summary', {}),
+            'results': [],
+            'failed': batch_result.get('failed', [])
+        }
+        
+        # 개별 객체 결과 변환
+        for obj_result in batch_result.get('results', []):
+            analysis = obj_result['analysis']
+            serializable_result['results'].append({
+                'owner': obj_result['owner'],
+                'object_type': obj_result['object_type'],
+                'object_name': obj_result['object_name'],
+                'line_range': obj_result['line_range'],
+                'analysis': {
+                    'total_score': analysis.total_score,
+                    'normalized_score': analysis.normalized_score,
+                    'complexity_level': analysis.complexity_level.value,
+                    'recommendation': analysis.recommendation,
+                    'object_type': analysis.object_type.value,
+                    'target_database': analysis.target_database.value,
+                    'base_score': analysis.base_score,
+                    'code_complexity': analysis.code_complexity,
+                    'oracle_features': analysis.oracle_features,
+                    'business_logic': analysis.business_logic,
+                    'conversion_difficulty': analysis.conversion_difficulty,
+                    'detected_oracle_features': analysis.detected_oracle_features,
+                    'detected_external_dependencies': analysis.detected_external_dependencies,
+                    'line_count': analysis.line_count,
+                    'cursor_count': analysis.cursor_count,
+                    'exception_blocks': analysis.exception_blocks,
+                    'nesting_depth': analysis.nesting_depth
+                }
+            })
+        
+        return json.dumps(serializable_result, indent=2, ensure_ascii=False)
