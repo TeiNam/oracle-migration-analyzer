@@ -386,7 +386,10 @@ class ConversionGuideProvider:
         Returns:
             str: 애플리케이션 이관 권장 메시지
         """
-        if self.target == TargetDatabase.MYSQL:
+        # Enum 값의 문자열 비교를 사용하여 순환 참조 문제 회피
+        target_value = self.target.value if hasattr(self.target, 'value') else str(self.target)
+        
+        if target_value == "mysql":
             return (
                 "⚠️ MySQL은 PL/SQL을 제한적으로 지원합니다. "
                 "복잡한 비즈니스 로직은 애플리케이션 레벨로 이관하는 것을 강력히 권장합니다."

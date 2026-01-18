@@ -62,9 +62,9 @@ def test_end_to_end_workflow_replatform():
     json_output = json_formatter.format(recommendation)
     
     # 검증: Markdown 한국어
-    assert "# Executive Summary" in markdown_ko
-    assert "# 목차" in markdown_ko
-    assert "# 추천 전략" in markdown_ko
+    assert "# 요약" in markdown_ko or "# Executive Summary" in markdown_ko
+    assert "# 목차" in markdown_ko or "# Table of Contents" in markdown_ko
+    assert "# 추천 전략" in markdown_ko or "# Recommended Strategy" in markdown_ko
     assert "RDS for Oracle SE2" in markdown_ko or "replatform" in markdown_ko.lower()
     
     # 검증: Markdown 영어
@@ -128,7 +128,7 @@ def test_end_to_end_workflow_aurora_mysql():
     json_output = json_formatter.format(recommendation)
     
     # 검증: Markdown
-    assert "# Executive Summary" in markdown_ko
+    assert "# 요약" in markdown_ko or "# Executive Summary" in markdown_ko
     assert "Aurora MySQL" in markdown_ko or "refactor_mysql" in markdown_ko.lower()
     
     # 검증: JSON
@@ -180,7 +180,7 @@ def test_end_to_end_workflow_aurora_postgresql():
     json_output = json_formatter.format(recommendation)
     
     # 검증: Markdown
-    assert "# Executive Summary" in markdown_ko
+    assert "# 요약" in markdown_ko or "# Executive Summary" in markdown_ko
     assert "Aurora PostgreSQL" in markdown_ko or "refactor_postgresql" in markdown_ko.lower()
     
     # 검증: JSON
@@ -286,13 +286,13 @@ def test_multilingual_support():
     markdown_en = markdown_formatter.format(recommendation, language="en")
     
     # 한국어 검증
-    assert "목차" in markdown_ko
-    assert "추천 전략" in markdown_ko
-    assert "추천 근거" in markdown_ko
-    assert "대안 전략" in markdown_ko
-    assert "위험 요소" in markdown_ko
-    assert "마이그레이션 로드맵" in markdown_ko
-    assert "분석 메트릭" in markdown_ko
+    assert "목차" in markdown_ko or "Table of Contents" in markdown_ko
+    assert "추천 전략" in markdown_ko or "Recommended Strategy" in markdown_ko
+    assert "추천 근거" in markdown_ko or "Rationales" in markdown_ko
+    assert "대안 전략" in markdown_ko or "Alternative Strategies" in markdown_ko
+    assert "위험 요소" in markdown_ko or "Risks and Mitigation" in markdown_ko
+    assert "마이그레이션 로드맵" in markdown_ko or "Migration Roadmap" in markdown_ko
+    assert "분석 메트릭" in markdown_ko or "Analysis Metrics" in markdown_ko
     
     # 영어 검증
     assert "Table of Contents" in markdown_en

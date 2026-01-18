@@ -11,7 +11,7 @@ Requirements 8.1을 검증합니다:
 """
 
 import pytest
-from src.parsers.plsql_parser import PLSQLParser
+from src.parsers.plsql import PLSQLParser
 from src.oracle_complexity_analyzer import PLSQLObjectType
 
 

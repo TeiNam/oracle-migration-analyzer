@@ -7,7 +7,7 @@ ComplexityCalculator 클래스의 기본 기능을 테스트합니다.
 import pytest
 from src.calculators import ComplexityCalculator
 from src.parsers.sql_parser import SQLParser
-from src.parsers.plsql_parser import PLSQLParser
+from src.parsers.plsql import PLSQLParser
 from src.oracle_complexity_analyzer import (
     TargetDatabase,
     ComplexityLevel,

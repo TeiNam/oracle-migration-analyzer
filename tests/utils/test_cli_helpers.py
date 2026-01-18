@@ -354,67 +354,67 @@ class TestPrintProgress:
     
     def test_print_progress_basic(self):
         """기본 진행 상황 출력"""
-        with patch('sys.stdout', new=StringIO()) as fake_out:
+        with patch('sys.stderr', new=StringIO()) as fake_err:
             print_progress(1, 4, "파일 파싱 중")
-            output = fake_out.getvalue()
+            output = fake_err.getvalue()
         
         assert "[1/4] 파일 파싱 중" in output
     
     def test_print_progress_first_step(self):
         """첫 번째 단계 출력"""
-        with patch('sys.stdout', new=StringIO()) as fake_out:
+        with patch('sys.stderr', new=StringIO()) as fake_err:
             print_progress(1, 10, "시작")
-            output = fake_out.getvalue()
+            output = fake_err.getvalue()
         
         assert "[1/10] 시작" in output
     
     def test_print_progress_last_step(self):
         """마지막 단계 출력"""
-        with patch('sys.stdout', new=StringIO()) as fake_out:
+        with patch('sys.stderr', new=StringIO()) as fake_err:
             print_progress(10, 10, "완료")
-            output = fake_out.getvalue()
+            output = fake_err.getvalue()
         
         assert "[10/10] 완료" in output
     
     def test_print_progress_middle_step(self):
         """중간 단계 출력"""
-        with patch('sys.stdout', new=StringIO()) as fake_out:
+        with patch('sys.stderr', new=StringIO()) as fake_err:
             print_progress(5, 10, "처리 중")
-            output = fake_out.getvalue()
+            output = fake_err.getvalue()
         
         assert "[5/10] 처리 중" in output
     
     def test_print_progress_with_korean_message(self):
         """한글 메시지 출력"""
-        with patch('sys.stdout', new=StringIO()) as fake_out:
+        with patch('sys.stderr', new=StringIO()) as fake_err:
             print_progress(2, 5, "데이터베이스 연결 중")
-            output = fake_out.getvalue()
+            output = fake_err.getvalue()
         
         assert "[2/5] 데이터베이스 연결 중" in output
     
     def test_print_progress_with_english_message(self):
         """영어 메시지 출력"""
-        with patch('sys.stdout', new=StringIO()) as fake_out:
+        with patch('sys.stderr', new=StringIO()) as fake_err:
             print_progress(3, 7, "Processing files")
-            output = fake_out.getvalue()
+            output = fake_err.getvalue()
         
         assert "[3/7] Processing files" in output
     
     def test_print_progress_with_special_characters(self):
         """특수 문자가 포함된 메시지 출력"""
-        with patch('sys.stdout', new=StringIO()) as fake_out:
+        with patch('sys.stderr', new=StringIO()) as fake_err:
             print_progress(1, 3, "파일 분석 중... (50%)")
-            output = fake_out.getvalue()
+            output = fake_err.getvalue()
         
         assert "[1/3] 파일 분석 중... (50%)" in output
     
     def test_print_progress_multiple_calls(self):
         """여러 번 호출"""
-        with patch('sys.stdout', new=StringIO()) as fake_out:
+        with patch('sys.stderr', new=StringIO()) as fake_err:
             print_progress(1, 3, "단계 1")
             print_progress(2, 3, "단계 2")
             print_progress(3, 3, "단계 3")
-            output = fake_out.getvalue()
+            output = fake_err.getvalue()
         
         assert "[1/3] 단계 1" in output
         assert "[2/3] 단계 2" in output
@@ -423,9 +423,9 @@ class TestPrintProgress:
     def test_print_progress_with_long_message(self):
         """긴 메시지 출력"""
         long_message = "매우 긴 메시지입니다. " * 10
-        with patch('sys.stdout', new=StringIO()) as fake_out:
+        with patch('sys.stderr', new=StringIO()) as fake_err:
             print_progress(1, 2, long_message)
-            output = fake_out.getvalue()
+            output = fake_err.getvalue()
         
         assert "[1/2]" in output
         assert long_message in output
@@ -458,7 +458,7 @@ SNAP_ID FUNCTION_NAME MEGABYTES_PER_S
     
     def test_workflow_with_progress_reporting(self, tmp_path):
         """진행 상황 보고를 포함한 워크플로우"""
-        with patch('sys.stdout', new=StringIO()) as fake_out:
+        with patch('sys.stderr', new=StringIO()) as fake_err:
             # 1. 파일 생성
             print_progress(1, 3, "파일 생성 중")
             test_file = tmp_path / "test.out"
@@ -472,7 +472,7 @@ SNAP_ID FUNCTION_NAME MEGABYTES_PER_S
             print_progress(3, 3, "출력 경로 생성 중")
             output_path = generate_output_path(test_file, tmp_path / "output")
             
-            output = fake_out.getvalue()
+            output = fake_err.getvalue()
         
         assert "[1/3] 파일 생성 중" in output
         assert "[2/3] 파일 타입 감지 중" in output

@@ -12,7 +12,7 @@ from src.oracle_complexity_analyzer import (
     PLSQL_BASE_SCORES,
     MYSQL_APP_MIGRATION_PENALTY,
 )
-from src.parsers.plsql_parser import PLSQLParser
+from src.parsers.plsql import PLSQLParser
 
 # 로거 초기화
 logger = logging.getLogger(__name__)

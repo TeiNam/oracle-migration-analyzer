@@ -151,8 +151,8 @@ class TestMigrationRecommendationEndToEnd:
         
         assert markdown_output is not None
         assert len(markdown_output) > 0
-        # Executive Summary 또는 마이그레이션 추천 리포트 제목 확인
-        assert "# Executive Summary" in markdown_output or "# 마이그레이션 추천 리포트" in markdown_output
+        # Executive Summary 또는 요약 제목 확인 (한국어가 기본값)
+        assert "# 요약" in markdown_output or "# Executive Summary" in markdown_output or "# 마이그레이션 추천 리포트" in markdown_output
         assert recommendation.recommended_strategy.value in markdown_output
         
         # 7. JSON 출력

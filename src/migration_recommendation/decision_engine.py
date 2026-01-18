@@ -164,12 +164,11 @@ class MigrationDecisionEngine:
         Replatform 조건 확인 (2차원 평가 + 난이도 + 코드 라인 수)
         
         조건 (OR 관계):
-        1. 복잡도 매우 높음 (평균 8.0 이상)
-        2. 복잡도 높음 (7.0 이상) + 개수 많음 (100개 이상)
-        3. 복잡도 높음 (7.0 이상) + 개수 중간 (50-100개)
-        4. 복잡 오브젝트 비율 40% 이상
-        5. 난이도 매우 높음 (100,000줄 이상) + 복잡도 높음 (7.0 이상)
-        6. 코드 라인 수 50,000줄 이상 + 복잡도 중간 이하 (< 7.0) - 비용 효율성
+        1. SQL 복잡도 매우 높음 (평균 7.0 이상)
+        2. PL/SQL 복잡도 매우 높음 (평균 7.0 이상)
+        3. 복잡 오브젝트 비율 30% 이상
+        4. 난이도 매우 높음 (100,000줄 이상) + 복잡도 높음 (7.0 이상)
+        5. 코드 라인 수 50,000줄 이상 + 복잡도 중간 이하 (< 7.0) - 비용 효율성
         
         Args:
             metrics: 분석 메트릭
@@ -179,28 +178,24 @@ class MigrationDecisionEngine:
         Returns:
             bool: Replatform 조건 만족 여부
         """
-        # 1. 복잡도 매우 높음 (변환 거의 불가능)
-        if plsql_complexity >= 8.0 or metrics.avg_sql_complexity >= 8.0:
+        # 1. SQL 복잡도 매우 높음 (변환 거의 불가능)
+        if metrics.avg_sql_complexity >= 7.0:
             return True
         
-        # 2. 복잡도 높음 + 개수 많음 (변환 불가능)
-        if plsql_complexity >= 7.0 and plsql_count >= 100:
+        # 2. PL/SQL 복잡도 매우 높음 (변환 거의 불가능)
+        if plsql_complexity >= 7.0:
             return True
         
-        # 3. 복잡도 높음 + 개수 중간 (위험 높음)
-        if plsql_complexity >= 7.0 and plsql_count >= 50:
+        # 3. 복잡 오브젝트 비율 매우 높음
+        if metrics.high_complexity_ratio >= 0.3:
             return True
         
-        # 4. 복잡 오브젝트 비율 매우 높음
-        if metrics.high_complexity_ratio >= 0.4:
-            return True
-        
-        # 5. 난이도 매우 높음 + 복잡도 높음
+        # 4. 난이도 매우 높음 + 복잡도 높음
         difficulty = self._assess_migration_difficulty(metrics)
         if difficulty == "very_high" and plsql_complexity >= 7.0:
             return True
         
-        # 6. 코드 라인 수 50,000줄 이상 + 복잡도 중간 이하 (비용 효율성)
+        # 5. 코드 라인 수 50,000줄 이상 + 복잡도 중간 이하 (비용 효율성)
         # Refactor: 50,000줄 × 20분 = 16,667시간 ($1.6M)
         # Replatform: 자동화 + 검증 = 5,833시간 ($0.6M)
         # 비용 절감: 약 60%, 기간 단축: 약 70%

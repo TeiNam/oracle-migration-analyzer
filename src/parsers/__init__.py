@@ -6,6 +6,6 @@ Oracle SQL 및 PL/SQL 파서 모듈
 """
 
 from .sql_parser import SQLParser
-from .plsql_parser import PLSQLParser
+from .plsql import PLSQLParser
 
 __all__ = ['SQLParser', 'PLSQLParser']

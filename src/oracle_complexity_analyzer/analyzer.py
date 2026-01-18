@@ -123,7 +123,7 @@ class OracleComplexityAnalyzer:
             raise ValueError("빈 코드는 분석할 수 없습니다.")
         
         # 필요한 모듈 import
-        from src.parsers.plsql_parser import PLSQLParser
+        from src.parsers.plsql import PLSQLParser
         
         # PL/SQL 파서 생성 및 분석
         parser = PLSQLParser(code)
