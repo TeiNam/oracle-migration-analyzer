@@ -484,7 +484,7 @@ class TestFileTypeDetection:
     
     def test_detect_awr_file_with_iostat_marker(self, tmp_path):
         """IOSTAT-FUNCTION 마커가 있는 파일은 AWR로 감지"""
-        from src.dbcsi.cli import detect_file_type
+        from src.utils.cli_helpers import detect_file_type
         
         # AWR 마커가 있는 파일 생성
         awr_file = tmp_path / "awr_test.out"
@@ -504,7 +504,7 @@ SNAP_ID FUNCTION_NAME MEGABYTES_PER_S
     
     def test_detect_awr_file_with_percent_cpu_marker(self, tmp_path):
         """PERCENT-CPU 마커가 있는 파일은 AWR로 감지"""
-        from src.dbcsi.cli import detect_file_type
+        from src.utils.cli_helpers import detect_file_type
         
         awr_file = tmp_path / "awr_test.out"
         awr_file.write_text("""
@@ -523,7 +523,7 @@ METRIC ON_CPU
     
     def test_detect_awr_file_with_percent_io_marker(self, tmp_path):
         """PERCENT-IO 마커가 있는 파일은 AWR로 감지"""
-        from src.dbcsi.cli import detect_file_type
+        from src.utils.cli_helpers import detect_file_type
         
         awr_file = tmp_path / "awr_test.out"
         awr_file.write_text("""
@@ -542,7 +542,7 @@ METRIC RW_IOPS
     
     def test_detect_awr_file_with_workload_marker(self, tmp_path):
         """WORKLOAD 마커가 있는 파일은 AWR로 감지"""
-        from src.dbcsi.cli import detect_file_type
+        from src.utils.cli_helpers import detect_file_type
         
         awr_file = tmp_path / "awr_test.out"
         awr_file.write_text("""
@@ -561,7 +561,7 @@ SAMPLESTART TOPN MODULE
     
     def test_detect_awr_file_with_buffer_cache_marker(self, tmp_path):
         """BUFFER-CACHE 마커가 있는 파일은 AWR로 감지"""
-        from src.dbcsi.cli import detect_file_type
+        from src.utils.cli_helpers import detect_file_type
         
         awr_file = tmp_path / "awr_test.out"
         awr_file.write_text("""
@@ -580,7 +580,7 @@ SNAP_ID INSTANCE_NUMBER HIT_RATIO
     
     def test_detect_statspack_file_without_awr_markers(self, tmp_path):
         """AWR 마커가 없는 파일은 Statspack으로 감지"""
-        from src.dbcsi.cli import detect_file_type
+        from src.utils.cli_helpers import detect_file_type
         
         statspack_file = tmp_path / "statspack_test.out"
         statspack_file.write_text("""
@@ -649,7 +649,7 @@ SNAP_ID INSTANCE_NUMBER SGA_GB PGA_GB TOTAL_GB
     
     def test_detect_file_type_with_latin1_encoding(self, tmp_path):
         """Latin-1 인코딩 파일도 올바르게 감지"""
-        from src.dbcsi.cli import detect_file_type
+        from src.utils.cli_helpers import detect_file_type
         
         awr_file = tmp_path / "awr_latin1.out"
         # Latin-1 특수 문자 포함
@@ -670,7 +670,7 @@ SNAP_ID FUNCTION_NAME MEGABYTES_PER_S
     
     def test_detect_file_type_handles_read_error(self, tmp_path):
         """파일 읽기 오류 시 기본값(statspack) 반환"""
-        from src.dbcsi.cli import detect_file_type
+        from src.utils.cli_helpers import detect_file_type
         
         # 존재하지 않는 파일
         nonexistent_file = tmp_path / "nonexistent.out"

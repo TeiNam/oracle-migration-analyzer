@@ -13,8 +13,9 @@ import tempfile
 from pathlib import Path
 from hypothesis import given, strategies as st, settings, assume
 
-from src.dbcsi.cli import detect_file_type, detect_and_parse
-from src.dbcsi.parser import StatspackParser, AWRParser
+from src.utils.cli_helpers import detect_file_type
+from src.dbcsi.cli import detect_and_parse
+from src.dbcsi.parsers import StatspackParser, AWRParser
 
 
 # AWR 마커 전략
