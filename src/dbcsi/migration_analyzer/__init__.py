@@ -19,7 +19,8 @@ Statspack/AWR 데이터를 기반으로 타겟 데이터베이스별 마이그�
 """
 
 # 메인 분석기
-from .analyzer import MigrationAnalyzer, EnhancedMigrationAnalyzer
+from .base_analyzer import MigrationAnalyzer
+from .enhanced_analyzer import EnhancedMigrationAnalyzer
 
 # 리소스 분석
 from .resource_analyzer import analyze_resource_usage
