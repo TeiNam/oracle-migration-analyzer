@@ -80,23 +80,39 @@ oracle-complexity-analyzer -d sample_code -w 8 -o markdown
 
 #### 출력 구조
 
-배치 분석 시 다음과 같은 폴더 구조로 리포트가 생성됩니다:
+분석 결과는 **원본 파일의 폴더 구조를 반영**하여 자동으로 저장됩니다:
 
+**부모 폴더가 있는 경우** (예: `sample_code/file.sql`, `MKDB/file.sql`):
 ```
 reports/
-└── {분석대상폴더명}/
+└── {원본폴더명}/           # 원본 파일의 부모 폴더명 자동 반영
     ├── PGSQL/
-    │   ├── sql_complexity_PGSQL.md      # 통합 리포트
-    │   ├── sql_complexity_PGSQL.json    # JSON 리포트
-    │   ├── query1.md                    # 개별 파일 리포트
-    │   ├── query2.md
+    │   ├── sql_complexity_PGSQL.md      # 통합 리포트 (배치 분석 시)
+    │   ├── sql_complexity_PGSQL.json    # JSON 리포트 (배치 분석 시)
+    │   ├── file1.md                     # 개별 파일 리포트
+    │   ├── file1.json
     │   └── ...
     └── MySQL/
         ├── sql_complexity_MySQL.md
         ├── sql_complexity_MySQL.json
-        ├── query1.md
+        ├── file1.md
         └── ...
 ```
+
+**부모 폴더가 없는 경우** (예: 루트 디렉토리의 `file.sql`):
+```
+reports/
+└── YYYYMMDD/              # 날짜 폴더 (예: 20260118)
+    ├── file_postgresql.json
+    ├── file_postgresql.md
+    ├── file_mysql.json
+    └── file_mysql.md
+```
+
+**예시**:
+- `sample_code/query.sql` 분석 → `reports/sample_code/PGSQL/query.json`
+- `MKDB/procedure.pls` 분석 → `reports/MKDB/MySQL/procedure.md`
+- `test.sql` 분석 → `reports/20260118/test_postgresql.json`
 
 ### 명령줄 옵션
 
@@ -177,13 +193,22 @@ dbcsi-analyzer --directory /path/to/files --target aurora-postgresql
 
 #### 출력 구조
 
-배치 분석 시 다음과 같은 폴더 구조로 리포트가 생성됩니다:
+분석 결과는 **원본 파일의 폴더 구조를 반영**하여 자동으로 저장됩니다:
 
+**부모 폴더가 있는 경우** (예: `sample_code/awr.out`):
 ```
 reports/
-└── {분석대상폴더명}/
+└── {원본폴더명}/           # 원본 파일의 부모 폴더명 자동 반영
     ├── dbcsi_awr_sample01.md
     ├── dbcsi_statspack_sample01.md
+    └── ...
+```
+
+**부모 폴더가 없는 경우** (예: 루트 디렉토리의 `awr.out`):
+```
+reports/
+└── YYYYMMDD/              # 날짜 폴더 (예: 20260118)
+    ├── awr_analysis.md
     └── ...
 ```
 
@@ -438,9 +463,11 @@ migration-recommend --reports-dir reports/sample_code
 
 ### 리포트 폴더 구조
 
+분석 결과는 **원본 파일의 폴더 구조를 자동으로 반영**합니다:
+
 ```
 reports/
-└── sample_code/
+└── {원본폴더명}/           # 예: sample_code, MKDB 등
     ├── PGSQL/
     │   ├── sql_complexity_PGSQL.md      # SQL 복잡도 통합 리포트
     │   ├── sql_complexity_PGSQL.json
@@ -453,6 +480,10 @@ reports/
     ├── dbcsi_statspack_sample01.md
     └── migration_recommendation.md       # 최종 추천 리포트
 ```
+
+**폴더 구조 규칙**:
+- 원본 파일에 부모 폴더가 있으면 해당 폴더명 사용 (예: `sample_code/file.sql` → `reports/sample_code/`)
+- 부모 폴더가 없으면 날짜 폴더 사용 (예: `file.sql` → `reports/20260118/`)
 
 ---
 
