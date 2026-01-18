@@ -1,0 +1,1340 @@
+{
+  "total_objects": 50,
+  "analyzed_objects": 50,
+  "failed_objects": 0,
+  "statistics": {
+    "TYPE": 36,
+    "FUNCTION": 1,
+    "PROCEDURE": 6,
+    "TRIGGER": 4,
+    "TYPE BODY": 3
+  },
+  "summary": {
+    "average_score": 2.976170212765957,
+    "max_score": 4.0,
+    "min_score": 2.6382978723404253,
+    "complexity_distribution": {
+      "very_simple": 0,
+      "simple": 44,
+      "moderate": 6,
+      "complex": 0,
+      "very_complex": 0,
+      "extremely_complex": 0
+    }
+  },
+  "results": [
+    {
+      "owner": "IX",
+      "object_type": "TYPE",
+      "object_name": "ORDER_EVENT_TYP",
+      "line_range": "13-31",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 10,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "FUNCTION",
+      "object_name": "GET_PHONE_NUMBER_F",
+      "line_range": "32-55",
+      "analysis": {
+        "total_score": 6.2,
+        "normalized_score": 2.6382978723404253,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "function",
+        "target_database": "mysql",
+        "base_score": 5.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.2,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "VARRAY"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 16,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 2
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "PROCEDURE",
+      "object_name": "PROC_CLEANUP_OLD_ORDERS",
+      "line_range": "56-81",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.5,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 16,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "PROCEDURE",
+      "object_name": "PROC_SALES_REPORT",
+      "line_range": "82-102",
+      "analysis": {
+        "total_score": 6.5,
+        "normalized_score": 2.765957446808511,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 13,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "PROCEDURE",
+      "object_name": "PROC_UPDATE_CUSTOMER",
+      "line_range": "103-133",
+      "analysis": {
+        "total_score": 7.2,
+        "normalized_score": 3.0638297872340425,
+        "complexity_level": "중간",
+        "recommendation": "부분 재작성",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.7,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 20,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 2
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TRIGGER",
+      "object_name": "INSERT_ORD_LINE",
+      "line_range": "134-154",
+      "analysis": {
+        "total_score": 8.0,
+        "normalized_score": 3.404255319148936,
+        "complexity_level": "중간",
+        "recommendation": "부분 재작성",
+        "object_type": "trigger",
+        "target_database": "mysql",
+        "base_score": 7.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 13,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 2
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TRIGGER",
+      "object_name": "ORDERS_ITEMS_TRG",
+      "line_range": "155-174",
+      "analysis": {
+        "total_score": 7.5,
+        "normalized_score": 3.1914893617021276,
+        "complexity_level": "중간",
+        "recommendation": "부분 재작성",
+        "object_type": "trigger",
+        "target_database": "mysql",
+        "base_score": 7.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 12,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 2
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TRIGGER",
+      "object_name": "ORDERS_TRG",
+      "line_range": "175-193",
+      "analysis": {
+        "total_score": 7.5,
+        "normalized_score": 3.1914893617021276,
+        "complexity_level": "중간",
+        "recommendation": "부분 재작성",
+        "object_type": "trigger",
+        "target_database": "mysql",
+        "base_score": 7.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 11,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 2
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TRIGGER",
+      "object_name": "PURCHASEORDER$xd",
+      "line_range": "194-204",
+      "analysis": {
+        "total_score": 9.4,
+        "normalized_score": 4.0,
+        "complexity_level": "중간",
+        "recommendation": "부분 재작성",
+        "object_type": "trigger",
+        "target_database": "mysql",
+        "base_score": 7.0,
+        "code_complexity": 1.0,
+        "oracle_features": 1.0,
+        "business_logic": 0.4,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 3,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 3
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "ACTIONS_T",
+      "line_range": "205-215",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "ACTION_T",
+      "line_range": "216-226",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "ACTION_V",
+      "line_range": "227-237",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "VARRAY"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "CATALOG_TYP",
+      "line_range": "238-265",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 18,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "CATALOG_TYP",
+      "line_range": "266-293",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 18,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "CATEGORY_TYP",
+      "line_range": "294-315",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 12,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "CATEGORY_TYP",
+      "line_range": "316-337",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 12,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "COMPOSITE_CATEGORY_TYP",
+      "line_range": "338-362",
+      "analysis": {
+        "total_score": 6.5,
+        "normalized_score": 2.765957446808511,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 15,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "COMPOSITE_CATEGORY_TYP",
+      "line_range": "363-386",
+      "analysis": {
+        "total_score": 6.5,
+        "normalized_score": 2.765957446808511,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 15,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "CORPORATE_CUSTOMER_TYP",
+      "line_range": "387-401",
+      "analysis": {
+        "total_score": 6.5,
+        "normalized_score": 2.765957446808511,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 5,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "CUSTOMER_TYP",
+      "line_range": "402-425",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 15,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "CUST_ADDRESS_TYP",
+      "line_range": "426-444",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 9,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "INVENTORY_LIST_TYP",
+      "line_range": "445-457",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "NESTED TABLE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 3,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "INVENTORY_TYP",
+      "line_range": "458-475",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 7,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "LEAF_CATEGORY_TYP",
+      "line_range": "476-498",
+      "analysis": {
+        "total_score": 6.5,
+        "normalized_score": 2.765957446808511,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 14,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "LEAF_CATEGORY_TYP",
+      "line_range": "499-522",
+      "analysis": {
+        "total_score": 6.5,
+        "normalized_score": 2.765957446808511,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 14,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "LINEITEMS_T",
+      "line_range": "523-533",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "LINEITEM_T",
+      "line_range": "534-545",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "LINEITEM_V",
+      "line_range": "546-556",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "VARRAY"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "ORDER_ITEM_LIST_TYP",
+      "line_range": "557-569",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "NESTED TABLE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 3,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "ORDER_ITEM_TYP",
+      "line_range": "570-588",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 9,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "ORDER_LIST_TYP",
+      "line_range": "589-601",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "NESTED TABLE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 3,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "ORDER_TYP",
+      "line_range": "602-622",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 11,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "PART_T",
+      "line_range": "623-633",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "PHONE_LIST_TYP",
+      "line_range": "634-646",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "VARRAY"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 3,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "PRODUCT_INFORMATION_TYP",
+      "line_range": "647-672",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 16,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "PRODUCT_REF_LIST_TYP",
+      "line_range": "673-685",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "NESTED TABLE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 3,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "PURCHASEORDER_T",
+      "line_range": "686-696",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "REJECTION_T",
+      "line_range": "697-707",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "SHIPPING_INSTRUCTIONS_T",
+      "line_range": "708-719",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "SUBCATEGORY_REF_LIST_TYP",
+      "line_range": "720-732",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "NESTED TABLE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 3,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE",
+      "object_name": "WAREHOUSE_TYP",
+      "line_range": "733-749",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 7,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE BODY",
+      "object_name": "CATALOG_TYP",
+      "line_range": "750-769",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 11,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE BODY",
+      "object_name": "COMPOSITE_CATEGORY_TYP",
+      "line_range": "770-784",
+      "analysis": {
+        "total_score": 6.5,
+        "normalized_score": 2.765957446808511,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 7,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "OE",
+      "object_type": "TYPE BODY",
+      "object_name": "LEAF_CATEGORY_TYP",
+      "line_range": "785-799",
+      "analysis": {
+        "total_score": 6.5,
+        "normalized_score": 2.765957446808511,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 7,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "PM",
+      "object_type": "TYPE",
+      "object_name": "ADHEADER_TYP",
+      "line_range": "800-817",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 8,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "PM",
+      "object_type": "TYPE",
+      "object_name": "TEXTDOC_TAB",
+      "line_range": "818-830",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "NESTED TABLE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 3,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "PM",
+      "object_type": "TYPE",
+      "object_name": "TEXTDOC_TYP",
+      "line_range": "831-846",
+      "analysis": {
+        "total_score": 7.0,
+        "normalized_score": 2.978723404255319,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 6,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "SH",
+      "object_type": "PROCEDURE",
+      "object_name": "PROC_AGGREGATE_SALES",
+      "line_range": "847-874",
+      "analysis": {
+        "total_score": 7.7,
+        "normalized_score": 3.276595744680851,
+        "complexity_level": "중간",
+        "recommendation": "부분 재작성",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.5,
+        "business_logic": 0.2,
+        "conversion_difficulty": 0.5,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [
+          "DBMS_OUTPUT"
+        ],
+        "line_count": 19,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 2
+      }
+    },
+    {
+      "owner": "SH",
+      "object_type": "PROCEDURE",
+      "object_name": "PROC_CHANNEL_PERFORMANCE",
+      "line_range": "875-897",
+      "analysis": {
+        "total_score": 6.5,
+        "normalized_score": 2.765957446808511,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.5,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 15,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "SH",
+      "object_type": "PROCEDURE",
+      "object_name": "PROC_CUSTOMER_SEGMENT",
+      "line_range": "898-922",
+      "analysis": {
+        "total_score": 6.7,
+        "normalized_score": 2.851063829787234,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 6.0,
+        "code_complexity": 0.7,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 17,
+        "cursor_count": 0,
+        "exception_blocks": 1,
+        "nesting_depth": 1
+      }
+    }
+  ],
+  "failed": []
+}

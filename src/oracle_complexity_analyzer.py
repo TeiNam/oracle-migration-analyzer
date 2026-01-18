@@ -908,16 +908,28 @@ class OracleComplexityAnalyzer:
         Returns:
             str: 저장된 파일의 전체 경로
         """
-        # 날짜 폴더 생성
-        date_folder = self._get_date_folder()
-        
-        # 타겟 데이터베이스 접미사 추가
-        target_suffix = f"_{self.target.value}"
-        
-        # 파일명 생성 (확장자를 .json으로 변경, 타겟 DB 추가)
         source_path = Path(source_filename)
-        filename = source_path.stem + target_suffix + '.json'
-        file_path = date_folder / filename
+        
+        # sample_code 폴더의 파일인지 확인
+        if 'sample_code' in source_path.parts:
+            # reports/sample_code/PGSQL 또는 MySQL 폴더에 저장
+            target_folder = "PGSQL" if self.target == TargetDatabase.POSTGRESQL else "MySQL"
+            output_folder = self.output_dir / "sample_code" / target_folder
+            output_folder.mkdir(parents=True, exist_ok=True)
+            
+            # 파일명 생성 (타겟 DB 접미사 없이)
+            filename = source_path.stem + '.json'
+            file_path = output_folder / filename
+        else:
+            # 일반 파일은 날짜 폴더에 저장
+            date_folder = self._get_date_folder()
+            
+            # 타겟 데이터베이스 접미사 추가
+            target_suffix = f"_{self.target.value}"
+            
+            # 파일명 생성 (확장자를 .json으로 변경, 타겟 DB 추가)
+            filename = source_path.stem + target_suffix + '.json'
+            file_path = date_folder / filename
         
         # 파일 저장
         try:
@@ -938,16 +950,37 @@ class OracleComplexityAnalyzer:
         Returns:
             str: 저장된 파일의 전체 경로
         """
-        # 날짜 폴더 생성
-        date_folder = self._get_date_folder()
-        
-        # 타겟 데이터베이스 접미사 추가
-        target_suffix = f"_{self.target.value}"
-        
-        # 파일명 생성 (확장자를 .md로 변경, 타겟 DB 추가)
         source_path = Path(source_filename)
-        filename = source_path.stem + target_suffix + '.md'
-        file_path = date_folder / filename
+        
+        # sample_code 폴더의 파일인지 확인
+        if 'sample_code' in source_path.parts:
+            # reports/sample_code/PGSQL 또는 MySQL 폴더에 저장
+            target_folder = "PGSQL" if self.target == TargetDatabase.POSTGRESQL else "MySQL"
+            output_folder = self.output_dir / "sample_code" / target_folder
+            output_folder.mkdir(parents=True, exist_ok=True)
+            
+            # 파일명 생성 (타겟 DB 접미사 없이)
+            filename = source_path.stem + '.md'
+            file_path = output_folder / filename
+        else:
+            # 일반 파일은 날짜 폴더에 저장
+            date_folder = self._get_date_folder()
+            
+            # 타겟 데이터베이스 접미사 추가
+            target_suffix = f"_{self.target.value}"
+            
+            # 파일명 생성 (확장자를 .md로 변경, 타겟 DB 추가)
+            filename = source_path.stem + target_suffix + '.md'
+            file_path = date_folder / filename
+        
+        # 파일 저장
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(markdown_str)
+        except Exception as e:
+            raise IOError(f"Markdown 파일 저장 실패: {e}")
+        
+        return str(file_path)
         
         # 파일 저장
         try:
