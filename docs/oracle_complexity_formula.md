@@ -1,5 +1,7 @@
 # Oracle 마이그레이션 복잡도 및 전략 가이드
 
+> [English](./EN/oracle_complexity_formula_EN.md)
+
 이 문서는 Oracle 데이터베이스 마이그레이션의 복잡도 계산, 난이도 평가, 전략 선택을 위한 종합 가이드입니다.
 
 ## 목차

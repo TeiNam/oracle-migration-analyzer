@@ -1,5 +1,7 @@
 # Oracle Migration Analyzer
 
+> [English](./README_EN.md)
+
 Oracle 데이터베이스의 마이그레이션 난이도를 분석하는 Python 기반 도구 모음입니다.
 
 ## 도구 목록

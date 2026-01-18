@@ -1,5 +1,7 @@
 # Oracle에서 Aurora PostgreSQL 16으로의 마이그레이션 가이드
 
+> [English](./EN/migration_guide_aurora_pg16_EN.md)
+
 이 문서는 Oracle 데이터베이스에서 Amazon Aurora PostgreSQL 16 버전 이상으로 마이그레이션하는 과정에서 쿼리 변환 및 최신 기능 활용에 초점을 맞춘 가이드입니다.
 
 ## 목차

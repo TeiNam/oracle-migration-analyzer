@@ -5,6 +5,7 @@ Oracle SQL 및 PL/SQL 코드의 복잡도를 계산하는 핵심 클래스입니
 Requirements 3.1, 3.2를 구현합니다.
 """
 
+import logging
 from typing import Dict, List
 from src.oracle_complexity_analyzer import (
     TargetDatabase,
@@ -24,6 +25,9 @@ from src.oracle_complexity_analyzer import (
 )
 from src.parsers.sql_parser import SQLParser
 from src.parsers.plsql_parser import PLSQLParser
+
+# 로거 초기화
+logger = logging.getLogger(__name__)
 
 
 class ComplexityCalculator:
@@ -93,12 +97,25 @@ class ComplexityCalculator:
         Returns:
             SQLAnalysisResult: SQL 분석 결과
         """
+        logger.info(f"SQL 복잡도 계산 시작 (타겟: {self.target.value})")
+        
         # 각 카테고리별 점수 계산
+        logger.info("구조적 복잡성 계산 중")
         structural = self._calculate_structural_complexity(parser)
+        
+        logger.info("Oracle 특화 기능 점수 계산 중")
         oracle_specific = self._calculate_oracle_specific_score(parser)
+        
+        logger.info("함수/표현식 점수 계산 중")
         functions = self._calculate_functions_score(parser)
+        
+        logger.info("데이터 볼륨 점수 계산 중")
         data_volume = self._calculate_data_volume_score(len(parser.query))
+        
+        logger.info("실행 복잡성 점수 계산 중")
         execution = self._calculate_execution_complexity(parser)
+        
+        logger.info("변환 난이도 점수 계산 중")
         conversion = self._calculate_conversion_difficulty(parser)
         
         # 총점 계산
@@ -115,6 +132,8 @@ class ComplexityCalculator:
         normalized_score = self._normalize_score(total_score)
         complexity_level = self._get_complexity_level(normalized_score)
         recommendation = self._get_recommendation(complexity_level)
+        
+        logger.info(f"SQL 복잡도 계산 완료 (정규화 점수: {normalized_score:.2f}, 레벨: {complexity_level.value})")
         
         # 결과 객체 생성
         result = SQLAnalysisResult(
@@ -152,8 +171,11 @@ class ComplexityCalculator:
         Returns:
             PLSQLAnalysisResult: PL/SQL 분석 결과
         """
+        logger.info(f"PL/SQL 복잡도 계산 시작 (타겟: {self.target.value})")
+        
         # 오브젝트 타입 감지
         object_type = parser.detect_object_type()
+        logger.info(f"PL/SQL 오브젝트 타입: {object_type.value}")
         
         # 기본 점수 (Enum 값으로 비교하여 순환 import 문제 회피)
         # self.target의 value를 사용하여 PLSQL_BASE_SCORES에서 찾기
@@ -169,21 +191,26 @@ class ComplexityCalculator:
         base_score = PLSQL_BASE_SCORES[target_key][object_type]
         
         # 코드 복잡도 점수
+        logger.info("PL/SQL 코드 복잡도 계산 중")
         code_complexity = self._calculate_plsql_code_complexity(parser)
         
         # Oracle 특화 기능 점수
+        logger.info("PL/SQL Oracle 특화 기능 점수 계산 중")
         oracle_features = self._calculate_plsql_oracle_features(parser)
         
         # 비즈니스 로직 복잡도 점수
+        logger.info("PL/SQL 비즈니스 로직 복잡도 계산 중")
         business_logic = self._calculate_plsql_business_logic(parser)
         
         # 변환 난이도 점수
+        logger.info("PL/SQL 변환 난이도 계산 중")
         conversion_difficulty = self._calculate_plsql_conversion_difficulty(parser)
         
         # MySQL 특화 제약 점수 (MySQL 타겟만)
         mysql_constraints = 0.0
         app_migration_penalty = 0.0
         if self.target == TargetDatabase.MYSQL:
+            logger.info("MySQL 특화 제약 점수 계산 중")
             mysql_constraints = self._calculate_mysql_constraints(parser, object_type)
             app_migration_penalty = MYSQL_APP_MIGRATION_PENALTY[object_type]
         
@@ -202,6 +229,8 @@ class ComplexityCalculator:
         normalized_score = self._normalize_plsql_score(total_score)
         complexity_level = self._get_complexity_level(normalized_score)
         recommendation = self._get_recommendation(complexity_level)
+        
+        logger.info(f"PL/SQL 복잡도 계산 완료 (정규화 점수: {normalized_score:.2f}, 레벨: {complexity_level.value})")
         
         # 결과 객체 생성
         result = PLSQLAnalysisResult(
@@ -325,17 +354,21 @@ class ComplexityCalculator:
         Returns:
             float: 구조적 복잡성 점수
         """
+        logger.debug("구조적 복잡성 계산 시작")
         score = 0.0
         
         # 1.1: JOIN 점수 계산
         join_count = parser.count_joins()
+        logger.debug(f"JOIN 개수: {join_count}")
         for threshold, threshold_score in self.weights.join_thresholds:
             if join_count <= threshold:
                 score += threshold_score
+                logger.debug(f"JOIN 점수: {threshold_score}")
                 break
         
         # 1.2: 서브쿼리 중첩 깊이 점수 계산
         subquery_depth = parser.calculate_subquery_depth()
+        logger.debug(f"서브쿼리 중첩 깊이: {subquery_depth}")
         if subquery_depth == 0:
             pass  # 0점
         elif subquery_depth <= 2:
@@ -343,19 +376,25 @@ class ComplexityCalculator:
             for threshold, threshold_score in self.weights.subquery_thresholds:
                 if subquery_depth <= threshold:
                     score += threshold_score
+                    logger.debug(f"서브쿼리 점수: {threshold_score}")
                     break
         else:
             # 3 이상인 경우
             if self.target == TargetDatabase.POSTGRESQL:
                 # PostgreSQL: 1.5 + min(1, (depth-2)*0.5)
-                score += 1.5 + min(1.0, (subquery_depth - 2) * 0.5)
+                subquery_score = 1.5 + min(1.0, (subquery_depth - 2) * 0.5)
+                score += subquery_score
+                logger.debug(f"서브쿼리 점수 (PostgreSQL): {subquery_score}")
             else:  # MySQL
                 # MySQL: 4.0 + min(2, depth-2)
-                score += 4.0 + min(2.0, subquery_depth - 2)
+                subquery_score = 4.0 + min(2.0, subquery_depth - 2)
+                score += subquery_score
+                logger.debug(f"서브쿼리 점수 (MySQL): {subquery_score}")
         
         # 1.3: CTE 점수 계산
         cte_count = parser.count_ctes()
         cte_score = min(self.weights.cte_max, cte_count * self.weights.cte_coefficient)
+        logger.debug(f"CTE 개수: {cte_count}, 점수: {cte_score}")
         score += cte_score
         
         # 1.4: 집합 연산자 점수 계산
@@ -364,13 +403,17 @@ class ComplexityCalculator:
             self.weights.set_operator_max,
             set_operators_count * self.weights.set_operator_coefficient
         )
+        logger.debug(f"집합 연산자 개수: {set_operators_count}, 점수: {set_score}")
         score += set_score
         
         # 1.5: 풀스캔 페널티 (MySQL만)
         if self.target == TargetDatabase.MYSQL and parser.has_fullscan_risk():
+            logger.debug(f"풀스캔 위험 감지, 페널티: {self.weights.fullscan_penalty}")
             score += self.weights.fullscan_penalty
         
-        return min(score, self.weights.max_structural)
+        final_score = min(score, self.weights.max_structural)
+        logger.debug(f"구조적 복잡성 최종 점수: {final_score}")
+        return final_score
     
     def _calculate_oracle_specific_score(self, parser: SQLParser) -> float:
         """Oracle 특화 기능 점수 계산

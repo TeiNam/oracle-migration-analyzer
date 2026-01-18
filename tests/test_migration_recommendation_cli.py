@@ -17,11 +17,11 @@ from unittest.mock import patch, MagicMock
 from src.migration_recommendation.cli import (
     create_parser,
     validate_args,
-    detect_file_type,
     parse_dbcsi_file,
     analyze_sql_files,
     main
 )
+from src.utils.cli_helpers import detect_file_type
 
 
 class TestCLIParser:
@@ -36,8 +36,9 @@ class TestCLIParser:
     def test_parse_required_args(self):
         """필수 인자 파싱 테스트"""
         parser = create_parser()
-        args = parser.parse_args(["--sql-dir", "./sql_files"])
+        args = parser.parse_args(["--legacy", "--sql-dir", "./sql_files"])
         
+        assert args.legacy is True
         assert args.sql_dir == "./sql_files"
         assert args.format == "markdown"  # 기본값
         assert args.language == "ko"  # 기본값
@@ -46,6 +47,7 @@ class TestCLIParser:
         """모든 인자 파싱 테스트"""
         parser = create_parser()
         args = parser.parse_args([
+            "--legacy",
             "--dbcsi", "sample.out",
             "--sql-dir", "./sql_files",
             "--format", "json",
@@ -53,6 +55,7 @@ class TestCLIParser:
             "--language", "en"
         ])
         
+        assert args.legacy is True
         assert args.dbcsi == "sample.out"
         assert args.sql_dir == "./sql_files"
         assert args.format == "json"
@@ -64,10 +67,10 @@ class TestCLIParser:
         parser = create_parser()
         
         # 유효한 형식
-        args = parser.parse_args(["--sql-dir", "./sql", "--format", "json"])
+        args = parser.parse_args(["--legacy", "--sql-dir", "./sql", "--format", "json"])
         assert args.format == "json"
         
-        args = parser.parse_args(["--sql-dir", "./sql", "--format", "markdown"])
+        args = parser.parse_args(["--legacy", "--sql-dir", "./sql", "--format", "markdown"])
         assert args.format == "markdown"
     
     def test_parse_language_choices(self):
@@ -75,10 +78,10 @@ class TestCLIParser:
         parser = create_parser()
         
         # 유효한 언어
-        args = parser.parse_args(["--sql-dir", "./sql", "--language", "ko"])
+        args = parser.parse_args(["--legacy", "--sql-dir", "./sql", "--language", "ko"])
         assert args.language == "ko"
         
-        args = parser.parse_args(["--sql-dir", "./sql", "--language", "en"])
+        args = parser.parse_args(["--legacy", "--sql-dir", "./sql", "--language", "en"])
         assert args.language == "en"
 
 
@@ -88,7 +91,7 @@ class TestCLIValidation:
     def test_validate_args_missing_sql_dir(self):
         """존재하지 않는 SQL 디렉토리 검증"""
         parser = create_parser()
-        args = parser.parse_args(["--sql-dir", "/nonexistent/path"])
+        args = parser.parse_args(["--legacy", "--sql-dir", "/nonexistent/path"])
         
         with pytest.raises(SystemExit):
             validate_args(args)
@@ -98,6 +101,7 @@ class TestCLIValidation:
         with tempfile.TemporaryDirectory() as tmpdir:
             parser = create_parser()
             args = parser.parse_args([
+                "--legacy",
                 "--dbcsi", "/nonexistent/file.out",
                 "--sql-dir", tmpdir
             ])
@@ -109,7 +113,7 @@ class TestCLIValidation:
         """유효한 인자 검증"""
         with tempfile.TemporaryDirectory() as tmpdir:
             parser = create_parser()
-            args = parser.parse_args(["--sql-dir", tmpdir])
+            args = parser.parse_args(["--legacy", "--sql-dir", tmpdir])
             
             # 예외가 발생하지 않아야 함
             validate_args(args)
@@ -225,6 +229,7 @@ class TestCLIIntegration:
             # CLI 실행
             test_args = [
                 "migration-recommend",
+                "--legacy",
                 "--sql-dir", tmpdir,
                 "--output", str(output_file)
             ]
@@ -253,6 +258,7 @@ class TestCLIIntegration:
             # CLI 실행
             test_args = [
                 "migration-recommend",
+                "--legacy",
                 "--sql-dir", tmpdir,
                 "--format", "markdown",
                 "--output", str(output_file)
@@ -286,6 +292,7 @@ class TestCLIIntegration:
             # CLI 실행
             test_args = [
                 "migration-recommend",
+                "--legacy",
                 "--sql-dir", tmpdir,
                 "--format", "json",
                 "--output", str(output_file)
@@ -326,6 +333,7 @@ class TestCLIIntegration:
             # CLI 실행
             test_args = [
                 "migration-recommend",
+                "--legacy",
                 "--dbcsi", str(dbcsi_file),
                 "--sql-dir", tmpdir,
                 "--output", str(output_file)
@@ -350,6 +358,7 @@ class TestCLIErrorHandling:
             # 빈 디렉토리
             test_args = [
                 "migration-recommend",
+                "--legacy",
                 "--sql-dir", tmpdir
             ]
             
@@ -366,6 +375,7 @@ class TestCLIErrorHandling:
             
             test_args = [
                 "migration-recommend",
+                "--legacy",
                 "--sql-dir", tmpdir,
                 "--output", "/nonexistent/dir/output.md"
             ]

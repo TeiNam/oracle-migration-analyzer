@@ -590,12 +590,12 @@ class TestOracleConstants:
         assert 'MERGE' in ORACLE_SPECIFIC_SYNTAX
         assert 'DUAL' in ORACLE_SPECIFIC_SYNTAX
         
-        # 점수 검증
-        assert ORACLE_SPECIFIC_SYNTAX['CONNECT BY'] == 1.0
-        assert ORACLE_SPECIFIC_SYNTAX['MERGE'] == 1.5
-        assert ORACLE_SPECIFIC_SYNTAX['DUAL'] == 0.3
-        assert ORACLE_SPECIFIC_SYNTAX['NEXTVAL'] == 0.8
-        assert ORACLE_SPECIFIC_SYNTAX['CURRVAL'] == 0.8
+        # 점수 검증 (Requirements 2.1-2.5에 따른 가중치)
+        assert ORACLE_SPECIFIC_SYNTAX['CONNECT BY'] == 2.0  # 계층적 쿼리 (매우 어려움)
+        assert ORACLE_SPECIFIC_SYNTAX['MERGE'] == 2.0  # MERGE 문 (어려움)
+        assert ORACLE_SPECIFIC_SYNTAX['DUAL'] == 0.5  # DUAL 테이블 (쉬움)
+        assert ORACLE_SPECIFIC_SYNTAX['NEXTVAL'] == 1.0  # 시퀀스 다음 값
+        assert ORACLE_SPECIFIC_SYNTAX['CURRVAL'] == 1.0  # 시퀀스 현재 값
         
     def test_oracle_specific_functions_constants(self):
         """Oracle 특화 함수 상수가 올바르게 정의되었는지 테스트 (Requirements 3.1, 3.2)"""
@@ -637,9 +637,27 @@ class TestOracleConstants:
         assert 'CHR' in ORACLE_SPECIFIC_FUNCTIONS
         assert 'TRANSLATE' in ORACLE_SPECIFIC_FUNCTIONS
         
-        # 모든 함수가 0.5점인지 검증
-        for func, score in ORACLE_SPECIFIC_FUNCTIONS.items():
-            assert score == 0.5, f"{func} 함수의 점수가 0.5가 아닙니다: {score}"
+        # 점수 검증 (Requirements 3.1, 3.2에 따른 가중치)
+        # 조건/변환 함수
+        assert ORACLE_SPECIFIC_FUNCTIONS['DECODE'] == 0.8
+        assert ORACLE_SPECIFIC_FUNCTIONS['NVL'] == 0.6
+        assert ORACLE_SPECIFIC_FUNCTIONS['NVL2'] == 0.7
+        
+        # 집계 함수
+        assert ORACLE_SPECIFIC_FUNCTIONS['LISTAGG'] == 1.0
+        
+        # 시스템 함수
+        assert ORACLE_SPECIFIC_FUNCTIONS['SYS_CONTEXT'] == 1.5
+        
+        # 변환 함수
+        assert ORACLE_SPECIFIC_FUNCTIONS['TO_CHAR'] == 0.7
+        assert ORACLE_SPECIFIC_FUNCTIONS['TRUNC'] == 0.7
+        
+        # 날짜 함수
+        assert ORACLE_SPECIFIC_FUNCTIONS['SYSDATE'] == 0.6
+        
+        # 문자열 함수
+        assert ORACLE_SPECIFIC_FUNCTIONS['SUBSTR'] == 0.6
             
     def test_analytic_functions_constants(self):
         """분석 함수 상수가 올바르게 정의되었는지 테스트 (Requirements 2.2)"""

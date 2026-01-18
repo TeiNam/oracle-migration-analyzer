@@ -1,53 +1,53 @@
-# Oracle에서 Aurora MySQL 8.0.43으로의 마이그레이션 가이드
+# Oracle to Aurora MySQL 8.0.43 Migration Guide
 
-> [English](./EN/migration_guide_aurora_mysql80_EN.md)
+This guide focuses on query conversion and leveraging the latest features when migrating from Oracle Database to Amazon Aurora MySQL version 8.0.43.
 
-이 문서는 Oracle 데이터베이스에서 Amazon Aurora MySQL 8.0.43 버전으로 마이그레이션하는 과정에서 쿼리 변환 및 최신 기능 활용에 초점을 맞춘 가이드입니다.
+> [한국어](../migration_guide_aurora_mysql80.md)
 
-## 목차
+## Table of Contents
 
-1. [Aurora MySQL 8.0.43 주요 기능](#aurora-mysql-8043-주요-기능)
-2. [마이그레이션 개요](#마이그레이션-개요)
-3. [쿼리 복잡도에 따른 접근 방식](#쿼리-복잡도에-따른-접근-방식)
-4. [Oracle 특화 기능 대체 방법](#oracle-특화-기능-대체-방법)
-5. [MySQL 8.0 주요 기능 활용](#mysql-80-주요-기능-활용)
-6. [Aurora 특화 기능 활용](#aurora-특화-기능-활용)
-7. [성능 최적화 고려사항](#성능-최적화-고려사항)
+1. [Aurora MySQL 8.0.43 Key Features](#aurora-mysql-8043-key-features)
+2. [Migration Overview](#migration-overview)
+3. [Approach by Query Complexity](#approach-by-query-complexity)
+4. [Oracle-Specific Feature Alternatives](#oracle-specific-feature-alternatives)
+5. [Leveraging MySQL 8.0 Key Features](#leveraging-mysql-80-key-features)
+6. [Leveraging Aurora-Specific Features](#leveraging-aurora-specific-features)
+7. [Performance Optimization Considerations](#performance-optimization-considerations)
 
-## Aurora MySQL 8.0.43 주요 기능
+## Aurora MySQL 8.0.43 Key Features
 
-MySQL 8.0과 Aurora의 기능들을 활용하여 Oracle 마이그레이션을 효율적으로 수행할 수 있습니다:
+You can perform Oracle migration efficiently by leveraging MySQL 8.0 and Aurora features:
 
-### MySQL 8.0 주요 기능
-- **윈도우 함수**: ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD 등
-- **CTE (Common Table Expressions)**: WITH 절 및 재귀 쿼리 지원
-- **JSON 함수**: JSON 데이터 타입 및 다양한 JSON 함수
-- **향상된 인덱스**: Descending Index, Invisible Index
-- **성능 개선**: 쿼리 옵티마이저 및 인덱스 성능 향상
+### MySQL 8.0 Key Features
+- **Window Functions**: ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, etc.
+- **CTE (Common Table Expressions)**: WITH clause and recursive query support
+- **JSON Functions**: JSON data type and various JSON functions
+- **Enhanced Indexes**: Descending Index, Invisible Index
+- **Performance Improvements**: Query optimizer and index performance enhancements
 
-### Aurora MySQL 특화 기능
-- **Aurora Machine Learning**: SQL에서 직접 ML 모델 호출
-- **Fast Cloning**: 빠른 데이터베이스 복제로 테스트 환경 구성
-- **Global Database**: 다중 리전 재해 복구
-- **Performance Insights**: 실시간 성능 모니터링
-- **Parallel Query**: 대용량 분석 쿼리 병렬 처리
-- **Backtrack**: 특정 시점으로 빠른 롤백
+### Aurora MySQL-Specific Features
+- **Aurora Machine Learning**: Direct ML model invocation from SQL
+- **Fast Cloning**: Quick database cloning for test environment setup
+- **Global Database**: Multi-region disaster recovery
+- **Performance Insights**: Real-time performance monitoring
+- **Parallel Query**: Parallel processing for large analytical queries
+- **Backtrack**: Fast rollback to specific point in time
 
-## 마이그레이션 개요
+## Migration Overview
 
-### 1. 평가 및 계획
-- **AWS Schema Conversion Tool (SCT)** 사용
-  - 스키마 및 코드 자동 변환
-  - 변환 불가능한 항목 식별
-  - 복잡도 평가 리포트 생성
-- **Oracle to MySQL Query Analyzer** 사용
-  - 쿼리 복잡도 분석
-  - 변환 우선순위 결정
+### 1. Assessment and Planning
+- **Use AWS Schema Conversion Tool (SCT)**
+  - Automatic schema and code conversion
+  - Identify non-convertible items
+  - Generate complexity assessment reports
+- **Use Oracle to MySQL Query Analyzer**
+  - Analyze query complexity
+  - Determine conversion priorities
 
-### 2. 스키마 변환
+### 2. Schema Conversion
 ```sql
--- Oracle 데이터 타입 → MySQL 매핑
-NUMBER → DECIMAL 또는 INT
+-- Oracle Data Type → MySQL Mapping
+NUMBER → DECIMAL or INT
 NUMBER(p,s) → DECIMAL(p,s)
 VARCHAR2 → VARCHAR
 DATE → DATETIME
@@ -57,50 +57,50 @@ BLOB → LONGBLOB
 RAW → VARBINARY
 ```
 
-### 3. 데이터 마이그레이션
-- **AWS Database Migration Service (DMS)** 활용
-  - 초기 전체 로드
-  - 지속적 변경 데이터 캡처 (CDC)
-  - 최소 다운타임 마이그레이션
+### 3. Data Migration
+- **Leverage AWS Database Migration Service (DMS)**
+  - Initial full load
+  - Continuous Change Data Capture (CDC)
+  - Minimal downtime migration
 
-### 4. 검증 및 최적화
-- 데이터 무결성 검증
-- 성능 테스트 및 튜닝
-- Aurora Performance Insights로 모니터링
+### 4. Validation and Optimization
+- Data integrity validation
+- Performance testing and tuning
+- Monitor with Aurora Performance Insights
 
-## 쿼리 복잡도에 따른 접근 방식
+## Approach by Query Complexity
 
-### 매우 간단 (0-1)
-- AWS SCT 자동 변환
-- 기본 문법 차이만 수정
-- 예: `NVL → IFNULL`, `SYSDATE → NOW()`
+### Very Simple (0-1)
+- AWS SCT automatic conversion
+- Fix only basic syntax differences
+- Example: `NVL → IFNULL`, `SYSDATE → NOW()`
 
-### 간단 (1-3)
-- AWS SCT + 수동 검토
-- 함수 대체 필요
-- 예: `TO_CHAR → DATE_FORMAT`
+### Simple (1-3)
+- AWS SCT + manual review
+- Function replacement needed
+- Example: `TO_CHAR → DATE_FORMAT`
 
-### 중간 (3-5)
-- 부분 재작성 필요
-- MySQL 8.0 기능 활용 검토
-- 예: `CONNECT BY → WITH RECURSIVE`
+### Medium (3-5)
+- Partial rewrite needed
+- Review MySQL 8.0 feature utilization
+- Example: `CONNECT BY → WITH RECURSIVE`
 
-### 복잡 (5-7)
-- 상당한 재작성 필요
-- Aurora 특화 기능 활용 검토
-- 전문가 검토 권장
+### Complex (5-7)
+- Significant rewrite needed
+- Review Aurora-specific feature utilization
+- Expert review recommended
 
-### 매우 복잡 (7-9)
-- 대부분 재작성 필요
-- 아키텍처 재설계 고려
-- AWS Professional Services 활용 권장
+### Very Complex (7-9)
+- Most rewrite needed
+- Consider architecture redesign
+- AWS Professional Services recommended
 
-### 극도로 복잡 (9-10)
-- 완전한 재설계 필요
-- 비즈니스 로직 재검토
-- 단계적 마이그레이션 전략 수립
+### Extremely Complex (9-10)
+- Complete redesign needed
+- Review business logic
+- Establish phased migration strategy
 
-## Oracle 특화 기능 대체 방법
+## Oracle-Specific Feature Alternatives
 
 ### 1. ROWNUM → LIMIT
 ```sql
@@ -110,7 +110,7 @@ SELECT * FROM employees WHERE ROWNUM <= 10;
 -- MySQL 8.0
 SELECT * FROM employees LIMIT 10;
 
--- 페이지네이션
+-- Pagination
 SELECT * FROM employees LIMIT 10 OFFSET 20;
 ```
 
@@ -163,7 +163,7 @@ INSERT INTO target (id, value)
 SELECT id, value FROM source
 ON DUPLICATE KEY UPDATE value = VALUES(value);
 
--- 또는 MySQL 8.0.19+ 방식 (더 명확한 문법)
+-- Or MySQL 8.0.19+ syntax (clearer)
 INSERT INTO target (id, value)
 SELECT id, value FROM source AS new
 ON DUPLICATE KEY UPDATE value = new.value;
@@ -209,24 +209,24 @@ SELECT NVL2(commission, commission * 1.1, 0) FROM employees;
 -- MySQL 8.0
 SELECT IFNULL(commission, 0) FROM employees;
 SELECT IF(commission IS NOT NULL, commission * 1.1, 0) FROM employees;
--- 또는
+-- Or
 SELECT COALESCE(commission, 0) FROM employees;
 ```
 
-### 8. DUAL 테이블
+### 8. DUAL Table
 ```sql
 -- Oracle
 SELECT SYSDATE FROM DUAL;
 
--- MySQL 8.0 (DUAL 테이블 불필요)
+-- MySQL 8.0 (DUAL table not needed)
 SELECT NOW();
 ```
 
-## MySQL 8.0 주요 기능 활용
+## Leveraging MySQL 8.0 Key Features
 
-### 1. 윈도우 함수
+### 1. Window Functions
 ```sql
--- 각 부서별 급여 순위
+-- Salary ranking by department
 SELECT 
   employee_id,
   department,
@@ -236,7 +236,7 @@ SELECT
   DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) as dense_rank_num
 FROM employees;
 
--- LAG/LEAD 함수로 이전/다음 행 참조
+-- Reference previous/next rows with LAG/LEAD
 SELECT 
   order_id,
   order_date,
@@ -248,7 +248,7 @@ FROM orders;
 
 ### 2. CTE (Common Table Expression)
 ```sql
--- 재귀 CTE로 계층 구조 처리
+-- Handle hierarchical structures with recursive CTE
 WITH RECURSIVE category_tree AS (
   SELECT id, name, parent_id, 1 as level
   FROM categories
@@ -262,7 +262,7 @@ WITH RECURSIVE category_tree AS (
 )
 SELECT * FROM category_tree;
 
--- 비재귀 CTE로 복잡한 쿼리 단순화
+-- Simplify complex queries with non-recursive CTE
 WITH 
   sales_summary AS (
     SELECT product_id, SUM(amount) as total_sales
@@ -280,48 +280,48 @@ FROM top_products tp
 JOIN products p ON tp.product_id = p.id;
 ```
 
-### 3. JSON 함수
+### 3. JSON Functions
 ```sql
--- JSON 데이터 생성
+-- Create JSON data
 SELECT JSON_OBJECT('name', name, 'salary', salary) as employee_json
 FROM employees;
 
--- JSON 배열 생성
+-- Create JSON array
 SELECT JSON_ARRAY(name, department, salary) as employee_array
 FROM employees;
 
--- JSON 경로로 값 추출
+-- Extract values by JSON path
 SELECT 
   id,
   JSON_EXTRACT(data, '$.customer.name') as customer_name,
   data->>'$.customer.email' as customer_email
 FROM orders;
 
--- JSON 배열 요소 확인
+-- Check JSON array elements
 SELECT * FROM products
 WHERE JSON_CONTAINS(tags, '"electronics"');
 ```
 
-### 4. 향상된 인덱스
+### 4. Enhanced Indexes
 ```sql
--- 내림차순 인덱스
+-- Descending index
 CREATE INDEX idx_salary_desc ON employees(salary DESC);
 
--- 보이지 않는 인덱스 (테스트용)
+-- Invisible index (for testing)
 CREATE INDEX idx_test ON employees(department) INVISIBLE;
 
--- 인덱스 활성화
+-- Activate index
 ALTER TABLE employees ALTER INDEX idx_test VISIBLE;
 
--- 함수 기반 인덱스
+-- Function-based index
 CREATE INDEX idx_year ON orders((YEAR(order_date)));
 ```
 
-## Aurora 특화 기능 활용
+## Leveraging Aurora-Specific Features
 
-### 1. Fast Cloning으로 테스트 환경 구성
+### 1. Test Environment Setup with Fast Cloning
 ```bash
-# AWS CLI로 빠른 클론 생성
+# Create fast clone with AWS CLI
 aws rds create-db-cluster \
   --db-cluster-identifier test-cluster \
   --restore-type copy-on-write \
@@ -329,9 +329,9 @@ aws rds create-db-cluster \
   --engine aurora-mysql
 ```
 
-### 2. Performance Insights 활용
+### 2. Leverage Performance Insights
 ```sql
--- 느린 쿼리 식별
+-- Identify slow queries
 SELECT 
   DIGEST_TEXT,
   COUNT_STAR as exec_count,
@@ -342,9 +342,9 @@ ORDER BY AVG_TIMER_WAIT DESC
 LIMIT 10;
 ```
 
-### 3. Aurora Machine Learning 통합
+### 3. Aurora Machine Learning Integration
 ```sql
--- SageMaker 엔드포인트 호출 (예시)
+-- Call SageMaker endpoint (example)
 SELECT customer_id,
        aws_ml_predict_sagemaker(
          'churn-prediction-endpoint',
@@ -353,50 +353,50 @@ SELECT customer_id,
 FROM customers;
 ```
 
-### 4. Parallel Query 활용
+### 4. Leverage Parallel Query
 ```sql
--- 대용량 테이블 스캔 시 병렬 처리
--- Aurora가 자동으로 병렬 쿼리 적용 (특정 조건 충족 시)
+-- Parallel processing for large table scans
+-- Aurora automatically applies parallel query (when specific conditions are met)
 SELECT department, COUNT(*), AVG(salary)
 FROM large_employee_table
 WHERE hire_date > '2020-01-01'
 GROUP BY department;
 
--- Parallel Query 상태 확인
+-- Check Parallel Query status
 SHOW STATUS LIKE 'Aurora_pq%';
 ```
 
-### 5. Backtrack 기능
+### 5. Backtrack Feature
 ```bash
-# 특정 시점으로 빠른 롤백 (데이터 복구)
+# Fast rollback to specific point in time (data recovery)
 aws rds backtrack-db-cluster \
   --db-cluster-identifier my-cluster \
   --backtrack-to "2024-01-13T10:00:00Z"
 ```
 
-## 성능 최적화 고려사항
+## Performance Optimization Considerations
 
-### 1. 인덱스 전략
+### 1. Index Strategy
 ```sql
--- B-tree 인덱스 (기본)
+-- B-tree index (default)
 CREATE INDEX idx_employee_dept ON employees(department);
 
--- 복합 인덱스
+-- Composite index
 CREATE INDEX idx_dept_salary ON employees(department, salary);
 
--- 전문 검색 인덱스
+-- Full-text search index
 CREATE FULLTEXT INDEX idx_description ON products(description);
 
--- 공간 인덱스
+-- Spatial index
 CREATE SPATIAL INDEX idx_location ON stores(location);
 
--- 인덱스 사용 확인
+-- Verify index usage
 EXPLAIN SELECT * FROM employees WHERE department = 'IT';
 ```
 
-### 2. 파티셔닝
+### 2. Partitioning
 ```sql
--- 범위 파티셔닝
+-- Range partitioning
 CREATE TABLE orders (
   order_id BIGINT,
   order_date DATE,
@@ -409,7 +409,7 @@ PARTITION BY RANGE (YEAR(order_date)) (
   PARTITION p_future VALUES LESS THAN MAXVALUE
 );
 
--- 리스트 파티셔닝
+-- List partitioning
 CREATE TABLE employees (
   id INT,
   name VARCHAR(100),
@@ -421,7 +421,7 @@ PARTITION BY LIST COLUMNS(region) (
   PARTITION p_west VALUES IN ('West', 'Northwest')
 );
 
--- 해시 파티셔닝
+-- Hash partitioning
 CREATE TABLE logs (
   id BIGINT,
   message TEXT,
@@ -431,76 +431,76 @@ PARTITION BY HASH(id)
 PARTITIONS 4;
 ```
 
-### 3. Aurora 읽기 복제본 활용
+### 3. Leverage Aurora Read Replicas
 ```sql
--- 읽기 전용 엔드포인트 사용
+-- Use read-only endpoint
 -- Reader Endpoint: cluster-name.cluster-ro-xxxxx.region.rds.amazonaws.com
 -- Writer Endpoint: cluster-name.cluster-xxxxx.region.rds.amazonaws.com
 
--- 읽기 쿼리는 Reader Endpoint로 분산
+-- Distribute read queries to Reader Endpoint
 SELECT * FROM employees WHERE department = 'IT';
 
--- 쓰기 쿼리는 Writer Endpoint로
+-- Write queries to Writer Endpoint
 INSERT INTO employees (name, department) VALUES ('John', 'IT');
 ```
 
-### 4. 연결 풀링 최적화
+### 4. Connection Pooling Optimization
 ```sql
--- MySQL 연결 설정 확인
+-- Check MySQL connection settings
 SHOW VARIABLES LIKE 'max_connections';
 SHOW VARIABLES LIKE 'thread_cache_size';
 
--- Aurora 권장 설정
--- max_connections: 인스턴스 크기에 따라 자동 조정
--- thread_cache_size: 자동 관리
+-- Aurora recommended settings
+-- max_connections: Auto-adjusted based on instance size
+-- thread_cache_size: Auto-managed
 
--- 연결 상태 모니터링
+-- Monitor connection status
 SHOW PROCESSLIST;
 
--- 또는
+-- Or
 SELECT * FROM information_schema.PROCESSLIST
 WHERE COMMAND != 'Sleep';
 ```
 
-### 5. 쿼리 최적화
+### 5. Query Optimization
 ```sql
--- 실행 계획 분석
+-- Analyze execution plan
 EXPLAIN FORMAT=JSON
 SELECT e.name, d.department_name
 FROM employees e
 JOIN departments d ON e.dept_id = d.id
 WHERE e.salary > 50000;
 
--- 쿼리 프로파일링
+-- Query profiling
 SET profiling = 1;
 SELECT * FROM large_table WHERE condition = 'value';
 SHOW PROFILES;
 SHOW PROFILE FOR QUERY 1;
 
--- 옵티마이저 힌트 사용
+-- Use optimizer hints
 SELECT /*+ MAX_EXECUTION_TIME(1000) */ *
 FROM employees
 WHERE department = 'IT';
 ```
 
-### 6. 테이블 최적화
+### 6. Table Optimization
 ```sql
--- 테이블 분석 (통계 업데이트)
+-- Analyze table (update statistics)
 ANALYZE TABLE employees;
 
--- 테이블 최적화 (조각 모음)
+-- Optimize table (defragmentation)
 OPTIMIZE TABLE employees;
 
--- 테이블 상태 확인
+-- Check table status
 SHOW TABLE STATUS LIKE 'employees';
 
--- InnoDB 버퍼 풀 상태
+-- InnoDB buffer pool status
 SHOW STATUS LIKE 'Innodb_buffer_pool%';
 ```
 
-### 7. Aurora 모니터링
+### 7. Aurora Monitoring
 ```sql
--- 활성 쿼리 모니터링
+-- Monitor active queries
 SELECT 
   ID,
   USER,
@@ -514,7 +514,7 @@ FROM information_schema.PROCESSLIST
 WHERE COMMAND != 'Sleep'
 ORDER BY TIME DESC;
 
--- 테이블 통계
+-- Table statistics
 SELECT 
   TABLE_SCHEMA,
   TABLE_NAME,
@@ -527,7 +527,7 @@ FROM information_schema.TABLES
 WHERE TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema')
 ORDER BY total_size DESC;
 
--- 인덱스 사용 통계
+-- Index usage statistics
 SELECT 
   OBJECT_SCHEMA,
   OBJECT_NAME,
@@ -540,56 +540,56 @@ WHERE OBJECT_SCHEMA NOT IN ('mysql', 'performance_schema')
 ORDER BY COUNT_STAR DESC;
 ```
 
-### 8. 캐싱 전략
+### 8. Caching Strategy
 ```sql
--- 쿼리 캐시 (MySQL 8.0에서 제거됨, 대신 애플리케이션 레벨 캐싱 권장)
--- InnoDB 버퍼 풀 설정 확인
+-- Query cache (removed in MySQL 8.0, recommend application-level caching instead)
+-- Check InnoDB buffer pool settings
 SHOW VARIABLES LIKE 'innodb_buffer_pool_size';
 
--- 버퍼 풀 히트율 확인
+-- Check buffer pool hit rate
 SHOW STATUS LIKE 'Innodb_buffer_pool_read%';
 ```
 
-## 마이그레이션 체크리스트
+## Migration Checklist
 
-- [ ] AWS SCT로 스키마 변환 완료
-- [ ] 쿼리 복잡도 분석 완료
-- [ ] 높은 복잡도 쿼리 재작성 완료
-- [ ] DMS 복제 작업 설정 완료
-- [ ] 테스트 데이터 마이그레이션 검증
-- [ ] 성능 테스트 완료
-- [ ] 인덱스 최적화 완료
-- [ ] 애플리케이션 연결 테스트 완료
-- [ ] 롤백 계획 수립 완료
-- [ ] 프로덕션 마이그레이션 실행
-- [ ] Performance Insights 모니터링 설정
-- [ ] 운영 문서 업데이트
+- [ ] Schema conversion completed with AWS SCT
+- [ ] Query complexity analysis completed
+- [ ] High complexity query rewrite completed
+- [ ] DMS replication task setup completed
+- [ ] Test data migration validated
+- [ ] Performance testing completed
+- [ ] Index optimization completed
+- [ ] Application connection testing completed
+- [ ] Rollback plan established
+- [ ] Production migration executed
+- [ ] Performance Insights monitoring configured
+- [ ] Operations documentation updated
 
-## Oracle과 MySQL 주요 차이점
+## Key Differences Between Oracle and MySQL
 
-### 1. 트랜잭션 처리
+### 1. Transaction Handling
 ```sql
--- Oracle: 자동 커밋 비활성화 (기본)
--- MySQL: 자동 커밋 활성화 (기본)
+-- Oracle: Auto-commit disabled (default)
+-- MySQL: Auto-commit enabled (default)
 
--- MySQL에서 명시적 트랜잭션
+-- Explicit transaction in MySQL
 START TRANSACTION;
 UPDATE accounts SET balance = balance - 100 WHERE id = 1;
 UPDATE accounts SET balance = balance + 100 WHERE id = 2;
 COMMIT;
 ```
 
-### 2. NULL 처리
+### 2. NULL Handling
 ```sql
--- Oracle: 빈 문자열('')을 NULL로 처리
--- MySQL: 빈 문자열('')과 NULL을 구분
+-- Oracle: Treats empty string ('') as NULL
+-- MySQL: Distinguishes between empty string ('') and NULL
 
--- MySQL에서 주의
-SELECT * FROM users WHERE email = '';  -- 빈 문자열
+-- Be careful in MySQL
+SELECT * FROM users WHERE email = '';  -- Empty string
 SELECT * FROM users WHERE email IS NULL;  -- NULL
 ```
 
-### 3. 문자열 연결
+### 3. String Concatenation
 ```sql
 -- Oracle
 SELECT first_name || ' ' || last_name FROM employees;
@@ -598,7 +598,7 @@ SELECT first_name || ' ' || last_name FROM employees;
 SELECT CONCAT(first_name, ' ', last_name) FROM employees;
 ```
 
-### 4. 날짜 함수
+### 4. Date Functions
 ```sql
 -- Oracle
 SELECT SYSDATE, TRUNC(SYSDATE), ADD_MONTHS(SYSDATE, 1) FROM DUAL;
@@ -607,20 +607,20 @@ SELECT SYSDATE, TRUNC(SYSDATE), ADD_MONTHS(SYSDATE, 1) FROM DUAL;
 SELECT NOW(), DATE(NOW()), DATE_ADD(NOW(), INTERVAL 1 MONTH);
 ```
 
-### 5. 대소문자 구분
+### 5. Case Sensitivity
 ```sql
--- Oracle: 기본적으로 대소문자 구분 안 함 (설정 가능)
--- MySQL: 테이블명은 OS에 따라 다름, 컬럼명은 구분 안 함
+-- Oracle: Case-insensitive by default (configurable)
+-- MySQL: Table names depend on OS, column names are case-insensitive
 
--- MySQL에서 대소문자 구분 설정
--- lower_case_table_names = 0 (Unix: 구분함)
--- lower_case_table_names = 1 (Windows: 구분 안 함)
+-- Case sensitivity settings in MySQL
+-- lower_case_table_names = 0 (Unix: case-sensitive)
+-- lower_case_table_names = 1 (Windows: case-insensitive)
 ```
 
-## 참고 자료
+## References
 
 - [AWS Database Migration Service](https://aws.amazon.com/dms/)
 - [AWS Schema Conversion Tool](https://aws.amazon.com/dms/schema-conversion-tool/)
-- [Aurora MySQL 문서](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.AuroraMySQL.html)
-- [MySQL 8.0 릴리스 노트](https://dev.mysql.com/doc/relnotes/mysql/8.0/en/)
-- [Oracle to MySQL 마이그레이션 가이드](https://docs.aws.amazon.com/dms/latest/oracle-to-aurora-mysql-migration-playbook/chap-oracle-aurora-mysql.html)
+- [Aurora MySQL Documentation](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.AuroraMySQL.html)
+- [MySQL 8.0 Release Notes](https://dev.mysql.com/doc/relnotes/mysql/8.0/en/)
+- [Oracle to MySQL Migration Guide](https://docs.aws.amazon.com/dms/latest/oracle-to-aurora-mysql-migration-playbook/chap-oracle-aurora-mysql.html)

@@ -1,5 +1,7 @@
 # Oracle to PostgreSQL 마이그레이션 복잡도 계산 공식
 
+> [English](./EN/complexity_postgresql_EN.md)
+
 이 문서는 Oracle에서 PostgreSQL로 마이그레이션 시 SQL 쿼리와 PL/SQL 오브젝트의 복잡도를 계산하는 공식입니다.
 
 ## PostgreSQL 특성

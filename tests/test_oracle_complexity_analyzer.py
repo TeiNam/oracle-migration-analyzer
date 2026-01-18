@@ -132,15 +132,15 @@ class TestOracleComplexityAnalyzer:
     
     def test_is_plsql_detection(self):
         """PL/SQL 감지 테스트"""
-        analyzer = OracleComplexityAnalyzer()
+        from src.oracle_complexity_analyzer.file_detector import is_plsql
         
         # PL/SQL 코드
         plsql_code = "CREATE OR REPLACE PROCEDURE test_proc IS BEGIN NULL; END;"
-        assert analyzer._is_plsql(plsql_code) is True
+        assert is_plsql(plsql_code) is True
         
         # SQL 쿼리
         sql_query = "SELECT * FROM employees"
-        assert analyzer._is_plsql(sql_query) is False
+        assert is_plsql(sql_query) is False
     
     def test_export_json(self):
         """JSON 내보내기 테스트 (Requirements 14.1, 14.6, 14.7)"""

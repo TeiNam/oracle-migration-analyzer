@@ -239,6 +239,7 @@ class BatchAnalyzer:
             
         except (StatspackParseError, StatspackFileError) as e:
             # 파싱 오류 - 건너뛰고 계속 진행
+            logger.error(f"파싱 오류: {filepath}", exc_info=True)
             return BatchFileResult(
                 filepath=str(filepath),
                 filename=filepath.name,
@@ -247,6 +248,7 @@ class BatchAnalyzer:
             )
         except Exception as e:
             # 기타 예외 - 건너뛰고 계속 진행
+            logger.error(f"예상치 못한 오류: {filepath}", exc_info=True)
             return BatchFileResult(
                 filepath=str(filepath),
                 filename=filepath.name,

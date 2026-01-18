@@ -8,13 +8,8 @@ Requirements 15.1, 15.2, 15.3을 구현합니다.
 """
 
 from typing import Dict, List
-import sys
-import os
 
-# 상위 디렉토리의 모듈을 import하기 위한 경로 추가
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from oracle_complexity_analyzer import TargetDatabase
+from src.oracle_complexity_analyzer import TargetDatabase
 
 
 class ConversionGuideProvider:

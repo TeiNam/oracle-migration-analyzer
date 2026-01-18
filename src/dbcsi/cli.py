@@ -16,8 +16,12 @@ from .migration_analyzer import MigrationAnalyzer, TargetDatabase
 from .formatters import StatspackResultFormatter, EnhancedResultFormatter
 from .batch_analyzer import BatchAnalyzer
 from .logging_config import setup_logging, get_logger
+from ..utils.cli_helpers import detect_file_type, generate_output_path, print_progress
+from ..utils.file_utils import read_file_with_encoding
+import logging
 
-# 로거는 main 함수에서 초기화됩니다
+# 로거 초기화 (모듈 레벨에서 기본 로거 생성)
+logger = logging.getLogger("statspack.cli")
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -160,36 +164,34 @@ def validate_args(args: argparse.Namespace) -> None:
     # 파일 존재 확인
     if args.file:
         if not os.path.exists(args.file):
-            print(f"오류: 파일을 찾을 수 없습니다: {args.file}", file=sys.stderr)
+            logger.error(f"파일을 찾을 수 없습니다: {args.file}")
             sys.exit(1)
         if not args.file.endswith('.out'):
-            print(f"경고: Statspack/AWR 파일은 일반적으로 .out 확장자를 가집니다: {args.file}", 
-                  file=sys.stderr)
+            logger.warning(f"Statspack/AWR 파일은 일반적으로 .out 확장자를 가집니다: {args.file}")
     
     # 디렉토리 존재 확인
     if args.directory:
         if not os.path.exists(args.directory):
-            print(f"오류: 디렉토리를 찾을 수 없습니다: {args.directory}", file=sys.stderr)
+            logger.error(f"디렉토리를 찾을 수 없습니다: {args.directory}")
             sys.exit(1)
         if not os.path.isdir(args.directory):
-            print(f"오류: 디렉토리가 아닙니다: {args.directory}", file=sys.stderr)
+            logger.error(f"디렉토리가 아닙니다: {args.directory}")
             sys.exit(1)
     
     # 비교 파일 존재 확인
     if args.compare:
         for file in args.compare:
             if not os.path.exists(file):
-                print(f"오류: 파일을 찾을 수 없습니다: {file}", file=sys.stderr)
+                logger.error(f"파일을 찾을 수 없습니다: {file}")
                 sys.exit(1)
             if not file.endswith('.out'):
-                print(f"경고: Statspack/AWR 파일은 일반적으로 .out 확장자를 가집니다: {file}", 
-                      file=sys.stderr)
+                logger.warning(f"Statspack/AWR 파일은 일반적으로 .out 확장자를 가집니다: {file}")
     
     # 출력 파일 디렉토리 확인
     if args.output:
         output_dir = os.path.dirname(args.output)
         if output_dir and not os.path.exists(output_dir):
-            print(f"오류: 출력 디렉토리를 찾을 수 없습니다: {output_dir}", file=sys.stderr)
+            logger.error(f"출력 디렉토리를 찾을 수 없습니다: {output_dir}")
             sys.exit(1)
 
 
@@ -215,68 +217,6 @@ def get_target_databases(target_arg: str) -> Optional[List[TargetDatabase]]:
     return [target_map[target_arg]]
 
 
-def detect_file_type(filepath: str) -> str:
-    """
-    파일 타입을 자동으로 감지합니다 (AWR vs Statspack).
-    
-    1. 먼저 파일명에서 AWR 또는 STATSPACK 키워드 확인
-    2. 파일명에 없으면 파일 내용에서 AWR 특화 마커 확인
-    
-    AWR 특화 섹션 마커:
-    - IOSTAT-FUNCTION
-    - PERCENT-CPU
-    - PERCENT-IO
-    - WORKLOAD
-    - BUFFER-CACHE
-    
-    Args:
-        filepath: 분석할 파일 경로
-        
-    Returns:
-        "awr" 또는 "statspack"
-    """
-    # 1. 파일명 확인 (대소문자 무시)
-    from pathlib import Path
-    filename_lower = Path(filepath).name.lower()
-    
-    if 'awr' in filename_lower:
-        return "awr"
-    elif 'statspack' in filename_lower:
-        return "statspack"
-    
-    # 2. 파일명에 타입 정보가 없으면 파일 내용 확인
-    awr_markers = [
-        "~~BEGIN-IOSTAT-FUNCTION~~",
-        "~~BEGIN-PERCENT-CPU~~",
-        "~~BEGIN-PERCENT-IO~~",
-        "~~BEGIN-WORKLOAD~~",
-        "~~BEGIN-BUFFER-CACHE~~"
-    ]
-    
-    try:
-        # UTF-8로 시도
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read(50000)  # 처음 50KB만 읽기 (성능 최적화)
-        except UnicodeDecodeError:
-            # Latin-1로 폴백
-            with open(filepath, 'r', encoding='latin-1') as f:
-                content = f.read(50000)
-        
-        # AWR 마커가 하나라도 있으면 AWR 파일
-        for marker in awr_markers:
-            if marker in content:
-                return "awr"
-        
-        # AWR 마커가 없으면 Statspack 파일
-        return "statspack"
-        
-    except Exception as e:
-        # 파일 읽기 실패 시 기본값으로 Statspack 반환
-        print(f"경고: 파일 타입 감지 실패, Statspack으로 간주: {e}", file=sys.stderr)
-        return "statspack"
-
-
 def detect_and_parse(filepath: str):
     """
     파일 타입을 자동 감지하고 적절한 파서를 반환합니다.
@@ -290,10 +230,10 @@ def detect_and_parse(filepath: str):
     file_type = detect_file_type(filepath)
     
     if file_type == "awr":
-        print(f"파일 타입: AWR", file=sys.stderr)
+        logger.info("파일 타입: AWR")
         return AWRParser(filepath)
     else:
-        print(f"파일 타입: Statspack", file=sys.stderr)
+        logger.info("파일 타입: Statspack")
         return StatspackParser(filepath)
 
 
@@ -310,55 +250,50 @@ def process_single_file(args: argparse.Namespace) -> int:
     try:
         # 출력 경로 자동 생성 (--output이 지정되지 않은 경우)
         if not args.output:
-            # 파일이 있는 폴더명 추출
             file_path = Path(args.file)
             folder_name = file_path.parent.name if file_path.parent.name else "default"
-            
-            # reports/{폴더명}/ 경로 생성
             output_dir = Path("reports") / folder_name
-            output_dir.mkdir(parents=True, exist_ok=True)
             
-            # 파일명 생성 (원본 파일명에서 확장자를 .md로 변경)
-            output_filename = file_path.stem + ".md"
-            args.output = str(output_dir / output_filename)
+            # generate_output_path 유틸리티 사용
+            args.output = str(generate_output_path(file_path, output_dir))
             
-            print(f"출력 경로 자동 설정: {args.output}", file=sys.stderr)
+            logger.info(f"출력 경로 자동 설정: {args.output}")
         
         # 파일 크기 확인
         file_size = os.path.getsize(args.file)
         is_large_file = file_size > 5 * 1024 * 1024  # 5MB 이상
         
         if is_large_file:
-            print(f"대용량 파일 감지 ({file_size / (1024*1024):.1f} MB)", file=sys.stderr)
+            logger.info(f"대용량 파일 감지 ({file_size / (1024*1024):.1f} MB)")
         
-        # 파일 타입 자동 감지 및 파싱
-        print(f"[1/4] 파일 파싱 중: {args.file}", file=sys.stderr)
+        # 파일 타입 자동 감지 및 파싱 (print_progress 사용)
+        print_progress(1, 4, f"파일 파싱 중: {args.file}")
         parser = detect_and_parse(args.file)
         data = parser.parse()
-        print(f"[1/4] 파싱 완료", file=sys.stderr)
+        print_progress(1, 4, "파싱 완료")
         
         # AWR 데이터인지 확인
         from .data_models import AWRData
         is_awr = isinstance(data, AWRData) and data.is_awr()
         
         if is_awr:
-            print(f"[2/4] AWR 특화 섹션 발견", file=sys.stderr)
+            print_progress(2, 4, "AWR 특화 섹션 발견")
         else:
-            print(f"[2/4] Statspack 모드로 분석", file=sys.stderr)
+            print_progress(2, 4, "Statspack 모드로 분석")
         
         # 마이그레이션 분석
         migration_analysis = None
         if args.analyze_migration:
-            print(f"[3/4] 마이그레이션 분석 중...", file=sys.stderr)
+            print_progress(3, 4, "마이그레이션 분석 중...")
             analyzer = MigrationAnalyzer(data)
             target_dbs = get_target_databases(args.target)
             migration_analysis = analyzer.analyze(target_dbs)
-            print(f"[3/4] 분석 완료", file=sys.stderr)
+            print_progress(3, 4, "분석 완료")
         else:
-            print(f"[3/4] 마이그레이션 분석 건너뜀", file=sys.stderr)
+            print_progress(3, 4, "마이그레이션 분석 건너뜀")
         
         # 결과 포맷팅
-        print(f"[4/4] 리포트 생성 중...", file=sys.stderr)
+        print_progress(4, 4, "리포트 생성 중...")
         if args.format == "json":
             if migration_analysis:
                 output = StatspackResultFormatter.to_json(migration_analysis)
@@ -373,7 +308,7 @@ def process_single_file(args: argparse.Namespace) -> int:
             else:
                 output = StatspackResultFormatter.to_markdown(data, migration_analysis)
         
-        print(f"[4/4] 리포트 생성 완료", file=sys.stderr)
+        print_progress(4, 4, "리포트 생성 완료")
         
         # 결과 출력 또는 저장
         if args.output:
@@ -383,19 +318,17 @@ def process_single_file(args: argparse.Namespace) -> int:
             
             with open(args.output, 'w', encoding='utf-8') as f:
                 f.write(output)
-            print(f"✓ 결과 저장 완료: {args.output}", file=sys.stderr)
+            logger.info(f"✓ 결과 저장 완료: {args.output}")
         else:
             print(output)
         
         return 0
         
     except FileNotFoundError as e:
-        print(f"오류: {e}", file=sys.stderr)
+        logger.error(f"파일을 찾을 수 없습니다: {e}")
         return 1
     except Exception as e:
-        print(f"오류: 파일 처리 중 예외 발생: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
+        logger.error(f"파일 처리 중 예외 발생: {e}", exc_info=True)
         return 1
 
 
@@ -412,33 +345,30 @@ def process_directory(args: argparse.Namespace) -> int:
     try:
         # 출력 경로 자동 생성 (--output이 지정되지 않은 경우)
         if not args.output:
-            # 디렉토리 이름 추출
             dir_path = Path(args.directory)
             folder_name = dir_path.name if dir_path.name else "default"
-            
-            # reports/{폴더명}/ 경로 생성
             output_dir = Path("reports") / folder_name
-            output_dir.mkdir(parents=True, exist_ok=True)
             
-            # 파일명 생성 (배치 요약 리포트)
+            # 배치 요약 리포트용 경로 생성
             output_filename = "batch_summary.md"
+            output_dir.mkdir(parents=True, exist_ok=True)
             args.output = str(output_dir / output_filename)
             
-            print(f"출력 경로 자동 설정: {args.output}", file=sys.stderr)
+            logger.info(f"출력 경로 자동 설정: {args.output}")
         
-        print(f"[1/3] 디렉토리 스캔 중: {args.directory}", file=sys.stderr)
+        print_progress(1, 3, f"디렉토리 스캔 중: {args.directory}")
         
         # .out 파일 개수 확인
         out_files = list(Path(args.directory).glob("*.out"))
         num_files = len(out_files)
         
         if num_files == 0:
-            print(f"경고: .out 파일을 찾을 수 없습니다", file=sys.stderr)
+            logger.warning(".out 파일을 찾을 수 없습니다")
         else:
-            print(f"발견된 파일: {num_files}개", file=sys.stderr)
+            logger.info(f"발견된 파일: {num_files}개")
         
         # 배치 분석 실행
-        print(f"[2/3] 배치 분석 실행 중...", file=sys.stderr)
+        print_progress(2, 3, "배치 분석 실행 중...")
         batch_analyzer = BatchAnalyzer(args.directory)
         target_db = get_target_databases(args.target)
         target_db = target_db[0] if target_db else None  # 단일 타겟 또는 None
@@ -448,17 +378,17 @@ def process_directory(args: argparse.Namespace) -> int:
             target=target_db
         )
         
-        print(f"[2/3] 배치 분석 완료: {results.successful_files}개 성공, "
-              f"{results.failed_files}개 실패", file=sys.stderr)
+        print_progress(2, 3, f"배치 분석 완료: {results.successful_files}개 성공, "
+                      f"{results.failed_files}개 실패")
         
         # 결과 포맷팅
-        print(f"[3/3] 리포트 생성 중...", file=sys.stderr)
+        print_progress(3, 3, "리포트 생성 중...")
         if args.format == "json":
             output = StatspackResultFormatter.batch_to_json(results)
         else:  # markdown
             output = StatspackResultFormatter.batch_to_markdown(results)
         
-        print(f"[3/3] 리포트 생성 완료", file=sys.stderr)
+        print_progress(3, 3, "리포트 생성 완료")
         
         # 결과 출력 또는 저장
         if args.output:
@@ -468,7 +398,7 @@ def process_directory(args: argparse.Namespace) -> int:
             
             with open(args.output, 'w', encoding='utf-8') as f:
                 f.write(output)
-            print(f"✓ 결과 저장 완료: {args.output}", file=sys.stderr)
+            logger.info(f"✓ 결과 저장 완료: {args.output}")
         else:
             print(output)
         
@@ -476,9 +406,7 @@ def process_directory(args: argparse.Namespace) -> int:
         return 1 if results.failed_files > 0 else 0
         
     except Exception as e:
-        print(f"오류: 디렉토리 처리 중 예외 발생: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
+        logger.error(f"디렉토리 처리 중 예외 발생: {e}", exc_info=True)
         return 1
 
 
@@ -496,52 +424,49 @@ def process_compare(args: argparse.Namespace) -> int:
         # 출력 경로 자동 생성 (--output이 지정되지 않은 경우)
         if not args.output:
             file1, file2 = args.compare
-            # 첫 번째 파일이 있는 폴더명 추출
             file_path = Path(file1)
             folder_name = file_path.parent.name if file_path.parent.name else "default"
-            
-            # reports/{폴더명}/ 경로 생성
             output_dir = Path("reports") / folder_name
-            output_dir.mkdir(parents=True, exist_ok=True)
             
-            # 파일명 생성 (비교 리포트)
+            # 비교 리포트용 파일명 생성
             file1_stem = Path(file1).stem
             file2_stem = Path(file2).stem
             output_filename = f"comparison_{file1_stem}_vs_{file2_stem}.md"
+            output_dir.mkdir(parents=True, exist_ok=True)
             args.output = str(output_dir / output_filename)
             
-            print(f"출력 경로 자동 설정: {args.output}", file=sys.stderr)
+            logger.info(f"출력 경로 자동 설정: {args.output}")
         
         file1, file2 = args.compare
         
-        print(f"[1/4] 첫 번째 파일 파싱 중: {file1}", file=sys.stderr)
+        print_progress(1, 4, f"첫 번째 파일 파싱 중: {file1}")
         # 파일 타입 자동 감지 및 파싱
         parser1 = detect_and_parse(file1)
         data1 = parser1.parse()
-        print(f"[1/4] 파싱 완료", file=sys.stderr)
+        print_progress(1, 4, "파싱 완료")
         
-        print(f"[2/4] 두 번째 파일 파싱 중: {file2}", file=sys.stderr)
+        print_progress(2, 4, f"두 번째 파일 파싱 중: {file2}")
         parser2 = detect_and_parse(file2)
         data2 = parser2.parse()
-        print(f"[2/4] 파싱 완료", file=sys.stderr)
+        print_progress(2, 4, "파싱 완료")
         
         # AWR 데이터인지 확인
         from .data_models import AWRData
         if not isinstance(data1, AWRData) or not isinstance(data2, AWRData):
-            print(f"경고: 비교 기능은 AWR 파일에 최적화되어 있습니다.", file=sys.stderr)
+            logger.warning("비교 기능은 AWR 파일에 최적화되어 있습니다.")
         
         # 비교 리포트 생성
-        print(f"[3/4] 비교 분석 중...", file=sys.stderr)
+        print_progress(3, 4, "비교 분석 중...")
         
         # 비교 리포트 생성
         output = EnhancedResultFormatter.compare_awr_reports(
             data1, data2, args.language
         )
         
-        print(f"[3/4] 비교 완료", file=sys.stderr)
+        print_progress(3, 4, "비교 완료")
         
         # 결과 출력 또는 저장
-        print(f"[4/4] 리포트 생성 중...", file=sys.stderr)
+        print_progress(4, 4, "리포트 생성 중...")
         if args.output:
             # 출력 디렉토리가 없으면 생성
             output_path = Path(args.output)
@@ -549,19 +474,17 @@ def process_compare(args: argparse.Namespace) -> int:
             
             with open(args.output, 'w', encoding='utf-8') as f:
                 f.write(output)
-            print(f"✓ 결과 저장 완료: {args.output}", file=sys.stderr)
+            logger.info(f"✓ 결과 저장 완료: {args.output}")
         else:
             print(output)
         
         return 0
         
     except FileNotFoundError as e:
-        print(f"오류: {e}", file=sys.stderr)
+        logger.error(f"파일을 찾을 수 없습니다: {e}")
         return 1
     except Exception as e:
-        print(f"오류: 파일 비교 중 예외 발생: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
+        logger.error(f"파일 비교 중 예외 발생: {e}", exc_info=True)
         return 1
 
 
@@ -579,9 +502,10 @@ def main() -> int:
     # 로깅 설정
     log_level = "DEBUG" if hasattr(args, 'verbose') and args.verbose else "INFO"
     setup_logging(level=log_level, console=True)
-    logger = get_logger("cli")
     
-    logger.info("Starting Statspack/AWR analysis")
+    # 로거 가져오기
+    cli_logger = get_logger("cli")
+    cli_logger.info("Starting Statspack/AWR analysis")
     
     # 인자 검증
     validate_args(args)

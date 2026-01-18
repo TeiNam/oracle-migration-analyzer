@@ -1,5 +1,7 @@
 # AI 도구를 활용한 마이그레이션 가이드
 
+> [English](./EN/ai_assisted_migration_EN.md)
+
 ## 개요
 
 AWS AI 도구(Amazon Q Developer, Amazon Bedrock)를 활용하면 PL/SQL 마이그레이션의 시간과 비용을 대폭 절감할 수 있습니다. 이 문서는 AWS AI 도구 활용 시 예상되는 효율 개선과 구체적인 활용 방안을 제시합니다.

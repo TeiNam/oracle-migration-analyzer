@@ -10,16 +10,23 @@ import argparse
 import sys
 import os
 import json
+import logging
 from pathlib import Path
 from typing import Optional, List, Union
 
 from ..dbcsi.parser import StatspackParser, AWRParser
 from ..dbcsi.data_models import StatspackData, AWRData
 from ..oracle_complexity_analyzer import OracleComplexityAnalyzer
+from ..utils.cli_helpers import detect_file_type, print_progress
+from ..utils.file_utils import find_files_by_extension, read_file_with_encoding
+from ..utils.logging_utils import setup_cli_logging, log_progress, get_logger
 from .integrator import AnalysisResultIntegrator
 from .decision_engine import MigrationDecisionEngine
 from .report_generator import RecommendationReportGenerator
 from .formatters import MarkdownReportFormatter, JSONReportFormatter
+
+# 로거 초기화 (모듈 레벨에서 기본 로거 생성)
+logger = logging.getLogger("migration_recommendation.cli")
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -125,92 +132,50 @@ def validate_args(args: argparse.Namespace) -> None:
     # reports-dir 모드
     if args.reports_dir:
         if not os.path.exists(args.reports_dir):
-            print(f"오류: 리포트 디렉토리를 찾을 수 없습니다: {args.reports_dir}", file=sys.stderr)
+            logger.error(f"리포트 디렉토리를 찾을 수 없습니다: {args.reports_dir}")
             sys.exit(1)
         if not os.path.isdir(args.reports_dir):
-            print(f"오류: 리포트 경로가 디렉토리가 아닙니다: {args.reports_dir}", file=sys.stderr)
+            logger.error(f"리포트 경로가 디렉토리가 아닙니다: {args.reports_dir}")
             sys.exit(1)
         return
     
     # 레거시 모드
     if args.legacy or args.dbcsi or args.sql_dir:
         if not args.sql_dir:
-            print(f"오류: 레거시 모드에서는 --sql-dir이 필수입니다", file=sys.stderr)
+            logger.error("레거시 모드에서는 --sql-dir이 필수입니다")
             sys.exit(1)
         
         # DBCSI 파일 존재 확인 (선택사항)
         if args.dbcsi:
             if not os.path.exists(args.dbcsi):
-                print(f"오류: DBCSI 파일을 찾을 수 없습니다: {args.dbcsi}", file=sys.stderr)
+                logger.error(f"DBCSI 파일을 찾을 수 없습니다: {args.dbcsi}")
                 sys.exit(1)
             if not args.dbcsi.endswith('.out'):
-                print(f"경고: DBCSI 파일은 일반적으로 .out 확장자를 가집니다: {args.dbcsi}", 
-                      file=sys.stderr)
+                logger.warning(f"DBCSI 파일은 일반적으로 .out 확장자를 가집니다: {args.dbcsi}")
         
         # SQL 디렉토리 존재 확인
         if not os.path.exists(args.sql_dir):
-            print(f"오류: SQL 디렉토리를 찾을 수 없습니다: {args.sql_dir}", file=sys.stderr)
+            logger.error(f"SQL 디렉토리를 찾을 수 없습니다: {args.sql_dir}")
             sys.exit(1)
         if not os.path.isdir(args.sql_dir):
-            print(f"오류: SQL 경로가 디렉토리가 아닙니다: {args.sql_dir}", file=sys.stderr)
+            logger.error(f"SQL 경로가 디렉토리가 아닙니다: {args.sql_dir}")
             sys.exit(1)
         
         # SQL 파일 존재 확인
-        sql_files = list(Path(args.sql_dir).glob("*.sql")) + list(Path(args.sql_dir).glob("*.pls"))
-        if not sql_files:
-            print(f"경고: SQL/PL-SQL 파일을 찾을 수 없습니다 (.sql, .pls)", file=sys.stderr)
+        try:
+            sql_files = find_files_by_extension(Path(args.sql_dir), [".sql", ".pls"])
+            if not sql_files:
+                logger.warning("SQL/PL-SQL 파일을 찾을 수 없습니다 (.sql, .pls)")
+        except ValueError:
+            # 디렉토리가 없는 경우는 이미 위에서 체크했으므로 무시
+            pass
         
         # 출력 파일 디렉토리 확인
         if args.output:
             output_dir = os.path.dirname(args.output)
             if output_dir and not os.path.exists(output_dir):
-                print(f"오류: 출력 디렉토리를 찾을 수 없습니다: {output_dir}", file=sys.stderr)
+                logger.error(f"출력 디렉토리를 찾을 수 없습니다: {output_dir}")
                 sys.exit(1)
-
-
-def detect_file_type(filepath: str) -> str:
-    """
-    DBCSI 파일 타입을 자동으로 감지합니다 (AWR vs Statspack).
-    
-    Args:
-        filepath: 분석할 파일 경로
-        
-    Returns:
-        "awr" 또는 "statspack"
-    """
-    # 파일명 확인
-    filename_lower = Path(filepath).name.lower()
-    
-    if 'awr' in filename_lower:
-        return "awr"
-    elif 'statspack' in filename_lower:
-        return "statspack"
-    
-    # 파일 내용 확인
-    awr_markers = [
-        "~~BEGIN-IOSTAT-FUNCTION~~",
-        "~~BEGIN-PERCENT-CPU~~",
-        "~~BEGIN-PERCENT-IO~~",
-        "~~BEGIN-WORKLOAD~~",
-        "~~BEGIN-BUFFER-CACHE~~"
-    ]
-    
-    try:
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read(50000)
-        except UnicodeDecodeError:
-            with open(filepath, 'r', encoding='latin-1') as f:
-                content = f.read(50000)
-        
-        for marker in awr_markers:
-            if marker in content:
-                return "awr"
-        
-        return "statspack"
-        
-    except Exception:
-        return "statspack"
 
 
 def find_reports_in_directory(reports_dir: str) -> tuple:
@@ -269,16 +234,16 @@ def parse_dbcsi_file(filepath: str) -> Optional[Union[StatspackData, AWRData]]:
         file_type = detect_file_type(filepath)
         
         if file_type == "awr":
-            print(f"DBCSI 파일 타입: AWR", file=sys.stderr)
+            logger.info("DBCSI 파일 타입: AWR")
             parser = AWRParser(filepath)
         else:
-            print(f"DBCSI 파일 타입: Statspack", file=sys.stderr)
+            logger.info("DBCSI 파일 타입: Statspack")
             parser = StatspackParser(filepath)
         
         return parser.parse()
         
     except Exception as e:
-        print(f"경고: DBCSI 파일 파싱 실패: {e}", file=sys.stderr)
+        logger.warning(f"DBCSI 파일 파싱 실패: {e}", exc_info=True)
         return None
 
 
@@ -294,22 +259,22 @@ def analyze_sql_files(sql_dir: str) -> tuple:
     """
     analyzer = OracleComplexityAnalyzer()
     
-    # SQL 파일 찾기
-    sql_files = list(Path(sql_dir).glob("*.sql")) + list(Path(sql_dir).glob("*.pls"))
+    # SQL 파일 찾기 (유틸리티 함수 사용)
+    sql_files = find_files_by_extension(Path(sql_dir), [".sql", ".pls"])
     
     if not sql_files:
-        print(f"경고: SQL/PL-SQL 파일을 찾을 수 없습니다", file=sys.stderr)
+        logger.warning("SQL/PL-SQL 파일을 찾을 수 없습니다")
         return [], []
     
-    print(f"발견된 SQL/PL-SQL 파일: {len(sql_files)}개", file=sys.stderr)
+    logger.info(f"발견된 SQL/PL-SQL 파일: {len(sql_files)}개")
     
     sql_results = []
     plsql_results = []
     
     for sql_file in sql_files:
         try:
-            with open(sql_file, 'r', encoding='utf-8') as f:
-                content = f.read()
+            # 유틸리티 함수로 파일 읽기 (여러 인코딩 시도)
+            content = read_file_with_encoding(sql_file)
             
             # SQL 분석 (단일 결과 반환)
             try:
@@ -330,10 +295,10 @@ def analyze_sql_files(sql_dir: str) -> tuple:
                 pass
                 
         except Exception as e:
-            print(f"경고: 파일 읽기 실패 ({sql_file}): {e}", file=sys.stderr)
+            logger.warning(f"파일 읽기 실패 ({sql_file}): {e}", exc_info=True)
             continue
     
-    print(f"분석 완료: SQL {len(sql_results)}개, PL/SQL {len(plsql_results)}개", file=sys.stderr)
+    logger.info(f"분석 완료: SQL {len(sql_results)}개, PL/SQL {len(plsql_results)}개")
     
     return sql_results, plsql_results
 
@@ -349,6 +314,14 @@ def main() -> int:
     parser = create_parser()
     args = parser.parse_args()
     
+    # 로깅 설정
+    log_level = "DEBUG" if hasattr(args, 'verbose') and args.verbose else "INFO"
+    setup_cli_logging(level=log_level)
+    
+    # 로거 가져오기
+    cli_logger = get_logger("migration_recommendation.cli")
+    cli_logger.info("마이그레이션 추천 시스템 시작")
+    
     # 인자 검증
     validate_args(args)
     
@@ -359,17 +332,17 @@ def main() -> int:
             if not args.output:
                 output_filename = "migration_recommendation.md" if args.format == "markdown" else "migration_recommendation.json"
                 args.output = str(Path(args.reports_dir) / output_filename)
-                print(f"출력 경로 자동 설정: {args.output}", file=sys.stderr)
+                logger.info(f"출력 경로 자동 설정: {args.output}")
             
             # 1. 리포트 파일 검색
-            print(f"[1/5] 리포트 파일 검색 중: {args.reports_dir}", file=sys.stderr)
+            log_progress(logger, 1, 5, f"리포트 파일 검색 중: {args.reports_dir}")
             dbcsi_reports, sql_complexity_reports = find_reports_in_directory(args.reports_dir)
             
-            print(f"발견된 DBCSI 리포트: {len(dbcsi_reports)}개", file=sys.stderr)
-            print(f"발견된 SQL 복잡도 리포트: {len(sql_complexity_reports)}개", file=sys.stderr)
+            logger.info(f"발견된 DBCSI 리포트: {len(dbcsi_reports)}개")
+            logger.info(f"발견된 SQL 복잡도 리포트: {len(sql_complexity_reports)}개")
             
             if not dbcsi_reports and not sql_complexity_reports:
-                print(f"오류: 분석할 리포트 파일을 찾을 수 없습니다", file=sys.stderr)
+                logger.error("분석할 리포트 파일을 찾을 수 없습니다")
                 return 1
             
             # 2. 원본 소스 파일 경로 추정
@@ -377,57 +350,57 @@ def main() -> int:
             reports_path = Path(args.reports_dir)
             if reports_path.parent.name == "reports":
                 source_dir = reports_path.name
-                print(f"원본 소스 디렉토리 추정: {source_dir}", file=sys.stderr)
+                logger.info(f"원본 소스 디렉토리 추정: {source_dir}")
                 
                 # 원본 소스 디렉토리가 존재하는지 확인
                 if not os.path.exists(source_dir):
-                    print(f"경고: 원본 소스 디렉토리를 찾을 수 없습니다: {source_dir}", file=sys.stderr)
-                    print(f"리포트 파일만으로는 정확한 분석이 어렵습니다.", file=sys.stderr)
+                    logger.error(f"원본 소스 디렉토리를 찾을 수 없습니다: {source_dir}")
+                    logger.error("리포트 파일만으로는 정확한 분석이 어렵습니다.")
                     return 1
             else:
-                print(f"경고: 표준 reports 폴더 구조가 아닙니다", file=sys.stderr)
+                logger.error("표준 reports 폴더 구조가 아닙니다")
                 return 1
             
             # 3. DBCSI 원본 파일 찾기
-            print(f"[2/5] 원본 파일 분석 중...", file=sys.stderr)
+            log_progress(logger, 2, 5, "원본 파일 분석 중...")
             dbcsi_result = None
             if dbcsi_reports:
                 # DBCSI 원본 파일 찾기 (.out 파일)
-                out_files = list(Path(source_dir).glob("*.out"))
+                out_files = find_files_by_extension(Path(source_dir), [".out"])
                 if out_files:
                     dbcsi_file = str(out_files[0])
-                    print(f"DBCSI 원본 파일 사용: {dbcsi_file}", file=sys.stderr)
+                    logger.info(f"DBCSI 원본 파일 사용: {dbcsi_file}")
                     dbcsi_result = parse_dbcsi_file(dbcsi_file)
                 else:
-                    print(f"경고: DBCSI 원본 파일(.out)을 찾을 수 없습니다", file=sys.stderr)
+                    logger.warning("DBCSI 원본 파일(.out)을 찾을 수 없습니다")
             
             # 4. SQL/PL-SQL 원본 파일 분석
             sql_results, plsql_results = analyze_sql_files(source_dir)
             
             if not sql_results and not plsql_results:
-                print(f"오류: 분석할 SQL/PL-SQL 코드가 없습니다", file=sys.stderr)
+                logger.error("분석할 SQL/PL-SQL 코드가 없습니다")
                 return 1
             
-            print(f"[2/5] 원본 파일 분석 완료", file=sys.stderr)
+            log_progress(logger, 2, 5, "원본 파일 분석 완료")
             
             # 3. 분석 결과 통합
-            print(f"[3/5] 분석 결과 통합 중...", file=sys.stderr)
+            log_progress(logger, 3, 5, "분석 결과 통합 중...")
             integrator = AnalysisResultIntegrator()
             
             # 리포트 기반 통합 (간소화된 버전)
             # 실제로는 리포트에서 추출한 데이터를 사용
             integrated_result = integrator.integrate(dbcsi_result, sql_results, plsql_results)
-            print(f"[3/5] 통합 완료", file=sys.stderr)
+            log_progress(logger, 3, 5, "통합 완료")
             
             # 4. 마이그레이션 전략 결정 및 리포트 생성
-            print(f"[4/5] 마이그레이션 전략 결정 중...", file=sys.stderr)
+            log_progress(logger, 4, 5, "마이그레이션 전략 결정 중...")
             decision_engine = MigrationDecisionEngine()
             report_generator = RecommendationReportGenerator(decision_engine)
             recommendation = report_generator.generate_recommendation(integrated_result)
-            print(f"[4/5] 추천 전략: {recommendation.recommended_strategy.value}", file=sys.stderr)
+            logger.info(f"추천 전략: {recommendation.recommended_strategy.value}")
             
             # 5. 리포트 포맷팅
-            print(f"[5/5] 리포트 생성 중...", file=sys.stderr)
+            log_progress(logger, 5, 5, "리포트 생성 중...")
             if args.format == "json":
                 formatter = JSONReportFormatter()
                 output = formatter.format(recommendation)
@@ -435,47 +408,47 @@ def main() -> int:
                 formatter = MarkdownReportFormatter()
                 output = formatter.format(recommendation, args.language)
             
-            print(f"[5/5] 리포트 생성 완료", file=sys.stderr)
+            log_progress(logger, 5, 5, "리포트 생성 완료")
         
         # 레거시 모드
         else:
             # 1. DBCSI 파일 파싱 (선택사항)
             dbcsi_result = None
             if args.dbcsi:
-                print(f"[1/5] DBCSI 파일 파싱 중: {args.dbcsi}", file=sys.stderr)
+                log_progress(logger, 1, 5, f"DBCSI 파일 파싱 중: {args.dbcsi}")
                 dbcsi_result = parse_dbcsi_file(args.dbcsi)
                 if dbcsi_result:
-                    print(f"[1/5] DBCSI 파싱 완료", file=sys.stderr)
+                    log_progress(logger, 1, 5, "DBCSI 파싱 완료")
                 else:
-                    print(f"[1/5] DBCSI 파싱 실패 (성능 메트릭 제외)", file=sys.stderr)
+                    logger.warning("DBCSI 파싱 실패 (성능 메트릭 제외)")
             else:
-                print(f"[1/5] DBCSI 파일 없음 (성능 메트릭 제외)", file=sys.stderr)
+                logger.info("DBCSI 파일 없음 (성능 메트릭 제외)")
             
             # 2. SQL/PL-SQL 파일 분석
-            print(f"[2/5] SQL/PL-SQL 파일 분석 중: {args.sql_dir}", file=sys.stderr)
+            log_progress(logger, 2, 5, f"SQL/PL-SQL 파일 분석 중: {args.sql_dir}")
             sql_results, plsql_results = analyze_sql_files(args.sql_dir)
             
             if not sql_results and not plsql_results:
-                print(f"오류: 분석할 SQL/PL-SQL 코드가 없습니다", file=sys.stderr)
+                logger.error("분석할 SQL/PL-SQL 코드가 없습니다")
                 return 1
             
-            print(f"[2/5] SQL/PL-SQL 분석 완료", file=sys.stderr)
+            log_progress(logger, 2, 5, "SQL/PL-SQL 분석 완료")
             
             # 3. 분석 결과 통합
-            print(f"[3/5] 분석 결과 통합 중...", file=sys.stderr)
+            log_progress(logger, 3, 5, "분석 결과 통합 중...")
             integrator = AnalysisResultIntegrator()
             integrated_result = integrator.integrate(dbcsi_result, sql_results, plsql_results)
-            print(f"[3/5] 통합 완료", file=sys.stderr)
+            log_progress(logger, 3, 5, "통합 완료")
             
             # 4. 마이그레이션 전략 결정 및 리포트 생성
-            print(f"[4/5] 마이그레이션 전략 결정 중...", file=sys.stderr)
+            log_progress(logger, 4, 5, "마이그레이션 전략 결정 중...")
             decision_engine = MigrationDecisionEngine()
             report_generator = RecommendationReportGenerator(decision_engine)
             recommendation = report_generator.generate_recommendation(integrated_result)
-            print(f"[4/5] 추천 전략: {recommendation.recommended_strategy.value}", file=sys.stderr)
+            logger.info(f"추천 전략: {recommendation.recommended_strategy.value}")
             
             # 5. 리포트 포맷팅
-            print(f"[5/5] 리포트 생성 중...", file=sys.stderr)
+            log_progress(logger, 5, 5, "리포트 생성 중...")
             if args.format == "json":
                 formatter = JSONReportFormatter()
                 output = formatter.format(recommendation)
@@ -483,7 +456,7 @@ def main() -> int:
                 formatter = MarkdownReportFormatter()
                 output = formatter.format(recommendation, args.language)
             
-            print(f"[5/5] 리포트 생성 완료", file=sys.stderr)
+            log_progress(logger, 5, 5, "리포트 생성 완료")
         
         # 결과 출력 또는 저장
         if args.output:
@@ -493,16 +466,14 @@ def main() -> int:
             
             with open(args.output, 'w', encoding='utf-8') as f:
                 f.write(output)
-            print(f"✓ 결과 저장 완료: {args.output}", file=sys.stderr)
+            logger.info(f"결과 저장 완료: {args.output}")
         else:
             print(output)
         
         return 0
         
     except Exception as e:
-        print(f"오류: 처리 중 예외 발생: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
+        logger.error(f"처리 중 예외 발생: {e}", exc_info=True)
         return 1
 
 

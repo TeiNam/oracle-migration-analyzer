@@ -8,7 +8,7 @@ from typing import List, Optional, Union, Tuple
 from datetime import datetime
 
 from src.dbcsi.data_models import StatspackData, AWRData
-from src.oracle_complexity_analyzer import SQLAnalysisResult, PLSQLAnalysisResult
+from src.oracle_complexity_analyzer.data_models import SQLAnalysisResult, PLSQLAnalysisResult
 from src.migration_recommendation.data_models import (
     IntegratedAnalysisResult,
     AnalysisMetrics
