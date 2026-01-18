@@ -66,8 +66,8 @@ dmypy.json
 
 # Reports (생성된 분석 리포트)
 reports/
-!reports/sample_*.md
-!reports/sample_*.json
+!reports/sample_code/
+!reports/sample_code/**
 example_reports/
 analysis_results/
 cli_results/
