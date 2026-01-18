@@ -1695,6 +1695,59 @@ def print_result_console(result: Union[SQLAnalysisResult, PLSQLAnalysisResult]):
     print("\n" + "="*80 + "\n")
 
 
+def print_batch_analysis_summary(batch_result, target_db: TargetDatabase):
+    """일반 배치 분석 결과(BatchAnalysisResult)를 콘솔에 출력
+    
+    Args:
+        batch_result: BatchAnalysisResult 객체
+        target_db: 타겟 데이터베이스
+    """
+    print("\n" + "="*80)
+    print("📊 배치 분석 결과")
+    print("="*80)
+    
+    print(f"\n타겟 데이터베이스: {target_db.value}")
+    print(f"전체 파일 수: {batch_result.total_files}")
+    print(f"분석 성공: {batch_result.success_count}")
+    print(f"분석 실패: {batch_result.failure_count}")
+    
+    if batch_result.success_count > 0:
+        print(f"\n🎯 복잡도 요약:")
+        print(f"  - 평균 복잡도: {batch_result.average_score:.2f}/10")
+        
+        # 복잡도 분포
+        if batch_result.complexity_distribution:
+            print(f"\n  복잡도 분포:")
+            print(f"    - 매우 간단 (0-1): {batch_result.complexity_distribution.get('very_simple', 0)}")
+            print(f"    - 간단 (1-3): {batch_result.complexity_distribution.get('simple', 0)}")
+            print(f"    - 중간 (3-5): {batch_result.complexity_distribution.get('moderate', 0)}")
+            print(f"    - 복잡 (5-7): {batch_result.complexity_distribution.get('complex', 0)}")
+            print(f"    - 매우 복잡 (7-9): {batch_result.complexity_distribution.get('very_complex', 0)}")
+            print(f"    - 극도로 복잡 (9-10): {batch_result.complexity_distribution.get('extremely_complex', 0)}")
+        
+        # 복잡도 높은 파일 Top 5
+        if batch_result.results:
+            sorted_results = sorted(
+                batch_result.results.items(),
+                key=lambda x: x[1].normalized_score if x[1] else 0,
+                reverse=True
+            )
+            
+            print("\n🔥 복잡도 높은 파일 Top 5:")
+            for i, (filename, result) in enumerate(sorted_results[:5], 1):
+                if result:
+                    print(f"  {i}. {filename}")
+                    print(f"     복잡도: {result.normalized_score:.2f}/10")
+    
+    if batch_result.failure_count > 0:
+        print(f"\n❌ 실패한 파일: {batch_result.failure_count}개")
+        if batch_result.failed_files:
+            for filename, error in list(batch_result.failed_files.items())[:5]:
+                print(f"  - {filename}: {error}")
+    
+    print("\n" + "="*80 + "\n")
+
+
 def print_batch_result_console(batch_result: dict, target_db: TargetDatabase):
     """배치 PL/SQL 분석 결과를 콘솔에 출력
     
@@ -1960,7 +2013,12 @@ def analyze_directory(args):
         
         # 결과 출력
         if args.output in ['console', 'both']:
-            print_batch_result_console(batch_result)
+            # BatchAnalysisResult 객체인 경우 (일반 배치 분석)
+            if hasattr(batch_result, 'total_files'):
+                print_batch_analysis_summary(batch_result, target_db)
+            # 딕셔너리인 경우 (배치 PL/SQL 분석)
+            else:
+                print_batch_result_console(batch_result, target_db)
         
         # JSON 출력
         if args.output in ['json', 'both']:
