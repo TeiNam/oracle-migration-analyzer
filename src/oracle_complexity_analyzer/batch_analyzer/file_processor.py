@@ -49,7 +49,7 @@ class FileProcessor:
             raise ValueError(f"폴더가 아닙니다: {folder_path}")
         
         # 지원하는 확장자를 가진 파일 찾기
-        sql_files = []
+        sql_files: List[Path] = []
         for ext in FileProcessor.SUPPORTED_EXTENSIONS:
             # 재귀적으로 파일 검색 (** 패턴 사용)
             sql_files.extend(folder.rglob(f"*{ext}"))

@@ -46,7 +46,7 @@ class BatchAnalyzer:
         """
         self.analyzer = analyzer
         self.max_workers = max_workers or os.cpu_count()
-        self.source_folder_name = None  # 분석 대상 폴더명 저장
+        self.source_folder_name: Optional[str] = None  # 분석 대상 폴더명 저장
         
         # 하위 모듈 초기화
         self.file_processor = FileProcessor()

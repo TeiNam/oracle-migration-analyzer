@@ -7,7 +7,7 @@ Oracle SQL 및 PL/SQL 코드의 복잡도를 분석하는 메인 클래스입니
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Union, Optional, Dict, List
+from typing import Union, Optional, Dict, List, Any
 
 from .enums import TargetDatabase
 from .data_models import SQLAnalysisResult, PLSQLAnalysisResult
@@ -185,7 +185,7 @@ class OracleComplexityAnalyzer:
         else:
             return self.analyze_sql(content)
     
-    def analyze_batch_plsql_file(self, file_path: str) -> Dict[str, any]:
+    def analyze_batch_plsql_file(self, file_path: str) -> Dict[str, Any]:
         """배치 PL/SQL 파일 분석
         
         여러 PL/SQL 객체가 포함된 파일을 분석합니다.

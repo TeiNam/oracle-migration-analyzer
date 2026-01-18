@@ -7,7 +7,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from ..enums import TargetDatabase, ComplexityLevel
 from ..data_models import BatchAnalysisResult
@@ -22,7 +22,7 @@ class ResultAggregator:
     배치 분석 결과를 집계하고 JSON/Markdown 리포트를 생성합니다.
     """
     
-    def __init__(self, analyzer, source_folder_name: str = None):
+    def __init__(self, analyzer, source_folder_name: Optional[str] = None):
         """ResultAggregator 초기화
         
         Args:
