@@ -910,18 +910,22 @@ class OracleComplexityAnalyzer:
         """
         source_path = Path(source_filename)
         
-        # sample_code 폴더의 파일인지 확인
-        if 'sample_code' in source_path.parts:
-            # reports/sample_code/PGSQL 또는 MySQL 폴더에 저장
+        # 소스 파일의 부모 폴더명 추출
+        if source_path.parent != Path('.'):
+            # 부모 폴더가 있는 경우 (예: sample_code/file.sql, MKDB/file.sql)
+            parent_folder = source_path.parent.name
+            
+            # reports/{부모폴더명}/PGSQL 또는 MySQL 폴더에 저장
             target_folder = "PGSQL" if self.target == TargetDatabase.POSTGRESQL else "MySQL"
-            output_folder = self.output_dir / "sample_code" / target_folder
+            output_folder = self.output_dir / parent_folder / target_folder
             output_folder.mkdir(parents=True, exist_ok=True)
             
             # 파일명 생성 (타겟 DB 접미사 없이)
             filename = source_path.stem + '.json'
             file_path = output_folder / filename
         else:
-            # 일반 파일은 날짜 폴더에 저장
+            # 부모 폴더가 없는 경우 (현재 디렉토리의 파일)
+            # 날짜 폴더에 저장
             date_folder = self._get_date_folder()
             
             # 타겟 데이터베이스 접미사 추가
@@ -952,18 +956,21 @@ class OracleComplexityAnalyzer:
         """
         source_path = Path(source_filename)
         
-        # sample_code 폴더의 파일인지 확인
-        if 'sample_code' in source_path.parts:
-            # reports/sample_code/PGSQL 또는 MySQL 폴더에 저장
+        # 부모 폴더가 있는지 확인 (현재 디렉토리가 아닌 경우)
+        if source_path.parent != Path('.'):
+            # 부모 폴더 이름 추출 (예: sample_code, MKDB 등)
+            parent_folder = source_path.parent.name
+            
+            # reports/{parent_folder}/PGSQL 또는 MySQL 폴더에 저장
             target_folder = "PGSQL" if self.target == TargetDatabase.POSTGRESQL else "MySQL"
-            output_folder = self.output_dir / "sample_code" / target_folder
+            output_folder = self.output_dir / parent_folder / target_folder
             output_folder.mkdir(parents=True, exist_ok=True)
             
             # 파일명 생성 (타겟 DB 접미사 없이)
             filename = source_path.stem + '.md'
             file_path = output_folder / filename
         else:
-            # 일반 파일은 날짜 폴더에 저장
+            # 부모 폴더가 없는 경우 날짜 폴더에 저장
             date_folder = self._get_date_folder()
             
             # 타겟 데이터베이스 접미사 추가
@@ -972,15 +979,6 @@ class OracleComplexityAnalyzer:
             # 파일명 생성 (확장자를 .md로 변경, 타겟 DB 추가)
             filename = source_path.stem + target_suffix + '.md'
             file_path = date_folder / filename
-        
-        # 파일 저장
-        try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(markdown_str)
-        except Exception as e:
-            raise IOError(f"Markdown 파일 저장 실패: {e}")
-        
-        return str(file_path)
         
         # 파일 저장
         try:
@@ -1878,14 +1876,14 @@ def analyze_single_file(args):
         
         # JSON 출력
         if args.output in ['json', 'both']:
-            file_name = Path(args.file).stem
-            json_path = analyzer.export_json(result, f"{file_name}_analysis.json")
+            json_str = ResultFormatter.to_json(result)
+            json_path = analyzer.export_json_string(json_str, args.file)
             print(f"✅ JSON 저장 완료: {json_path}")
         
         # Markdown 출력
         if args.output in ['markdown', 'both']:
-            file_name = Path(args.file).stem
-            md_path = analyzer.export_markdown(result, f"{file_name}_analysis.md")
+            md_str = ResultFormatter.to_markdown(result)
+            md_path = analyzer.export_markdown_string(md_str, args.file)
             print(f"✅ Markdown 저장 완료: {md_path}")
         
         return 0
