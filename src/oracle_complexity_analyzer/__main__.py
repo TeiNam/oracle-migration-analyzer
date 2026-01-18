@@ -6,12 +6,16 @@ Oracle Complexity Analyzer CLI Entry Point
 
 import sys
 import argparse
+import logging
 from typing import Union
 
 from .enums import TargetDatabase
 from .data_models import SQLAnalysisResult, PLSQLAnalysisResult, BatchAnalysisResult
 from .analyzer import OracleComplexityAnalyzer
 from .batch_analyzer import BatchAnalyzer
+
+# 로거 초기화
+logger = logging.getLogger(__name__)
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -371,17 +375,13 @@ def analyze_single_file(args):
         return 0
         
     except FileNotFoundError as e:
-        print(f"❌ 에러: {e}", file=sys.stderr)
+        logger.error(f"파일을 찾을 수 없습니다: {e}")
         return 1
     except ValueError as e:
-        print(f"❌ 에러: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
+        logger.error(f"잘못된 값: {e}", exc_info=True)
         return 1
     except Exception as e:
-        print(f"❌ 예상치 못한 에러: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
+        logger.error(f"예상치 못한 에러: {e}", exc_info=True)
         return 1
 
 
@@ -456,24 +456,30 @@ def analyze_directory(args):
         return 0
         
     except FileNotFoundError as e:
-        print(f"❌ 에러: {e}", file=sys.stderr)
+        logger.error(f"파일을 찾을 수 없습니다: {e}")
         return 1
     except ValueError as e:
-        print(f"❌ 에러: {e}", file=sys.stderr)
+        logger.error(f"잘못된 값: {e}")
         return 1
     except Exception as e:
-        print(f"❌ 예상치 못한 에러: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
+        logger.error(f"예상치 못한 에러: {e}", exc_info=True)
         return 1
 
 
+def main():
 def main():
     """CLI 메인 함수
     
     Returns:
         int: 종료 코드 (0: 성공, 1: 실패)
     """
+    # 로깅 초기화
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(levelname)s: %(message)s',
+        handlers=[logging.StreamHandler(sys.stderr)]
+    )
+    
     parser = create_parser()
     args = parser.parse_args()
     
