@@ -598,7 +598,7 @@ class JSONReportFormatter:
     
     def _serialize_metrics(self, metrics: AnalysisMetrics) -> Dict[str, Any]:
         """AnalysisMetrics 직렬화"""
-        return {
+        result = {
             "performance": {
                 "avg_cpu_usage": metrics.avg_cpu_usage,
                 "avg_io_load": metrics.avg_io_load,
@@ -616,3 +616,18 @@ class JSONReportFormatter:
             },
             "rac_detected": metrics.rac_detected
         }
+        
+        # AWR/Statspack 통계 추가 (있는 경우)
+        if any([metrics.awr_plsql_lines, metrics.awr_procedure_count, 
+                metrics.awr_function_count, metrics.awr_package_count]):
+            result["awr_statistics"] = {}
+            if metrics.awr_plsql_lines is not None:
+                result["awr_statistics"]["plsql_lines"] = metrics.awr_plsql_lines
+            if metrics.awr_procedure_count is not None:
+                result["awr_statistics"]["procedure_count"] = metrics.awr_procedure_count
+            if metrics.awr_function_count is not None:
+                result["awr_statistics"]["function_count"] = metrics.awr_function_count
+            if metrics.awr_package_count is not None:
+                result["awr_statistics"]["package_count"] = metrics.awr_package_count
+        
+        return result
