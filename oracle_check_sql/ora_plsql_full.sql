@@ -20,7 +20,7 @@ set line 250
 set pages 2000
 set trimspool on
 set head on
-spool check_plsql_&&inst_name&&today&&suffix
+spool plsql_f_&&inst_name&&today&&suffix
 
 PROMPT
 PROMPT ============================================================================
