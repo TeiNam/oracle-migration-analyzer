@@ -2,13 +2,14 @@
 BatchAnalyzer 모듈
 
 폴더 내 SQL/PL/SQL 파일 일괄 분석 기능을 제공합니다.
+배치 PL/SQL 파일(.out)도 지원합니다.
 """
 
 import logging
 import concurrent.futures
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union, Dict, Any
 
 from ..enums import ComplexityLevel
 from ..data_models import BatchAnalysisResult
@@ -17,6 +18,39 @@ from .result_aggregator import ResultAggregator
 
 # 로거 초기화
 logger = logging.getLogger(__name__)
+
+
+def _process_result(result: Union[Dict[str, Any], Any], 
+                    complexity_distribution: Dict[str, int]) -> float:
+    """분석 결과 처리 (배치 PL/SQL 또는 일반 결과)
+    
+    Args:
+        result: 분석 결과 (딕셔너리 또는 데이터 클래스)
+        complexity_distribution: 복잡도 분포 딕셔너리
+        
+    Returns:
+        float: 누적할 점수
+    """
+    total_score = 0.0
+    
+    # 배치 PL/SQL 파일인 경우 딕셔너리로 반환됨
+    if isinstance(result, dict):
+        # 배치 PL/SQL 결과 처리
+        for obj_result in result.get('results', []):
+            # analysis는 PLSQLAnalysisResult 객체
+            analysis = obj_result.get('analysis')
+            if analysis:
+                # 데이터 클래스 객체에서 속성 접근
+                level_name = analysis.complexity_level.value
+                complexity_distribution[level_name] += 1
+                total_score += analysis.normalized_score
+    else:
+        # 일반 SQL/PL/SQL 결과 처리
+        level_name = result.complexity_level.value
+        complexity_distribution[level_name] += 1
+        total_score += result.normalized_score
+    
+    return total_score
 
 
 class BatchAnalyzer:
@@ -141,12 +175,8 @@ class BatchAnalyzer:
                     # 분석 성공
                     results[file_name] = result
                     
-                    # 복잡도 레벨별 분포 집계
-                    level_name = result.complexity_level.value
-                    complexity_distribution[level_name] += 1
-                    
-                    # 총 점수 누적
-                    total_score += result.normalized_score
+                    # 결과 처리 (배치 PL/SQL 또는 일반 결과)
+                    total_score += _process_result(result, complexity_distribution)
         
         # 평균 점수 계산
         success_count = len(results)
@@ -247,12 +277,8 @@ class BatchAnalyzer:
                     # 분석 성공
                     results[file_name] = result
                     
-                    # 복잡도 레벨별 분포 집계
-                    level_name = result.complexity_level.value
-                    complexity_distribution[level_name] += 1
-                    
-                    # 총 점수 누적
-                    total_score += result.normalized_score
+                    # 결과 처리 (배치 PL/SQL 또는 일반 결과)
+                    total_score += _process_result(result, complexity_distribution)
                 
                 # 진행 상황 업데이트
                 if use_tqdm:

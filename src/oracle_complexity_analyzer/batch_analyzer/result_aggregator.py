@@ -44,10 +44,23 @@ class ResultAggregator:
             List[tuple]: (파일명, 복잡도 점수) 튜플 리스트 (점수 내림차순)
         """
         # 파일명과 점수를 튜플로 만들어 리스트 생성
-        file_scores = [
-            (file_name, result.normalized_score)
-            for file_name, result in batch_result.results.items()
-        ]
+        file_scores = []
+        for file_name, result in batch_result.results.items():
+            # 배치 PL/SQL 결과인 경우 딕셔너리
+            if isinstance(result, dict):
+                # 배치 PL/SQL 파일의 평균 점수 계산
+                results_list = result.get('results', [])
+                if results_list:
+                    total_score = sum(
+                        obj_result.get('analysis').normalized_score 
+                        for obj_result in results_list 
+                        if obj_result.get('analysis')
+                    )
+                    avg_score = total_score / len(results_list)
+                    file_scores.append((file_name, avg_score))
+            else:
+                # 일반 SQL/PL/SQL 결과
+                file_scores.append((file_name, result.normalized_score))
         
         # 점수 기준 내림차순 정렬
         file_scores.sort(key=lambda x: x[1], reverse=True)

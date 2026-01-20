@@ -24,6 +24,7 @@ from .integrator import AnalysisResultIntegrator
 from .decision_engine import MigrationDecisionEngine
 from .report_generator import RecommendationReportGenerator
 from .formatters import MarkdownReportFormatter, JSONReportFormatter
+from .report_parser import ReportParser, find_reports_in_directory
 
 # 로거 초기화 (모듈 레벨에서 기본 로거 생성)
 logger = logging.getLogger("migration_recommendation.cli")
@@ -178,46 +179,7 @@ def validate_args(args: argparse.Namespace) -> None:
                 sys.exit(1)
 
 
-def find_reports_in_directory(reports_dir: str) -> tuple:
-    """
-    리포트 디렉토리에서 DBCSI 리포트와 SQL 복잡도 리포트를 찾습니다.
-    
-    Args:
-        reports_dir: 리포트 디렉토리 경로
-        
-    Returns:
-        (dbcsi_reports, sql_complexity_reports) 튜플
-        dbcsi_reports: DBCSI 리포트 파일 경로 리스트
-        sql_complexity_reports: SQL 복잡도 리포트 파일 경로 리스트
-    """
-    reports_path = Path(reports_dir)
-    
-    dbcsi_reports = []
-    sql_complexity_reports = []
-    
-    # 모든 .md 파일 찾기
-    md_files = list(reports_path.glob("**/*.md"))
-    
-    for md_file in md_files:
-        filename = md_file.name.lower()
-        
-        # DBCSI 리포트 감지 (dbcsi, awr, statspack 키워드)
-        if any(keyword in filename for keyword in ['dbcsi', 'awr', 'statspack']):
-            # 비교 리포트는 제외
-            if 'comparison' not in filename and 'vs' not in filename:
-                dbcsi_reports.append(str(md_file))
-        
-        # SQL 복잡도 리포트 감지 (sql_complexity 키워드 또는 PGSQL/MySQL 폴더)
-        elif 'sql_complexity' in filename or any(folder in str(md_file) for folder in ['PGSQL', 'MySQL']):
-            sql_complexity_reports.append(str(md_file))
-        
-        # 개별 SQL 파일 리포트도 포함 (복잡도 분석 결과)
-        elif md_file.parent.name in ['PGSQL', 'MySQL']:
-            # batch_summary나 sql_complexity가 아닌 파일들
-            if 'batch' not in filename and 'sql_complexity' not in filename:
-                sql_complexity_reports.append(str(md_file))
-    
-    return dbcsi_reports, sql_complexity_reports
+# find_reports_in_directory는 report_parser.py로 이동
 
 
 def parse_dbcsi_file(filepath: str) -> Optional[Union[StatspackData, AWRData]]:
@@ -338,58 +300,49 @@ def main() -> int:
             log_progress(logger, 1, 5, f"리포트 파일 검색 중: {args.reports_dir}")
             dbcsi_reports, sql_complexity_reports = find_reports_in_directory(args.reports_dir)
             
-            logger.info(f"발견된 DBCSI 리포트: {len(dbcsi_reports)}개")
-            logger.info(f"발견된 SQL 복잡도 리포트: {len(sql_complexity_reports)}개")
-            
             if not dbcsi_reports and not sql_complexity_reports:
                 logger.error("분석할 리포트 파일을 찾을 수 없습니다")
                 return 1
             
-            # 2. 원본 소스 파일 경로 추정
-            # reports/sample_code -> sample_code
-            reports_path = Path(args.reports_dir)
-            if reports_path.parent.name == "reports":
-                source_dir = reports_path.name
-                logger.info(f"원본 소스 디렉토리 추정: {source_dir}")
-                
-                # 원본 소스 디렉토리가 존재하는지 확인
-                if not os.path.exists(source_dir):
-                    logger.error(f"원본 소스 디렉토리를 찾을 수 없습니다: {source_dir}")
-                    logger.error("리포트 파일만으로는 정확한 분석이 어렵습니다.")
-                    return 1
-            else:
-                logger.error("표준 reports 폴더 구조가 아닙니다")
-                return 1
+            # 2. 리포트 파일 파싱
+            log_progress(logger, 2, 5, "리포트 파일 파싱 중...")
+            parser = ReportParser()
             
-            # 3. DBCSI 원본 파일 찾기
-            log_progress(logger, 2, 5, "원본 파일 분석 중...")
-            dbcsi_result = None
+            # DBCSI 리포트 파싱 (메트릭만 추출)
+            dbcsi_metrics = None
             if dbcsi_reports:
-                # DBCSI 원본 파일 찾기 (.out 파일)
-                out_files = find_files_by_extension(Path(source_dir), [".out"])
-                if out_files:
-                    dbcsi_file = str(out_files[0])
-                    logger.info(f"DBCSI 원본 파일 사용: {dbcsi_file}")
-                    dbcsi_result = parse_dbcsi_file(dbcsi_file)
-                else:
-                    logger.warning("DBCSI 원본 파일(.out)을 찾을 수 없습니다")
+                logger.info(f"DBCSI 리포트 파싱: {dbcsi_reports[0]}")
+                dbcsi_metrics = parser.parse_dbcsi_metrics(dbcsi_reports[0])
+                if not dbcsi_metrics:
+                    logger.warning("DBCSI 메트릭 추출 실패 (성능 메트릭 제외)")
             
-            # 4. SQL/PL-SQL 원본 파일 분석
-            sql_results, plsql_results = analyze_sql_files(source_dir)
+            # SQL 복잡도 리포트 파싱
+            sql_results = []
+            plsql_results = []
+            if sql_complexity_reports:
+                # 타겟 DB 자동 감지 (PGSQL 또는 MySQL 폴더)
+                target_db = "postgresql"
+                for report_path in sql_complexity_reports:
+                    if "MySQL" in report_path:
+                        target_db = "mysql"
+                        break
+                
+                logger.info(f"타겟 DB: {target_db}")
+                sql_results, plsql_results = parser.parse_sql_complexity_reports(
+                    sql_complexity_reports,
+                    target_db
+                )
             
             if not sql_results and not plsql_results:
-                logger.error("분석할 SQL/PL-SQL 코드가 없습니다")
+                logger.error("분석할 SQL/PL-SQL 리포트가 없습니다")
                 return 1
             
-            log_progress(logger, 2, 5, "원본 파일 분석 완료")
+            log_progress(logger, 2, 5, "리포트 파싱 완료")
             
             # 3. 분석 결과 통합
             log_progress(logger, 3, 5, "분석 결과 통합 중...")
             integrator = AnalysisResultIntegrator()
-            
-            # 리포트 기반 통합 (간소화된 버전)
-            # 실제로는 리포트에서 추출한 데이터를 사용
-            integrated_result = integrator.integrate(dbcsi_result, sql_results, plsql_results)
+            integrated_result = integrator.integrate(dbcsi_metrics, sql_results, plsql_results)
             log_progress(logger, 3, 5, "통합 완료")
             
             # 4. 마이그레이션 전략 결정 및 리포트 생성

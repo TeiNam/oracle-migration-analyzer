@@ -467,7 +467,6 @@ def analyze_directory(args):
 
 
 def main():
-def main():
     """CLI 메인 함수
     
     Returns:

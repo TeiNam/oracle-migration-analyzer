@@ -4,10 +4,9 @@
 DBCSI 분석기와 SQL/PL-SQL 분석기의 결과를 통합하고 메트릭을 추출합니다.
 """
 
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from src.dbcsi.models import StatspackData, AWRData
 from src.oracle_complexity_analyzer.data_models import SQLAnalysisResult, PLSQLAnalysisResult
 from src.migration_recommendation.data_models import (
     IntegratedAnalysisResult,
@@ -35,7 +34,7 @@ class AnalysisResultIntegrator:
     
     def integrate(
         self,
-        dbcsi_result: Optional[Union[StatspackData, AWRData]],
+        dbcsi_metrics: Optional[Dict[str, Any]],
         sql_analysis: List[SQLAnalysisResult],
         plsql_analysis: List[PLSQLAnalysisResult]
     ) -> IntegratedAnalysisResult:
@@ -43,7 +42,7 @@ class AnalysisResultIntegrator:
         분석 결과를 통합합니다.
         
         Args:
-            dbcsi_result: DBCSI 분석 결과 (Statspack 또는 AWR)
+            dbcsi_metrics: DBCSI 메트릭 딕셔너리 (간소화된 형태)
             sql_analysis: SQL 복잡도 분석 결과 리스트
             plsql_analysis: PL/SQL 복잡도 분석 결과 리스트
             
@@ -58,11 +57,11 @@ class AnalysisResultIntegrator:
             raise ValueError("SQL 또는 PL/SQL 분석 결과가 필요합니다")
         
         # 메트릭 추출
-        metrics = self.extract_metrics(dbcsi_result, sql_analysis, plsql_analysis)
+        metrics = self.extract_metrics(dbcsi_metrics, sql_analysis, plsql_analysis)
         
         # 통합 결과 생성
         return IntegratedAnalysisResult(
-            dbcsi_result=dbcsi_result,
+            dbcsi_result=None,  # 간소화된 버전에서는 None
             sql_analysis=sql_analysis,
             plsql_analysis=plsql_analysis,
             metrics=metrics,
@@ -71,7 +70,7 @@ class AnalysisResultIntegrator:
     
     def extract_metrics(
         self,
-        dbcsi_result: Optional[Union[StatspackData, AWRData]],
+        dbcsi_metrics: Optional[Dict[str, Any]],
         sql_analysis: List[SQLAnalysisResult],
         plsql_analysis: List[PLSQLAnalysisResult]
     ) -> AnalysisMetrics:
@@ -79,7 +78,7 @@ class AnalysisResultIntegrator:
         분석 결과에서 메트릭을 추출합니다.
         
         Args:
-            dbcsi_result: DBCSI 분석 결과
+            dbcsi_metrics: DBCSI 메트릭 딕셔너리
             sql_analysis: SQL 복잡도 분석 결과 리스트
             plsql_analysis: PL/SQL 복잡도 분석 결과 리스트
             
@@ -87,15 +86,15 @@ class AnalysisResultIntegrator:
             AnalysisMetrics: 추출된 메트릭
         """
         # 성능 메트릭 추출
-        if dbcsi_result:
-            avg_cpu, avg_io, avg_memory = self._extract_performance_metrics(dbcsi_result)
-            rac_detected = dbcsi_result.os_info.instances is not None and dbcsi_result.os_info.instances > 1
-            
-            # AWR/Statspack PL/SQL 통계 추출
-            awr_plsql_lines = dbcsi_result.os_info.count_lines_plsql
-            awr_procedure_count = dbcsi_result.os_info.count_procedures
-            awr_function_count = dbcsi_result.os_info.count_functions
-            awr_package_count = dbcsi_result.os_info.count_packages
+        if dbcsi_metrics:
+            avg_cpu = dbcsi_metrics.get('avg_cpu_usage', 0.0)
+            avg_io = dbcsi_metrics.get('avg_io_load', 0.0)
+            avg_memory = dbcsi_metrics.get('avg_memory_usage', 0.0)
+            rac_detected = dbcsi_metrics.get('rac_detected', False)
+            awr_plsql_lines = dbcsi_metrics.get('awr_plsql_lines')
+            awr_procedure_count = dbcsi_metrics.get('awr_procedure_count')
+            awr_function_count = dbcsi_metrics.get('awr_function_count')
+            awr_package_count = dbcsi_metrics.get('awr_package_count')
         else:
             avg_cpu, avg_io, avg_memory = 0.0, 0.0, 0.0
             rac_detected = False
@@ -104,7 +103,8 @@ class AnalysisResultIntegrator:
             awr_function_count = None
             awr_package_count = None
         
-        # 코드 복잡도 메트릭 추출
+        # BULK 연산 개수 집계
+        bulk_operation_count = self._count_bulk_operations(plsql_analysis)
         avg_sql_complexity = self._calculate_avg_complexity(sql_analysis)
         avg_plsql_complexity = self._calculate_avg_complexity(plsql_analysis)
         
@@ -140,45 +140,6 @@ class AnalysisResultIntegrator:
             awr_function_count=awr_function_count,
             awr_package_count=awr_package_count
         )
-    
-    def _extract_performance_metrics(
-        self,
-        dbcsi_result: Union[StatspackData, AWRData]
-    ) -> Tuple[float, float, float]:
-        """
-        성능 메트릭 추출 (CPU, I/O, Memory)
-        
-        Args:
-            dbcsi_result: DBCSI 분석 결과
-            
-        Returns:
-            Tuple[float, float, float]: (평균 CPU 사용률, 평균 I/O 부하, 평균 메모리 사용량)
-        """
-        # CPU 사용률 계산 (main_metrics에서 cpu_per_s 평균)
-        if dbcsi_result.main_metrics:
-            cpu_values = [m.cpu_per_s for m in dbcsi_result.main_metrics if m.cpu_per_s is not None]
-            avg_cpu = sum(cpu_values) / len(cpu_values) if cpu_values else 0.0
-        else:
-            avg_cpu = 0.0
-        
-        # I/O 부하 계산 (main_metrics에서 read_iops + write_iops 평균)
-        if dbcsi_result.main_metrics:
-            io_values = [
-                (m.read_iops or 0.0) + (m.write_iops or 0.0) 
-                for m in dbcsi_result.main_metrics
-            ]
-            avg_io = sum(io_values) / len(io_values) if io_values else 0.0
-        else:
-            avg_io = 0.0
-        
-        # 메모리 사용량 계산 (memory_metrics에서 total_gb 평균)
-        if dbcsi_result.memory_metrics:
-            memory_values = [m.total_gb for m in dbcsi_result.memory_metrics if m.total_gb is not None]
-            avg_memory = sum(memory_values) / len(memory_values) if memory_values else 0.0
-        else:
-            avg_memory = 0.0
-        
-        return avg_cpu, avg_io, avg_memory
     
     def _calculate_avg_complexity(
         self,
