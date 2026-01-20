@@ -143,6 +143,8 @@ class InstanceRecommendation:
     vcpu: int
     memory_gb: int
     rationale: str  # 추천 근거
+    ha_recommendation: Optional[str] = None  # 고가용성 구성 권장사항
+    rac_assessment: Optional[str] = None  # RAC 필요성 평가
 
 
 @dataclass

@@ -198,6 +198,8 @@ class RecommendationReportGenerator:
         estimated_peak_io = io_load * performance_buffer
         estimated_peak_memory = memory_usage * performance_buffer
         
+        # 워크로드 패턴 분석 (RAC 필요성 평가)
+        rac_assessment, ha_recommendation = self._analyze_workload_pattern(metrics, strategy)
         # 인스턴스 타입 결정 (메모리 기준)
         if strategy == MigrationStrategy.REPLATFORM:
             instance_type, vcpu, memory_gb, rationale = self._get_rds_oracle_instance(
@@ -219,7 +221,9 @@ class RecommendationReportGenerator:
             instance_type=instance_type,
             vcpu=vcpu,
             memory_gb=memory_gb,
-            rationale=rationale
+            rationale=rationale,
+            rac_assessment=rac_assessment,
+            ha_recommendation=ha_recommendation
         )
     
     def _get_rds_oracle_instance(self, cpu_usage, io_load, memory_usage, 
@@ -313,3 +317,76 @@ class RecommendationReportGenerator:
             f"**추천 근거**: 예상 피크 메모리({estimated_peak_memory:.1f}GB)를 고려하여 "
             f"**{instance_type}** (vCPU {vcpu}, 메모리 {memory_gb}GB)를 추천합니다. {reason}"
         )
+
+    def _analyze_workload_pattern(
+        self,
+        metrics: AnalysisMetrics,
+        strategy: MigrationStrategy
+    ) -> tuple[Optional[str], Optional[str]]:
+        """워크로드 패턴 분석 및 RAC 필요성 평가
+        
+        AWR 데이터를 기반으로 쓰기 워크로드 비율을 분석하여
+        RAC 필요성과 Multi-AZ 구성 권장사항을 제공합니다.
+        
+        Args:
+            metrics: 분석 메트릭
+            strategy: 마이그레이션 전략
+            
+        Returns:
+            tuple[Optional[str], Optional[str]]: (RAC 평가, HA 권장사항)
+        """
+        # Replatform 전략이 아니면 RAC 평가 불필요
+        if strategy != MigrationStrategy.REPLATFORM:
+            return None, None
+        
+        # AWR 데이터가 없으면 평가 불가
+        if not metrics.avg_cpu_usage or not metrics.avg_io_load:
+            return None, None
+        
+        # 쓰기 워크로드 비율 추정 (I/O 부하 기반)
+        # 일반적으로 IOPS가 1000 이상이면 쓰기 집약적으로 간주
+        write_intensive_threshold = 1000
+        high_write_threshold = 2000
+        
+        io_load = metrics.avg_io_load
+        cpu_usage = metrics.avg_cpu_usage
+        
+        # RAC 필요성 평가
+        if io_load >= high_write_threshold and cpu_usage >= 70:
+            # 매우 높은 쓰기 워크로드 + 높은 CPU 사용률
+            rac_assessment = (
+                f"**RAC 필요성 평가**: 현재 시스템의 I/O 부하({io_load:.1f} IOPS)와 "
+                f"CPU 사용률({cpu_usage:.1f}%)이 매우 높아 RAC 구성이 필요할 수 있습니다. "
+                f"그러나 RDS Oracle SE2는 Single 인스턴스만 지원하므로, "
+                f"애플리케이션 레벨에서 쓰기 분산 처리를 고려하시기 바랍니다."
+            )
+            ha_recommendation = (
+                f"**고가용성 구성**: Multi-AZ 배포를 통해 이중화 구성을 권장합니다. "
+                f"단, Multi-AZ 구성 시 라이선스 비용이 2배로 증가하므로 비용을 고려하여 결정하시기 바랍니다. "
+                f"읽기 부하 분산이 필요한 경우 Read Replica를 활용할 수 있습니다."
+            )
+        elif io_load >= write_intensive_threshold:
+            # 중간 수준의 쓰기 워크로드
+            rac_assessment = (
+                f"**RAC 필요성 평가**: 현재 시스템의 I/O 부하({io_load:.1f} IOPS)는 중간 수준으로, "
+                f"RAC가 필요할 정도로 쓰기 워크로드가 많지 않습니다. "
+                f"Single 인스턴스로 충분히 처리 가능합니다."
+            )
+            ha_recommendation = (
+                f"**고가용성 구성**: Multi-AZ 배포를 통해 이중화 구성을 권장합니다. "
+                f"단, Multi-AZ 구성 시 라이선스 비용이 2배로 증가하므로 비용을 고려하여 결정하시기 바랍니다. "
+                f"읽기 부하가 높은 경우 Read Replica를 통한 읽기 분산 처리로 충분합니다."
+            )
+        else:
+            # 낮은 쓰기 워크로드
+            rac_assessment = (
+                f"**RAC 필요성 평가**: 현재 시스템의 I/O 부하({io_load:.1f} IOPS)는 낮은 수준으로, "
+                f"RAC가 필요하지 않습니다. Single 인스턴스로 충분합니다."
+            )
+            ha_recommendation = (
+                f"**고가용성 구성**: 읽기 분산 처리를 위해 Read Replica 구성을 권장합니다. "
+                f"고가용성이 필요한 경우 Multi-AZ 배포를 고려할 수 있으나, "
+                f"라이선스 비용이 2배로 증가하므로 비용 대비 효과를 검토하시기 바랍니다."
+            )
+        
+        return rac_assessment, ha_recommendation
