@@ -76,13 +76,18 @@ class PLSQLObjectDetector(PLSQLParserBase):
             Package인 경우 True
         """
         # CREATE OR REPLACE [EDITIONABLE] PACKAGE [BODY] 패턴
+        # 다양한 케이스 지원:
+        # 1. PACKAGE BODY만 있는 경우
+        # 2. PACKAGE (Spec)만 있는 경우  
+        # 3. 둘 다 있는 경우
+        # 4. PACKAGE 키워드만 있는 경우
         package_patterns = [
             r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+)?PACKAGE\s+BODY\b',
-            r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+)?PACKAGE\s+(?!BODY)\w+',
+            r'\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+)?PACKAGE\s+(?!BODY\b)',
         ]
         
         for pattern in package_patterns:
-            if re.search(pattern, code):
+            if re.search(pattern, code, re.IGNORECASE):
                 return True
         
         return False
