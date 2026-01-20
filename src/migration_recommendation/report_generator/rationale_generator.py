@@ -103,37 +103,59 @@ class RationaleGenerator:
                 }
             ))
         
-        # 2. 코드 복잡도 + 개수 근거
+        # 2. 코드 복잡도 + 개수 근거 (복잡도 레벨 텍스트 추가)
+        complexity_level_sql = self._get_complexity_level_text(metrics.avg_sql_complexity)
+        complexity_level_plsql = self._get_complexity_level_text(metrics.avg_plsql_complexity)
+        
         if metrics.avg_sql_complexity >= 7.0 or metrics.avg_plsql_complexity >= 7.0:
             if plsql_count >= 100:
                 rationales.append(Rationale(
                     category="complexity",
-                    reason=f"평균 코드 복잡도가 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높고, PL/SQL 오브젝트가 {plsql_count}개로 많아 변환이 거의 불가능합니다",
+                    reason=f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}({complexity_level_sql}), PL/SQL {metrics.avg_plsql_complexity:.1f}({complexity_level_plsql}) 수준입니다. PL/SQL 오브젝트가 {plsql_count}개로 매우 많아 코드 안정성을 위해 Refactor보다는 Replatform을 권장하며, 전환 작업에 드는 리소스가 많아 단기간 전환이 어려울 것으로 판단됩니다",
                     supporting_data={
                         "avg_sql_complexity": metrics.avg_sql_complexity,
                         "avg_plsql_complexity": metrics.avg_plsql_complexity,
-                        "plsql_count": plsql_count
+                        "plsql_count": plsql_count,
+                        "complexity_level_sql": complexity_level_sql,
+                        "complexity_level_plsql": complexity_level_plsql
                     }
                 ))
             elif plsql_count >= 50:
                 rationales.append(Rationale(
                     category="complexity",
-                    reason=f"평균 코드 복잡도가 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높고, PL/SQL 오브젝트가 {plsql_count}개로 변환 위험이 높습니다",
+                    reason=f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}({complexity_level_sql}), PL/SQL {metrics.avg_plsql_complexity:.1f}({complexity_level_plsql}) 수준입니다. PL/SQL 오브젝트가 {plsql_count}개로 많아 코드 안정성을 위해 Replatform을 권장하며, 변환 작업의 리스크가 높습니다",
                     supporting_data={
                         "avg_sql_complexity": metrics.avg_sql_complexity,
                         "avg_plsql_complexity": metrics.avg_plsql_complexity,
-                        "plsql_count": plsql_count
+                        "plsql_count": plsql_count,
+                        "complexity_level_sql": complexity_level_sql,
+                        "complexity_level_plsql": complexity_level_plsql
                     }
                 ))
             else:
                 rationales.append(Rationale(
                     category="complexity",
-                    reason=f"평균 코드 복잡도가 SQL {metrics.avg_sql_complexity:.1f}, PL/SQL {metrics.avg_plsql_complexity:.1f}로 매우 높아 대규모 코드 변경이 필요합니다",
+                    reason=f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}({complexity_level_sql}), PL/SQL {metrics.avg_plsql_complexity:.1f}({complexity_level_plsql}) 수준으로, 대규모 코드 변경 시 안정성 리스크가 있어 Replatform을 권장합니다",
                     supporting_data={
                         "avg_sql_complexity": metrics.avg_sql_complexity,
-                        "avg_plsql_complexity": metrics.avg_plsql_complexity
+                        "avg_plsql_complexity": metrics.avg_plsql_complexity,
+                        "complexity_level_sql": complexity_level_sql,
+                        "complexity_level_plsql": complexity_level_plsql
                     }
                 ))
+        elif plsql_count >= 100:
+            # 복잡도는 낮지만 개수가 많은 경우
+            rationales.append(Rationale(
+                category="complexity",
+                reason=f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}({complexity_level_sql}), PL/SQL {metrics.avg_plsql_complexity:.1f}({complexity_level_plsql}) 수준입니다. 하지만 PL/SQL 오브젝트가 {plsql_count}개로 매우 많아 코드 안정성을 위해 Refactor보다는 Replatform을 권장하며, 전환 작업에 드는 리소스가 많아 단기간 전환이 어려울 것으로 판단됩니다",
+                supporting_data={
+                    "avg_sql_complexity": metrics.avg_sql_complexity,
+                    "avg_plsql_complexity": metrics.avg_plsql_complexity,
+                    "plsql_count": plsql_count,
+                    "complexity_level_sql": complexity_level_sql,
+                    "complexity_level_plsql": complexity_level_plsql
+                }
+            ))
         
         # 3. 복잡 오브젝트 비율 근거
         if metrics.high_complexity_ratio >= 0.3:
@@ -364,3 +386,23 @@ class RationaleGenerator:
             "very_high": "매우 높음 (18개월 이상 예상)"
         }
         return difficulty_map.get(difficulty, "중간")
+    
+    def _get_complexity_level_text(self, complexity: float) -> str:
+        """복잡도 점수를 레벨 텍스트로 변환
+        
+        Args:
+            complexity: 복잡도 점수 (0.0 ~ 10.0)
+            
+        Returns:
+            str: 복잡도 레벨 텍스트
+        """
+        if complexity < 3.0:
+            return "매우 낮음"
+        elif complexity < 5.0:
+            return "낮음"
+        elif complexity < 7.0:
+            return "중간"
+        elif complexity < 9.0:
+            return "높음"
+        else:
+            return "매우 높음"
