@@ -42,6 +42,12 @@ dev = [
 [project.scripts]
 oracle-complexity-analyzer = "src.oracle_complexity_analyzer:main"
 dbcsi-analyzer = "src.dbcsi.cli:main"
+migration-recommend = "src.migration_recommendation.cli:main"
+plsql-splitter = "src.oracle_complexity_analyzer.cli_split:main"
+
+[tool.setuptools]
+packages = ["src"]
+package-dir = {"" = "."}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
