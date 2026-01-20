@@ -115,7 +115,8 @@ class SummaryGenerator:
             complexity_msg = (
                 f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}({sql_level}), "
                 f"PL/SQL {metrics.avg_plsql_complexity:.1f}({plsql_level}) 수준입니다. "
-                f"{connector} PL/SQL 오브젝트가 {plsql_count}개로 매우 많아 변환이 거의 불가능합니다."
+                f"{connector} PL/SQL 오브젝트가 {plsql_count}개로 매우 많아 코드 안정성을 위해 Refactor보다는 Replatform을 권장하며, "
+                f"전환 작업에 드는 리소스가 많아 단기간 전환이 어려울 것으로 판단됩니다."
             )
         elif plsql_count >= 50:
             # 개수가 많음 - 복잡도가 매우 높으면 "또한", 아니면 "하지만"
@@ -123,7 +124,8 @@ class SummaryGenerator:
             complexity_msg = (
                 f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}({sql_level}), "
                 f"PL/SQL {metrics.avg_plsql_complexity:.1f}({plsql_level}) 수준입니다. "
-                f"{connector} PL/SQL 오브젝트가 {plsql_count}개로 많아 변환 위험이 높습니다."
+                f"{connector} PL/SQL 오브젝트가 {plsql_count}개로 많아 코드 안정성을 위해 Replatform을 권장하며, "
+                f"변환 작업의 리스크가 높습니다."
             )
         else:
             # 개수가 적음

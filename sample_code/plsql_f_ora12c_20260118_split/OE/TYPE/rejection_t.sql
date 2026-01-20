@@ -1,0 +1,9 @@
+-- Owner: OE
+-- Type: TYPE
+-- Name: REJECTION_T
+-- Source: plsql_f_ora12c_20260118.out (Lines 697-707)
+-- ============================================================
+
+CREATE OR REPLACE EDITIONABLE TYPE "OE"."REJECTION_T" AS OBJECT ("SYS_XDBPD$" "XDB"."XDB$RAW_LIST_T","REJECTED_BY" VARCHAR2(10 CHAR),"DATE_REJECTED" DATE,"REASON_REJECTED" VARCHAR2(2048 CHAR))NOT FINAL INSTANTIABLE
+/
+/
