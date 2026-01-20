@@ -59,47 +59,41 @@ class RationaleGenerator:
         if plsql_lines == 0:
             plsql_lines = metrics.total_plsql_count * 200
         
-        # 1. 비용 효율성 근거 (5만 줄 이상 + 복잡도 중간 이하)
+        # 1. 코드 규모 및 작업 복잡도 근거 (5만 줄 이상 + 복잡도 중간 이하)
         if plsql_lines >= 50000 and metrics.avg_plsql_complexity < 7.0:
-            minutes_per_line = 2.8  # AI 활용 시 현실적 시간
-            refactor_hours_ai = plsql_lines * (minutes_per_line / 60)
-            refactor_hours_traditional = refactor_hours_ai * 2.0
-            replatform_hours = 240
-            cost_saving_pct = ((refactor_hours_ai - replatform_hours) / refactor_hours_ai) * 100
-            team_size = 4
-            refactor_months_ai = (refactor_hours_ai / team_size / 160)
-            refactor_months_traditional = (refactor_hours_traditional / team_size / 160)
+            # 코드 규모 분류
+            if plsql_lines >= 100000:
+                scale_text = "대규모"
+                refactor_scope = "매우 광범위한"
+            elif plsql_lines >= 70000:
+                scale_text = "중대규모"
+                refactor_scope = "광범위한"
+            else:
+                scale_text = "중규모"
+                refactor_scope = "상당한"
             
             rationales.append(Rationale(
                 category="cost",
-                reason=f"**PL/SQL 코드 {plsql_lines:,}줄을 Refactor하면 AI 도구 활용 시에도 약 {refactor_hours_ai:,.0f}시간({refactor_months_ai:.1f}개월, 4명 팀 기준) 소요되지만, Replatform은 약 {replatform_hours:,.0f}시간(약 6주)만 소요되어 비용을 약 {cost_saving_pct:.0f}% 절감할 수 있습니다.** EE 기능이 없는 대부분의 코드는 그대로 사용 가능합니다.",
+                reason=f"**PL/SQL 코드 {plsql_lines:,}줄({scale_text})을 Refactor하려면 {refactor_scope} 코드 변환 작업이 필요하며, 변환 과정에서 예상치 못한 이슈 발생 가능성이 높습니다.** 반면 Replatform은 EE 전용 기능(전체의 5-10% 추정)만 검토하면 되므로 작업 범위가 훨씬 제한적이고 위험도가 낮습니다. 대부분의 코드는 변경 없이 그대로 사용 가능합니다.",
                 supporting_data={
                     "plsql_lines": plsql_lines,
-                    "refactor_hours_traditional": refactor_hours_traditional,
-                    "refactor_hours_ai": refactor_hours_ai,
-                    "refactor_months_ai": refactor_months_ai,
-                    "refactor_months_traditional": refactor_months_traditional,
-                    "team_size": team_size,
-                    "ai_time_saving": "50%",
-                    "refactor_calculation": f"{minutes_per_line}분/줄 (AI 활용 시), 수동 작업 시 약 2배 소요",
-                    "refactor_basis": "AWS Professional Services 마이그레이션 프로젝트 실제 데이터 (65,000줄 기준 3,000시간)",
-                    "replatform_hours": replatform_hours,
-                    "replatform_calculation": "EE 기능 검토(80h) + 전환(80h) + 테스트(80h) = 240h",
-                    "cost_saving_pct": cost_saving_pct,
+                    "scale": scale_text,
+                    "refactor_scope": refactor_scope,
                     "avg_complexity": metrics.avg_plsql_complexity,
                     "ee_feature_ratio": "5-10%",
-                    "reference": "AWS Database Migration Best Practices, AWS Professional Services 실제 프로젝트 사례",
-                    "refactor_tasks": [
-                        "코드 분석 (200~400h, 1~2주): AI 자동 분석, 의존성 맵핑",
-                        "변환 작업 (1,200~2,400h, 2~3개월): AI가 80~90% 자동 변환, 복잡한 로직만 수동 처리",
-                        "테스트 및 검증 (400~800h, 1~1.5개월): AI 자동 테스트 생성, 주요 시나리오만 수동 검증",
-                        "성능 튜닝 (200~400h, 2~4주): 병목 지점만 선별 최적화"
+                    "refactor_risks": [
+                        "코드 변환 중 비즈니스 로직 변경 위험",
+                        "의존성 관계 파악 및 관리 복잡도",
+                        "변환 후 성능 저하 가능성",
+                        "광범위한 회귀 테스트 필요"
                     ],
-                    "replatform_tasks": [
-                        "EE 전용 기능 식별 및 검토 (80h, 2주)",
-                        "SE2 호환 기능으로 전환 (80h, 2주)",
-                        "테스트 및 검증 (80h, 2주)"
-                    ]
+                    "replatform_advantages": [
+                        "코드 변경 최소화로 비즈니스 로직 안정성 유지",
+                        "EE 전용 기능만 선별적으로 검토",
+                        "기존 성능 특성 유지",
+                        "제한적인 테스트 범위"
+                    ],
+                    "reference": "AWS Database Migration Best Practices"
                 }
             ))
         
