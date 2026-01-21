@@ -102,11 +102,15 @@ class SummaryGenerator:
         plsql_count = self._get_plsql_count(metrics)
         
         # 복잡도 평가 (SQL과 PL/SQL 개별 평가)
-        sql_level = "매우 높은" if metrics.avg_sql_complexity >= 7.0 else "중간" if metrics.avg_sql_complexity >= 5.0 else "낮은"
-        plsql_level = "매우 높은" if metrics.avg_plsql_complexity >= 7.0 else "중간" if metrics.avg_plsql_complexity >= 5.0 else "낮은"
+        # 기준: 0~1(매우 낮음), 1~3(낮음), 3~5(중간), 5~7(높음), 7~9(매우 높음), 9~10(극도로 높음)
+        sql_level = self._get_complexity_level_text(metrics.avg_sql_complexity)
+        plsql_level = self._get_complexity_level_text(metrics.avg_plsql_complexity)
         
         # 복잡도가 높은지 판단 (둘 다 7.0 이상이면 매우 높음)
         is_high_complexity = metrics.avg_sql_complexity >= 7.0 and metrics.avg_plsql_complexity >= 7.0
+        
+        # 고복잡도 코드 개수 계산
+        high_complexity_count = metrics.high_complexity_sql_count + metrics.high_complexity_plsql_count
         
         # 복잡도와 개수를 분리해서 표현 (접속사 선택)
         if plsql_count >= 100:
@@ -132,6 +136,13 @@ class SummaryGenerator:
             complexity_msg = (
                 f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}({sql_level}), "
                 f"PL/SQL {metrics.avg_plsql_complexity:.1f}({plsql_level}) 수준입니다."
+            )
+        
+        # 고복잡도 코드 경고 추가 (7.0 이상이 20개 이상인 경우)
+        if high_complexity_count >= 20:
+            complexity_msg += (
+                f" 다만, 복잡도 7.0 이상의 고난이도 코드가 {high_complexity_count}개 존재하여 "
+                f"이들 코드의 변환 및 검증 작업에는 상당한 시간과 전문성이 요구됩니다."
             )
         
         if metrics.high_complexity_ratio >= 0.3:
@@ -176,8 +187,12 @@ RDS for Oracle SE2는 기존 Oracle 데이터베이스를 AWS 클라우드로 �
         plsql_count = self._get_plsql_count(metrics)
         
         # 복잡도 평가 (SQL과 PL/SQL 개별 평가)
-        sql_level = "매우 높은" if metrics.avg_sql_complexity >= 7.0 else "중간" if metrics.avg_sql_complexity >= 5.0 else "낮은"
-        plsql_level = "매우 높은" if metrics.avg_plsql_complexity >= 7.0 else "중간" if metrics.avg_plsql_complexity >= 5.0 else "낮은"
+        # 기준: 0~1(매우 낮음), 1~3(낮음), 3~5(중간), 5~7(높음), 7~9(매우 높음), 9~10(극도로 높음)
+        sql_level = self._get_complexity_level_text(metrics.avg_sql_complexity)
+        plsql_level = self._get_complexity_level_text(metrics.avg_plsql_complexity)
+        
+        # 고복잡도 코드 개수 계산
+        high_complexity_count = metrics.high_complexity_sql_count + metrics.high_complexity_plsql_count
         
         bulk_warning = ""
         if metrics.bulk_operation_count >= 10:
@@ -188,6 +203,13 @@ RDS for Oracle SE2는 기존 Oracle 데이터베이스를 AWS 클라우드로 �
             plsql_msg = f"PL/SQL 오브젝트가 {plsql_count}개로 매우 적어, 애플리케이션 레벨로 이관이 매우 용이합니다."
         else:
             plsql_msg = f"PL/SQL 오브젝트가 {plsql_count}개로 적어, 애플리케이션 레벨로 이관이 충분히 가능합니다."
+        
+        # 고복잡도 코드 경고 추가 (7.0 이상이 20개 이상인 경우)
+        if high_complexity_count >= 20:
+            plsql_msg += (
+                f" 다만, 복잡도 7.0 이상의 고난이도 코드가 {high_complexity_count}개 존재하여 "
+                f"애플리케이션 레벨로 이관 시 신중한 설계와 충분한 테스트가 필요합니다."
+            )
         
         return f"""## 마이그레이션 추천: Aurora MySQL (Refactoring)
 
@@ -229,8 +251,12 @@ Aurora MySQL은 오픈소스 기반의 관계형 데이터베이스로, Oracle �
         plsql_count = self._get_plsql_count(metrics)
         
         # 복잡도 평가 (SQL과 PL/SQL 개별 평가)
-        sql_level = "매우 높은" if metrics.avg_sql_complexity >= 7.0 else "중간" if metrics.avg_sql_complexity >= 5.0 else "낮은"
-        plsql_level = "매우 높은" if metrics.avg_plsql_complexity >= 7.0 else "중간" if metrics.avg_plsql_complexity >= 5.0 else "낮은"
+        # 기준: 0~1(매우 낮음), 1~3(낮음), 3~5(중간), 5~7(높음), 7~9(매우 높음), 9~10(극도로 높음)
+        sql_level = self._get_complexity_level_text(metrics.avg_sql_complexity)
+        plsql_level = self._get_complexity_level_text(metrics.avg_plsql_complexity)
+        
+        # 고복잡도 코드 개수 계산
+        high_complexity_count = metrics.high_complexity_sql_count + metrics.high_complexity_plsql_count
         
         bulk_info = ""
         if metrics.bulk_operation_count >= 10:
@@ -247,6 +273,13 @@ Aurora MySQL은 오픈소스 기반의 관계형 데이터베이스로, Oracle �
                 plsql_msg = f"PL/SQL 오브젝트가 {plsql_count}개로 적지만 평균 복잡도({metrics.avg_plsql_complexity:.1f})가 높아 신중한 변환이 필요합니다."
             else:
                 plsql_msg = f"PL/SQL 오브젝트가 {plsql_count}개로 적고 평균 복잡도({metrics.avg_plsql_complexity:.1f})도 중간 수준으로, PL/pgSQL로 변환이 용이합니다."
+        
+        # 고복잡도 코드 경고 추가 (7.0 이상이 20개 이상인 경우)
+        if high_complexity_count >= 20:
+            plsql_msg += (
+                f" 다만, 복잡도 7.0 이상의 고난이도 코드가 {high_complexity_count}개 존재하여 "
+                f"PL/pgSQL 변환 시 전문가의 검토와 충분한 테스트가 필요합니다."
+            )
         
         return f"""## 마이그레이션 추천: Aurora PostgreSQL (Refactoring)
 
@@ -308,3 +341,33 @@ Aurora PostgreSQL은 Oracle과 높은 호환성을 제공하는 오픈소스 데
             if numbers:
                 return int(numbers[-1])
         return 0
+    
+    def _get_complexity_level_text(self, complexity: float) -> str:
+        """복잡도 점수를 레벨 텍스트로 변환
+        
+        Args:
+            complexity: 복잡도 점수 (0.0 ~ 10.0)
+            
+        Returns:
+            str: 복잡도 레벨 텍스트
+            
+        기준:
+            - 0~1: 매우 간단 (매우 낮음)
+            - 1~3: 간단 (낮음)
+            - 3~5: 중간
+            - 5~7: 복잡 (높음)
+            - 7~9: 매우 복잡 (매우 높음)
+            - 9~10: 극도로 복잡 (극도로 높음)
+        """
+        if complexity < 1.0:
+            return "매우 낮음"
+        elif complexity < 3.0:
+            return "낮음"
+        elif complexity < 5.0:
+            return "중간"
+        elif complexity < 7.0:
+            return "높음"
+        elif complexity < 9.0:
+            return "매우 높음"
+        else:
+            return "극도로 높음"

@@ -344,26 +344,28 @@ class OracleComplexityAnalyzer:
         """
         return export_utils.export_markdown(result, filename, self.output_dir, self.target)
     
-    def export_json_string(self, json_str: str, source_filename: str) -> str:
+    def export_json_string(self, json_str: str, source_filename: str, file_type: str = 'sql') -> str:
         """JSON 문자열을 파일로 저장
         
         Args:
             json_str: JSON 문자열
             source_filename: 원본 파일명 (확장자 변경용)
+            file_type: 파일 타입 ('sql', 'plsql', 'batch_plsql')
             
         Returns:
             str: 저장된 파일의 전체 경로
         """
-        return export_utils.export_json_string(json_str, source_filename, self.output_dir, self.target)
+        return export_utils.export_json_string(json_str, source_filename, self.output_dir, self.target, file_type)
     
-    def export_markdown_string(self, markdown_str: str, source_filename: str) -> str:
+    def export_markdown_string(self, markdown_str: str, source_filename: str, file_type: str = 'sql') -> str:
         """Markdown 문자열을 파일로 저장
         
         Args:
             markdown_str: Markdown 문자열
             source_filename: 원본 파일명 (확장자 변경용)
+            file_type: 파일 타입 ('sql', 'plsql', 'batch_plsql')
             
         Returns:
             str: 저장된 파일의 전체 경로
         """
-        return export_utils.export_markdown_string(markdown_str, source_filename, self.output_dir, self.target)
+        return export_utils.export_markdown_string(markdown_str, source_filename, self.output_dir, self.target, file_type)

@@ -71,20 +71,20 @@ oracle-complexity-analyzer -f query.sql -o json
 
 ```bash
 # 폴더 내 모든 SQL/PL/SQL 파일 분석
-oracle-complexity-analyzer -d sample_code -t postgresql -o markdown
+oracle-complexity-analyzer -d sample_data/testdb_awr -t postgresql -o markdown
 
 # MySQL 타겟으로 폴더 분석
 oracle-complexity-analyzer -d /path/to/sql/files -t mysql -o markdown
 
 # 병렬 워커 수 지정 (기본값: CPU 코어 수)
-oracle-complexity-analyzer -d sample_code -w 8 -o markdown
+oracle-complexity-analyzer -d sample_data/testdb_awr -w 8 -o markdown
 ```
 
 #### 출력 구조
 
 분석 결과는 **원본 파일의 폴더 구조를 반영**하여 자동으로 저장됩니다:
 
-**부모 폴더가 있는 경우** (예: `sample_code/file.sql`, `MKDB/file.sql`):
+**부모 폴더가 있는 경우** (예: `sample_data/testdb_awr/file.sql`, `MKDB/file.sql`):
 ```
 reports/
 └── {원본폴더명}/           # 원본 파일의 부모 폴더명 자동 반영
@@ -112,7 +112,7 @@ reports/
 ```
 
 **예시**:
-- `sample_code/query.sql` 분석 → `reports/sample_code/PGSQL/query.json`
+- `sample_data/testdb_awr/query.sql` 분석 → `reports/sample_data/testdb_awr/PGSQL/query.json`
 - `MKDB/procedure.pls` 분석 → `reports/MKDB/MySQL/procedure.md`
 - `test.sql` 분석 → `reports/20260118/test_postgresql.json`
 
@@ -146,6 +146,10 @@ reports/
 | 7-9 | 매우 복잡 | 대부분 재작성 |
 | 9-10 | 극도로 복잡 | 완전 재설계 |
 
+### 고복잡도 코드 경고
+
+평균 복잡도가 중간 수준이더라도, 복잡도 7.0 이상의 고난이도 코드가 20개 이상 존재하는 경우 마이그레이션 추천 리포트에 자동으로 경고 문구가 추가됩니다. 이는 평균 복잡도만으로는 파악하기 어려운 실제 작업 난이도를 정확히 전달하기 위함입니다.
+
 ---
 
 ## 2. DBCSI Analyzer (AWR/Statspack)
@@ -168,7 +172,7 @@ reports/
 
 ```bash
 # 기본 분석 (모든 타겟 DB)
-dbcsi-analyzer --file sample_code/dbcsi_awr_sample01.out
+dbcsi-analyzer --file sample_data/testdb_awr/dbcsi_awr_sample01.out
 
 # 특정 타겟 DB만 분석
 dbcsi-analyzer --file awr_sample.out --target aurora-postgresql
@@ -187,7 +191,7 @@ dbcsi-analyzer --file awr_sample.out --analyze-migration --detailed
 
 ```bash
 # 디렉토리 내 모든 AWR/Statspack 파일 분석
-dbcsi-analyzer --directory sample_code --format markdown
+dbcsi-analyzer --directory sample_data/testdb_awr --format markdown
 
 # 특정 타겟 DB로 배치 분석
 dbcsi-analyzer --directory /path/to/files --target aurora-postgresql
@@ -197,7 +201,7 @@ dbcsi-analyzer --directory /path/to/files --target aurora-postgresql
 
 분석 결과는 **원본 파일의 폴더 구조를 반영**하여 자동으로 저장됩니다:
 
-**부모 폴더가 있는 경우** (예: `sample_code/awr.out`):
+**부모 폴더가 있는 경우** (예: `sample_data/testdb_awr/awr.out`):
 ```
 reports/
 └── {원본폴더명}/           # 원본 파일의 부모 폴더명 자동 반영
@@ -285,13 +289,13 @@ reports/
 
 ```bash
 # reports 폴더 내 특정 폴더를 지정하여 추천 리포트 생성
-migration-recommend --reports-dir reports/sample_code
+migration-recommend --reports-dir reports/sample_data/testdb_awr
 
 # JSON 형식으로 출력
-migration-recommend --reports-dir reports/sample_code --format json
+migration-recommend --reports-dir reports/sample_data/testdb_awr --format json
 
 # 영어 리포트 생성
-migration-recommend --reports-dir reports/sample_code --language en
+migration-recommend --reports-dir reports/sample_data/testdb_awr --language en
 ```
 
 #### 레거시 모드 (개별 파일 지정)
@@ -299,13 +303,13 @@ migration-recommend --reports-dir reports/sample_code --language en
 ```bash
 # DBCSI 파일과 SQL 디렉토리를 직접 지정
 migration-recommend \
-  --dbcsi sample_code/dbcsi_awr_sample01.out \
-  --sql-dir sample_code \
+  --dbcsi sample_data/testdb_awr/dbcsi_awr_sample01.out \
+  --sql-dir sample_data/testdb_awr \
   --output reports/recommendation.md
 
 # DBCSI 없이 SQL/PL-SQL 분석만으로 추천 (성능 메트릭 제외)
 migration-recommend \
-  --sql-dir sample_code \
+  --sql-dir sample_data/testdb_awr \
   --output reports/recommendation.md
 ```
 
@@ -454,13 +458,13 @@ BULK 연산 >= 10개? ───YES────────┘
 
 ```bash
 # 1단계: SQL/PL-SQL 복잡도 분석
-oracle-complexity-analyzer -d sample_code -t postgresql -o markdown
+oracle-complexity-analyzer -d sample_data/testdb_awr -t postgresql -o markdown
 
 # 2단계: DBCSI 성능 분석
-dbcsi-analyzer --directory sample_code --format markdown
+dbcsi-analyzer --directory sample_data/testdb_awr --format markdown
 
 # 3단계: 마이그레이션 추천 리포트 생성
-migration-recommend --reports-dir reports/sample_code
+migration-recommend --reports-dir reports/sample_data/testdb_awr
 ```
 
 ### 리포트 폴더 구조
@@ -469,7 +473,7 @@ migration-recommend --reports-dir reports/sample_code
 
 ```
 reports/
-└── {원본폴더명}/           # 예: sample_code, MKDB 등
+└── {원본폴더명}/           # 예: sample_data/testdb_awr, MKDB 등
     ├── PGSQL/
     │   ├── sql_complexity_PGSQL.md      # SQL 복잡도 통합 리포트
     │   ├── sql_complexity_PGSQL.json
@@ -484,7 +488,7 @@ reports/
 ```
 
 **폴더 구조 규칙**:
-- 원본 파일에 부모 폴더가 있으면 해당 폴더명 사용 (예: `sample_code/file.sql` → `reports/sample_code/`)
+- 원본 파일에 부모 폴더가 있으면 해당 폴더명 사용 (예: `sample_data/testdb_awr/file.sql` → `reports/sample_data/testdb_awr/`)
 - 부모 폴더가 없으면 날짜 폴더 사용 (예: `file.sql` → `reports/20260118/`)
 
 ---
@@ -509,7 +513,7 @@ analyzer = OracleComplexityAnalyzer(
 
 # 폴더 일괄 분석
 batch_analyzer = BatchAnalyzer(analyzer, max_workers=4)
-batch_result = batch_analyzer.analyze_folder("sample_code")
+batch_result = batch_analyzer.analyze_folder("sample_data/testdb_awr")
 
 # 결과 저장
 batch_analyzer.export_batch_markdown(batch_result)
@@ -523,7 +527,7 @@ from src.dbcsi.migration_analyzer import MigrationAnalyzer
 from src.dbcsi.result_formatter import StatspackResultFormatter
 
 # AWR 파일 파싱
-parser = StatspackParser("sample_code/dbcsi_awr_sample01.out")
+parser = StatspackParser("sample_data/testdb_awr/dbcsi_awr_sample01.out")
 awr_data = parser.parse()
 
 # 마이그레이션 분석

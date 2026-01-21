@@ -40,12 +40,14 @@ class StatspackResultFormatter(BaseFormatter):
     
     @staticmethod
     def to_markdown(statspack_data: StatspackData, 
-                    migration_analysis: Dict[TargetDatabase, MigrationComplexity] = None) -> str:
+                    migration_analysis: Dict[TargetDatabase, MigrationComplexity] = None,
+                    output_path: str = None) -> str:
         """분석 결과를 Markdown 형식으로 변환
         
         Args:
             statspack_data: Statspack 파싱 데이터
             migration_analysis: 마이그레이션 난이도 분석 결과 (선택적)
+            output_path: 출력 파일 경로 (차트 이미지 저장용, 선택적)
             
         Returns:
             Markdown 형식의 문자열
@@ -115,6 +117,35 @@ class StatspackResultFormatter(BaseFormatter):
             md.append(f"- **최대 메모리 사용량**: {max(total_gbs):.2f} GB")
             md.append("")
             
+            # 그래프 생성 (최근 20개 데이터 포인트)
+            if output_path and len(statspack_data.memory_metrics) >= 1:
+                from .chart_generator import ChartGenerator
+                
+                display_count = min(20, len(statspack_data.memory_metrics))
+                
+                # 그래프 데이터 준비
+                snap_ids = [m.snap_id for m in statspack_data.memory_metrics[:display_count]]
+                sga_data = [m.sga_gb for m in statspack_data.memory_metrics[:display_count]]
+                pga_data = [m.pga_gb for m in statspack_data.memory_metrics[:display_count]]
+                total_data = [m.total_gb for m in statspack_data.memory_metrics[:display_count]]
+                
+                # ChartGenerator를 사용하여 그래프 생성
+                chart_filename = ChartGenerator.generate_memory_usage_chart(
+                    snap_ids=snap_ids,
+                    sga_data=sga_data,
+                    pga_data=pga_data,
+                    total_data=total_data,
+                    output_path=output_path,
+                    title="Memory Usage Trend",
+                    xlabel="Snap ID",
+                    ylabel="Memory (GB)"
+                )
+                
+                # 그래프가 성공적으로 생성되었으면 Markdown에 삽입
+                if chart_filename:
+                    md.append("**메모리 사용량 추이:**\n")
+                    md.append(f"![메모리 사용량 추이]({chart_filename})\n")
+            
             md.append("**상세 데이터 (최근 10개):**\n")
             md.append("| Snap ID | Instance | SGA (GB) | PGA (GB) | Total (GB) |")
             md.append("|---------|----------|----------|----------|------------|")
@@ -137,6 +168,27 @@ class StatspackResultFormatter(BaseFormatter):
             md.append(f"- **최소 디스크 사용량**: {min(sizes):.2f} GB")
             md.append(f"- **최대 디스크 사용량**: {max(sizes):.2f} GB")
             md.append("")
+            
+            # 그래프 생성
+            if output_path and len(statspack_data.disk_sizes) >= 1:
+                from .chart_generator import ChartGenerator
+                
+                display_count = min(20, len(statspack_data.disk_sizes))
+                snap_ids = [d.snap_id for d in statspack_data.disk_sizes[:display_count]]
+                disk_data = [d.size_gb for d in statspack_data.disk_sizes[:display_count]]
+                
+                chart_filename = ChartGenerator.generate_disk_usage_chart(
+                    snap_ids=snap_ids,
+                    disk_data=disk_data,
+                    output_path=output_path,
+                    title="Disk Usage Trend",
+                    xlabel="Snap ID",
+                    ylabel="Disk Size (GB)"
+                )
+                
+                if chart_filename:
+                    md.append("**디스크 사용량 추이:**\n")
+                    md.append(f"![디스크 사용량 추이]({chart_filename})\n")
             
             md.append("**상세 데이터 (최근 10개):**\n")
             md.append("| Snap ID | Size (GB) |")
@@ -170,6 +222,28 @@ class StatspackResultFormatter(BaseFormatter):
             md.append(f"- **평균 Commits/s**: {sum(commits_values)/len(commits_values):.2f} (최소: {min(commits_values):.2f}, 최대: {max(commits_values):.2f})")
             md.append("")
             
+            # 그래프 생성
+            if output_path and len(statspack_data.main_metrics) >= 1:
+                from .chart_generator import ChartGenerator
+                
+                display_count = min(24, len(statspack_data.main_metrics))
+                timestamps = [m.end for m in statspack_data.main_metrics[:display_count]]
+                
+                chart_filename = ChartGenerator.generate_performance_metrics_chart(
+                    timestamps=timestamps,
+                    cpu_data=cpu_values[:display_count],
+                    read_iops_data=read_iops_values[:display_count],
+                    write_iops_data=write_iops_values[:display_count],
+                    commits_data=commits_values[:display_count],
+                    output_path=output_path,
+                    title="Performance Metrics Trend",
+                    max_points=display_count
+                )
+                
+                if chart_filename:
+                    md.append("**성능 메트릭 추이:**\n")
+                    md.append(f"![성능 메트릭 추이]({chart_filename})\n")
+            
             display_count = min(24, len(statspack_data.main_metrics))
             md.append(f"**상세 데이터 (최근 {display_count}개 - 하루 패턴):**\n")
             md.append("| 시간 | Duration (m) | CPU/s | Read IOPS | Write IOPS | Commits/s |")
@@ -196,6 +270,36 @@ class StatspackResultFormatter(BaseFormatter):
             
             md.append(f"- **주요 대기 클래스**: {', '.join([f'{k} ({v:.0f}s)' for k, v in sorted(wait_class_times.items(), key=lambda x: x[1], reverse=True)[:3]])}")
             md.append("")
+            
+            # 그래프 생성 (상위 10개 이벤트)
+            if output_path and len(statspack_data.wait_events) >= 1:
+                from .chart_generator import ChartGenerator
+                
+                # 이벤트별 총 대기 시간 집계
+                event_times = {}
+                for event in statspack_data.wait_events:
+                    key = event.event_name
+                    if key not in event_times:
+                        event_times[key] = 0
+                    event_times[key] += event.total_time_s
+                
+                # 상위 10개 추출
+                sorted_events = sorted(event_times.items(), key=lambda x: x[1], reverse=True)[:10]
+                event_names = [e[0] for e in sorted_events]
+                wait_times = [e[1] for e in sorted_events]
+                
+                if event_names and len(event_names) >= 1:
+                    chart_filename = ChartGenerator.generate_wait_events_chart(
+                        event_names=event_names,
+                        wait_times=wait_times,
+                        output_path=output_path,
+                        title="Top 10 Wait Events",
+                        max_events=10
+                    )
+                    
+                    if chart_filename:
+                        md.append("**Top 대기 이벤트:**\n")
+                        md.append(f"![Top 대기 이벤트]({chart_filename})\n")
             
             md.append("**상세 데이터 (상위 20개):**\n")
             md.append("| Snap ID | Wait Class | Event Name | % DBT | Total Time (s) |")

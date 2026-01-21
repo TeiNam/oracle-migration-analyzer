@@ -333,6 +333,7 @@ def analyze_single_file(args):
     """
     try:
         from src.formatters.result_formatter import ResultFormatter
+        from .file_detector import detect_file_type
         
         target_db = normalize_target(args.target)
         
@@ -344,17 +345,26 @@ def analyze_single_file(args):
         print(f"📄 파일 분석 중: {args.file}")
         result = analyzer.analyze_file(args.file)
         
+        # 파일 타입 감지
+        try:
+            with open(args.file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            file_type = detect_file_type(content)
+        except Exception as e:
+            logger.warning(f"파일 타입 감지 실패, 기본값(sql) 사용: {e}")
+            file_type = 'sql'
+        
         if isinstance(result, dict) and 'total_objects' in result:
             print_batch_result_console(result, target_db)
             
             if args.output in ['json', 'both']:
                 json_output = ResultFormatter.batch_to_json(result)
-                json_file = analyzer.export_json_string(json_output, args.file)
+                json_file = analyzer.export_json_string(json_output, args.file, file_type)
                 print(f"✅ JSON 리포트 저장: {json_file}")
             
             if args.output in ['markdown', 'both']:
                 md_output = ResultFormatter.batch_to_markdown(result, target_db.value)
-                md_file = analyzer.export_markdown_string(md_output, args.file)
+                md_file = analyzer.export_markdown_string(md_output, args.file, file_type)
                 print(f"✅ Markdown 리포트 저장: {md_file}")
             
             return 0
@@ -364,12 +374,12 @@ def analyze_single_file(args):
         
         if args.output in ['json', 'both']:
             json_str = ResultFormatter.to_json(result)
-            json_path = analyzer.export_json_string(json_str, args.file)
+            json_path = analyzer.export_json_string(json_str, args.file, file_type)
             print(f"✅ JSON 저장 완료: {json_path}")
         
         if args.output in ['markdown', 'both']:
             md_str = ResultFormatter.to_markdown(result)
-            md_path = analyzer.export_markdown_string(md_str, args.file)
+            md_path = analyzer.export_markdown_string(md_str, args.file, file_type)
             print(f"✅ Markdown 저장 완료: {md_path}")
         
         return 0

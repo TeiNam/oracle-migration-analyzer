@@ -389,14 +389,24 @@ class RationaleGenerator:
             
         Returns:
             str: 복잡도 레벨 텍스트
+            
+        기준:
+            - 0~1: 매우 간단
+            - 1~3: 간단 (낮음)
+            - 3~5: 중간
+            - 5~7: 복잡 (높음)
+            - 7~9: 매우 복잡
+            - 9~10: 극도로 복잡
         """
-        if complexity < 3.0:
+        if complexity < 1.0:
             return "매우 낮음"
-        elif complexity < 5.0:
+        elif complexity < 3.0:
             return "낮음"
-        elif complexity < 7.0:
+        elif complexity < 5.0:
             return "중간"
-        elif complexity < 9.0:
+        elif complexity < 7.0:
             return "높음"
-        else:
+        elif complexity < 9.0:
             return "매우 높음"
+        else:
+            return "극도로 높음"

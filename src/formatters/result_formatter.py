@@ -333,14 +333,14 @@ class ResultFormatter:
         md.append(f"**타겟 데이터베이스**: {target_db}\n")
         
         # 전체 요약
-        md.append("## 📊 전체 요약\n")
+        md.append("## 전체 요약\n")
         md.append(f"- **전체 객체 수**: {batch_result['total_objects']}")
         md.append(f"- **분석 성공**: {batch_result['analyzed_objects']}")
         md.append(f"- **분석 실패**: {batch_result['failed_objects']}\n")
         
         # 객체 타입별 통계
         if batch_result.get('statistics'):
-            md.append("## 📈 객체 타입별 통계\n")
+            md.append("## 객체 타입별 통계\n")
             md.append("| 객체 타입 | 개수 |")
             md.append("|----------|------|")
             for obj_type, count in sorted(batch_result['statistics'].items()):
@@ -350,7 +350,7 @@ class ResultFormatter:
         # 복잡도 요약
         if batch_result.get('summary'):
             summary = batch_result['summary']
-            md.append("## 🎯 복잡도 요약\n")
+            md.append("## 복잡도 요약\n")
             md.append(f"- **평균 복잡도**: {summary.get('average_score', 0):.2f}")
             md.append(f"- **최대 복잡도**: {summary.get('max_score', 0):.2f}")
             md.append(f"- **최소 복잡도**: {summary.get('min_score', 0):.2f}\n")
@@ -367,6 +367,48 @@ class ResultFormatter:
                 md.append(f"| 복잡 (5-7) | {dist.get('complex', 0)} |")
                 md.append(f"| 매우 복잡 (7-9) | {dist.get('very_complex', 0)} |")
                 md.append(f"| 극도로 복잡 (9-10) | {dist.get('extremely_complex', 0)} |")
+                md.append("")
+        
+        # 전체 감지된 Oracle 특화 기능 집계
+        all_oracle_features = set()
+        all_external_deps = set()
+        for obj_result in batch_result.get('results', []):
+            analysis = obj_result['analysis']
+            if analysis.detected_oracle_features:
+                all_oracle_features.update(analysis.detected_oracle_features)
+            if analysis.detected_external_dependencies:
+                all_external_deps.update(analysis.detected_external_dependencies)
+        
+        if all_oracle_features:
+            md.append("## 감지된 Oracle 특화 기능\n")
+            for feature in sorted(all_oracle_features):
+                md.append(f"- {feature}")
+            md.append("")
+        
+        if all_external_deps:
+            md.append("## 감지된 외부 의존성\n")
+            for dep in sorted(all_external_deps):
+                md.append(f"- {dep}")
+            md.append("")
+        
+        # 변환 가이드 (전체 감지된 기능에 대한 가이드)
+        if all_oracle_features or all_external_deps:
+            from src.formatters.conversion_guide_provider import ConversionGuideProvider
+            guide_provider = ConversionGuideProvider(target_db.lower())
+            
+            # 모든 기능과 의존성을 합쳐서 변환 가이드 가져오기
+            all_items = list(all_oracle_features) + list(all_external_deps)
+            conversion_guides = guide_provider.get_conversion_guide(all_items)
+            
+            if conversion_guides:
+                md.append("## 변환 가이드\n")
+                md.append("| Oracle 기능 | 대체 방법 |")
+                md.append("|------------|----------|")
+                
+                for feature in sorted(conversion_guides.keys()):
+                    guide = conversion_guides[feature]
+                    md.append(f"| {feature} | {guide} |")
+                
                 md.append("")
         
         # 개별 객체 분석 결과

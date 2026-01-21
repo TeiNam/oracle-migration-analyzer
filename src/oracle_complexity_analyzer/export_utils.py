@@ -131,28 +131,41 @@ def export_markdown(result: Union[SQLAnalysisResult, PLSQLAnalysisResult],
     return str(file_path)
 
 
-def export_json_string(json_str: str, source_filename: str, output_dir: Path, target: TargetDatabase) -> str:
+def export_json_string(json_str: str, source_filename: str, output_dir: Path, target: TargetDatabase, file_type: str = 'sql') -> str:
     """JSON 문자열을 파일로 저장
+    
+    원본 소스 파일의 폴더 구조를 reports 폴더 밑에 유지하면서 저장합니다.
+    파일 타입(SQL/PL-SQL)에 따라 폴더를 구분합니다.
+    예: adb/file.sql -> reports/adb/sql/MySQL/file.json, reports/adb/sql/PGSQL/file.json
+        adb/pkg.pls -> reports/adb/plsql/MySQL/pkg.json, reports/adb/plsql/PGSQL/pkg.json
     
     Args:
         json_str: JSON 문자열
-        source_filename: 원본 파일명
-        output_dir: 출력 디렉토리
+        source_filename: 원본 파일명 (경로 포함)
+        output_dir: 출력 디렉토리 (기본: reports)
         target: 타겟 데이터베이스
+        file_type: 파일 타입 ('sql', 'plsql', 'batch_plsql')
         
     Returns:
         str: 저장된 파일의 전체 경로
     """
     source_path = Path(source_filename)
     
-    # 소스 파일의 부모 폴더명 추출
+    # 타겟 데이터베이스 폴더명 (PGSQL 또는 MySQL)
+    target_folder = "PGSQL" if target == TargetDatabase.POSTGRESQL else "MySQL"
+    
+    # 파일 타입 폴더명 (sql 또는 plsql)
+    # batch_plsql도 plsql 폴더에 저장
+    type_folder = "plsql" if file_type in ['plsql', 'batch_plsql'] else "sql"
+    
+    # 소스 파일의 부모 폴더 경로 추출 (상대 경로 전체)
     if source_path.parent != Path('.'):
-        # 부모 폴더가 있는 경우 (예: sample_code/file.sql, MKDB/file.sql)
-        parent_folder = source_path.parent.name
+        # 부모 폴더가 있는 경우 (예: sample_data/testdb_awr/file.sql, adb/schema/file.sql)
+        # 원본 폴더 구조를 그대로 유지: reports/{원본폴더구조}/{타입}/{타겟}/
+        parent_path = source_path.parent
         
-        # reports/{부모폴더명}/PGSQL 또는 MySQL 폴더에 저장
-        target_folder = "PGSQL" if target == TargetDatabase.POSTGRESQL else "MySQL"
-        output_folder = output_dir / parent_folder / target_folder
+        # reports/{원본폴더구조}/{타입}/{타겟}/ 폴더에 저장
+        output_folder = output_dir / parent_path / type_folder / target_folder
         output_folder.mkdir(parents=True, exist_ok=True)
         
         # 파일명 생성 (타겟 DB 접미사 없이)
@@ -181,28 +194,41 @@ def export_json_string(json_str: str, source_filename: str, output_dir: Path, ta
     return str(file_path)
 
 
-def export_markdown_string(markdown_str: str, source_filename: str, output_dir: Path, target: TargetDatabase) -> str:
+def export_markdown_string(markdown_str: str, source_filename: str, output_dir: Path, target: TargetDatabase, file_type: str = 'sql') -> str:
     """Markdown 문자열을 파일로 저장
+    
+    원본 소스 파일의 폴더 구조를 reports 폴더 밑에 유지하면서 저장합니다.
+    파일 타입(SQL/PL-SQL)에 따라 폴더를 구분합니다.
+    예: adb/file.sql -> reports/adb/sql/MySQL/file.md, reports/adb/sql/PGSQL/file.md
+        adb/pkg.pls -> reports/adb/plsql/MySQL/pkg.md, reports/adb/plsql/PGSQL/pkg.md
     
     Args:
         markdown_str: Markdown 문자열
-        source_filename: 원본 파일명
-        output_dir: 출력 디렉토리
+        source_filename: 원본 파일명 (경로 포함)
+        output_dir: 출력 디렉토리 (기본: reports)
         target: 타겟 데이터베이스
+        file_type: 파일 타입 ('sql', 'plsql', 'batch_plsql')
         
     Returns:
         str: 저장된 파일의 전체 경로
     """
     source_path = Path(source_filename)
     
-    # 부모 폴더가 있는지 확인 (현재 디렉토리가 아닌 경우)
+    # 타겟 데이터베이스 폴더명 (PGSQL 또는 MySQL)
+    target_folder = "PGSQL" if target == TargetDatabase.POSTGRESQL else "MySQL"
+    
+    # 파일 타입 폴더명 (sql 또는 plsql)
+    # batch_plsql도 plsql 폴더에 저장
+    type_folder = "plsql" if file_type in ['plsql', 'batch_plsql'] else "sql"
+    
+    # 소스 파일의 부모 폴더 경로 추출 (상대 경로 전체)
     if source_path.parent != Path('.'):
-        # 부모 폴더 이름 추출 (예: sample_code, MKDB 등)
-        parent_folder = source_path.parent.name
+        # 부모 폴더가 있는 경우 (예: sample_data/testdb_awr/file.sql, adb/schema/file.sql)
+        # 원본 폴더 구조를 그대로 유지: reports/{원본폴더구조}/{타입}/{타겟}/
+        parent_path = source_path.parent
         
-        # reports/{parent_folder}/PGSQL 또는 MySQL 폴더에 저장
-        target_folder = "PGSQL" if target == TargetDatabase.POSTGRESQL else "MySQL"
-        output_folder = output_dir / parent_folder / target_folder
+        # reports/{원본폴더구조}/{타입}/{타겟}/ 폴더에 저장
+        output_folder = output_dir / parent_path / type_folder / target_folder
         output_folder.mkdir(parents=True, exist_ok=True)
         
         # 파일명 생성 (타겟 DB 접미사 없이)

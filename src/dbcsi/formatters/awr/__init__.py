@@ -43,13 +43,15 @@ class EnhancedResultFormatter(
     @staticmethod
     def to_detailed_markdown(awr_data, 
                             migration_analysis: Dict[TargetDatabase, MigrationComplexity] = None,
-                            language: str = "ko") -> str:
+                            language: str = "ko",
+                            output_path: str = None) -> str:
         """상세 Markdown 보고서 생성
         
         Args:
             awr_data: AWR 파싱 데이터 (AWRData 또는 StatspackData)
             migration_analysis: 마이그레이션 난이도 분석 결과 (선택적)
             language: 리포트 언어 ("ko" 또는 "en")
+            output_path: 출력 파일 경로 (차트 이미지 저장용, 선택적)
             
         Returns:
             Markdown 형식의 문자열
@@ -75,7 +77,10 @@ class EnhancedResultFormatter(
             ))
         
         # 기본 Statspack 섹션 (제목, 빈 줄, 생성 시간, 빈 줄 제거)
-        base_report = StatspackResultFormatter.to_markdown(awr_data, migration_analysis)
+        # output_path를 전달하여 메모리 그래프 생성
+        base_report = StatspackResultFormatter.to_markdown(
+            awr_data, migration_analysis, output_path=output_path
+        )
         base_lines = base_report.split('\n')
         base_content = '\n'.join(base_lines[4:])  # 처음 4줄 건너뛰기
         md.append(base_content)

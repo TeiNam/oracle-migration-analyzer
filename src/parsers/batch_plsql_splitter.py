@@ -15,20 +15,17 @@ logger = logging.getLogger(__name__)
 class BatchPLSQLSplitter:
     """배치 PL/SQL 파일 분리기
     
-    배치 PL/SQL 파일(.out)을 파싱하여 계정별, 타입별로 개별 SQL 파일로 분리합니다.
+    배치 PL/SQL 파일(.out)을 파싱하여 타입별로 개별 SQL 파일로 분리합니다.
     
     출력 구조:
-    output_dir/
-    ├── OWNER1/
-    │   ├── FUNCTION/
-    │   │   ├── func1.sql
-    │   │   └── func2.sql
-    │   ├── PROCEDURE/
-    │   │   └── proc1.sql
-    │   └── TYPE/
-    │       └── type1.sql
-    └── OWNER2/
-        └── ...
+    plsql_objects/
+    ├── FUNCTION/
+    │   ├── owner1_func1.sql
+    │   └── owner2_func2.sql
+    ├── PROCEDURE/
+    │   └── owner1_proc1.sql
+    └── TYPE/
+        └── owner1_type1.sql
     """
     
     def __init__(self, input_file: str, output_dir: Optional[str] = None):
@@ -36,15 +33,15 @@ class BatchPLSQLSplitter:
         
         Args:
             input_file: 입력 배치 PL/SQL 파일 경로
-            output_dir: 출력 디렉토리 (기본값: 입력 파일명_split)
+            output_dir: 출력 디렉토리 (기본값: plsql_objects)
         """
         self.input_file = Path(input_file)
         
         if output_dir:
             self.output_dir = Path(output_dir)
         else:
-            # 기본 출력 디렉토리: 입력파일명_split
-            self.output_dir = self.input_file.parent / f"{self.input_file.stem}_split"
+            # 기본 출력 디렉토리: plsql_objects
+            self.output_dir = self.input_file.parent / "plsql_objects"
         
         self.parser: Optional[BatchPLSQLParser] = None
         self.objects: List[PLSQLObject] = []
@@ -76,10 +73,10 @@ class BatchPLSQLSplitter:
         return self.objects
     
     def split(self) -> Dict[str, int]:
-        """객체를 계정별, 타입별로 개별 파일로 분리
+        """객체를 타입별로 개별 파일로 분리
         
         Returns:
-            Dict[str, int]: 통계 정보 (owner별 파일 수)
+            Dict[str, int]: 통계 정보 (타입별 파일 수)
             
         Raises:
             ValueError: 파싱이 먼저 수행되지 않은 경우
@@ -87,29 +84,25 @@ class BatchPLSQLSplitter:
         if not self.objects:
             raise ValueError("먼저 parse()를 호출하여 파일을 파싱해야 합니다.")
         
-        # 출력 디렉토리 생성
+        # 출력 디렉토리 생성 (plsql_objects)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         stats: Dict[str, int] = {}
         
         for obj in self.objects:
-            # 계정별 디렉토리 생성
-            owner_dir = self.output_dir / obj.owner
-            owner_dir.mkdir(exist_ok=True)
-            
             # 타입별 디렉토리 생성
-            type_dir = owner_dir / obj.object_type
+            type_dir = self.output_dir / obj.object_type
             type_dir.mkdir(exist_ok=True)
             
-            # 파일명 생성 (객체명.sql)
-            # 특수문자 제거 및 소문자 변환
+            # 파일명 생성 (유저명_객체명.sql)
+            safe_owner = self._sanitize_filename(obj.owner)
             safe_name = self._sanitize_filename(obj.object_name)
-            output_file = type_dir / f"{safe_name}.sql"
+            output_file = type_dir / f"{safe_owner}_{safe_name}.sql"
             
             # 중복 파일명 처리
             counter = 1
             while output_file.exists():
-                output_file = type_dir / f"{safe_name}_{counter}.sql"
+                output_file = type_dir / f"{safe_owner}_{safe_name}_{counter}.sql"
                 counter += 1
             
             # 파일 작성
@@ -126,8 +119,8 @@ class BatchPLSQLSplitter:
                     f.write(obj.ddl_code)
                     f.write("\n/\n")
                 
-                # 통계 업데이트
-                stats[obj.owner] = stats.get(obj.owner, 0) + 1
+                # 통계 업데이트 (타입별)
+                stats[obj.object_type] = stats.get(obj.object_type, 0) + 1
                 
                 logger.debug(f"파일 생성: {output_file}")
                 
@@ -159,10 +152,10 @@ class BatchPLSQLSplitter:
         return safe_name
     
     def get_statistics(self) -> Dict[str, Dict[str, int]]:
-        """계정별, 타입별 통계 정보 반환
+        """타입별, 계정별 통계 정보 반환
         
         Returns:
-            Dict[owner, Dict[type, count]]: 계정별 타입별 객체 수
+            Dict[type, Dict[owner, count]]: 타입별 계정별 객체 수
             
         Raises:
             ValueError: 파싱이 먼저 수행되지 않은 경우
@@ -173,11 +166,11 @@ class BatchPLSQLSplitter:
         stats: Dict[str, Dict[str, int]] = {}
         
         for obj in self.objects:
-            if obj.owner not in stats:
-                stats[obj.owner] = {}
-            
             obj_type = obj.object_type
-            stats[obj.owner][obj_type] = stats[obj.owner].get(obj_type, 0) + 1
+            if obj_type not in stats:
+                stats[obj_type] = {}
+            
+            stats[obj_type][obj.owner] = stats[obj_type].get(obj.owner, 0) + 1
         
         return stats
     
@@ -189,14 +182,15 @@ class BatchPLSQLSplitter:
         print("배치 PL/SQL 파일 분리 통계")
         print("=" * 60)
         print(f"입력 파일: {self.input_file}")
-        print(f"출력 디렉토리: {self.output_dir}")
+        print(f"출력 디렉토리: {self.output_dir}/")
         print(f"전체 객체 수: {len(self.objects)}")
         print()
         
-        for owner, types in sorted(stats.items()):
-            print(f"📁 {owner}/")
-            for obj_type, count in sorted(types.items()):
-                print(f"   └─ {obj_type}: {count}개")
+        for obj_type, owners in sorted(stats.items()):
+            total_count = sum(owners.values())
+            print(f"📁 {obj_type}/ ({total_count}개)")
+            for owner, count in sorted(owners.items()):
+                print(f"   └─ {owner}: {count}개")
             print()
         
         print("=" * 60)

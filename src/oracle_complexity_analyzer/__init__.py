@@ -76,6 +76,9 @@ from .export_utils import (
     export_markdown_string,
 )
 
+# CLI 진입점
+from .__main__ import main
+
 # 버전 정보
 __version__ = "0.1.0"
 
@@ -116,6 +119,8 @@ __all__ = [
     "export_markdown",
     "export_json_string",
     "export_markdown_string",
+    # CLI
+    "main",
     # Version
     "__version__",
 ]
