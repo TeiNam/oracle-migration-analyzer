@@ -144,6 +144,8 @@ class AnalysisMetrics:
     awr_procedure_count: Optional[int] = None
     awr_function_count: Optional[int] = None
     awr_package_count: Optional[int] = None
+    awr_trigger_count: Optional[int] = None
+    awr_type_count: Optional[int] = None
     
     # === 신규 필드: 데이터베이스 기본 정보 ===
     db_name: Optional[str] = None
@@ -347,3 +349,6 @@ class MigrationRecommendation:
     
     # 데이터 가용성 (신규)
     data_availability: Optional[DataAvailability] = None
+    
+    # Replatform 선택 이유 (신규)
+    replatform_reasons: List[str] = field(default_factory=list)

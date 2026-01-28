@@ -104,6 +104,9 @@ class BaseParser:
         
         for line in lines:
             stripped = line.strip()
+            # BOM (Byte Order Mark) 제거
+            if stripped.startswith('\ufeff'):
+                stripped = stripped[1:]
             
             if stripped == begin_marker or stripped == begin_marker_alt:
                 in_section = True

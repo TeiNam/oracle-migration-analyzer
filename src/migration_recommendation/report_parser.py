@@ -337,7 +337,8 @@ class MarkdownReportParser:
             
         Returns:
             (sql_results, plsql_results, summary) 튜플
-            summary에는 oracle_features, external_dependencies, conversion_guide 포함
+            summary에는 oracle_features, external_dependencies, conversion_guide,
+            object_type_counts 포함
         """
         sql_results, plsql_results = self.parse_plsql_complexity_markdown(
             report_path, target_db
@@ -346,7 +347,11 @@ class MarkdownReportParser:
         summary: Dict[str, Any] = {
             'oracle_features': [],
             'external_dependencies': [],
-            'conversion_guide': {}
+            'conversion_guide': {},
+            'object_type_counts': {},
+            'total_objects': 0,
+            'avg_complexity': None,
+            'max_complexity': None
         }
         
         try:
@@ -356,6 +361,12 @@ class MarkdownReportParser:
             summary['oracle_features'] = self.extract_oracle_features_summary(content)
             summary['external_dependencies'] = self.extract_external_dependencies_summary(content)
             summary['conversion_guide'] = self.extract_conversion_guide(content)
+            
+            # 객체 타입별 통계 추출
+            summary['object_type_counts'] = self._extract_type_counts(content)
+            summary['total_objects'] = self._extract_total_count(content)
+            summary['avg_complexity'] = self._extract_avg_complexity(content)
+            summary['max_complexity'] = self._extract_max_complexity(content)
             
         except Exception as e:
             logger.warning(f"요약 정보 추출 실패 ({report_path}): {e}")
@@ -490,11 +501,11 @@ class MarkdownReportParser:
                 obj_content
             )
             if features_match:
-                features = [
-                    f.strip('- \n') 
-                    for f in features_match.group(1).strip().split('\n')
-                    if f.strip()
-                ]
+                for f in features_match.group(1).strip().split('\n'):
+                    feature = f.strip('- \n')
+                    # "... 외 N개" 형식 필터링
+                    if feature and not feature.startswith('...') and '외' not in feature:
+                        features.append(feature)
             
             plsql_result = PLSQLAnalysisResult(
                 code=obj_name,
@@ -622,15 +633,25 @@ class MarkdownReportParser:
         return distribution
     
     def _extract_type_counts(self, content: str) -> Dict[str, int]:
-        """객체 타입별 개수 추출"""
+        """객체 타입별 개수 추출
+        
+        복잡도 리포트의 "객체 타입별 통계" 테이블에서 추출합니다.
+        형식:
+        | 객체 타입 | 개수 |
+        |----------|------|
+        | FUNCTION | 716 |
+        | PACKAGE | 103 |
+        """
         counts: Dict[str, int] = {}
         
-        # | FUNCTION | 1 | 형식
-        pattern = r'\|\s*(FUNCTION|PROCEDURE|PACKAGE|TRIGGER|TYPE|TYPE BODY)\s*\|\s*(\d+)\s*\|'
+        # | FUNCTION | 1 | 형식 (대소문자 무관)
+        pattern = r'\|\s*(FUNCTION|PROCEDURE|PACKAGE|PACKAGE BODY|TRIGGER|TYPE|TYPE BODY)\s*\|\s*(\d+)\s*\|'
         matches = re.findall(pattern, content, re.IGNORECASE)
         
         for obj_type, count in matches:
-            counts[obj_type.upper()] = int(count)
+            # 키를 대문자로 정규화
+            normalized_type = obj_type.upper()
+            counts[normalized_type] = int(count)
         
         return counts
     

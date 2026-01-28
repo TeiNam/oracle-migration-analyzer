@@ -330,7 +330,9 @@ def main() -> int:
             complexity_summary: Dict[str, Any] = {
                 'oracle_features': [],
                 'external_dependencies': [],
-                'conversion_guide': {}
+                'conversion_guide': {},
+                'object_type_counts': {},
+                'total_objects': 0
             }
             if reports_by_target['postgresql']:
                 logger.info(f"PostgreSQL 복잡도 리포트 파싱: {len(reports_by_target['postgresql'])}개")
@@ -346,6 +348,13 @@ def main() -> int:
                         complexity_summary['oracle_features'].extend(summary.get('oracle_features', []))
                         complexity_summary['external_dependencies'].extend(summary.get('external_dependencies', []))
                         complexity_summary['conversion_guide'].update(summary.get('conversion_guide', {}))
+                        # 객체 타입별 통계 병합
+                        for obj_type, count in summary.get('object_type_counts', {}).items():
+                            complexity_summary['object_type_counts'][obj_type] = (
+                                complexity_summary['object_type_counts'].get(obj_type, 0) + count
+                            )
+                        if summary.get('total_objects'):
+                            complexity_summary['total_objects'] += summary['total_objects']
                     else:
                         sql, plsql = report_parser.parse_sql_complexity_reports([report_path], "postgresql")
                         sql_results.extend(sql)
@@ -375,6 +384,32 @@ def main() -> int:
                 dbcsi_metrics = {}
             dbcsi_metrics['conversion_guide'] = complexity_summary.get('conversion_guide', {})
             dbcsi_metrics['external_dependencies_from_report'] = complexity_summary.get('external_dependencies', [])
+            
+            # 복잡도 리포트에서 추출한 객체 타입별 통계 반영
+            # DBCSI에서 파싱되지 않은 경우 복잡도 리포트의 통계 사용
+            obj_counts = complexity_summary.get('object_type_counts', {})
+            if obj_counts:
+                # PACKAGE + PACKAGE BODY를 패키지 개수로 사용
+                package_count = obj_counts.get('PACKAGE', 0) + obj_counts.get('PACKAGE BODY', 0)
+                if not dbcsi_metrics.get('awr_package_count') and package_count > 0:
+                    dbcsi_metrics['awr_package_count'] = package_count
+                
+                # PROCEDURE 개수
+                if not dbcsi_metrics.get('awr_procedure_count') and obj_counts.get('PROCEDURE'):
+                    dbcsi_metrics['awr_procedure_count'] = obj_counts.get('PROCEDURE', 0)
+                
+                # FUNCTION 개수
+                if not dbcsi_metrics.get('awr_function_count') and obj_counts.get('FUNCTION'):
+                    dbcsi_metrics['awr_function_count'] = obj_counts.get('FUNCTION', 0)
+                
+                # TRIGGER 개수
+                if not dbcsi_metrics.get('awr_trigger_count') and obj_counts.get('TRIGGER'):
+                    dbcsi_metrics['awr_trigger_count'] = obj_counts.get('TRIGGER', 0)
+                
+                # TYPE 개수
+                type_count = obj_counts.get('TYPE', 0) + obj_counts.get('TYPE BODY', 0)
+                if not dbcsi_metrics.get('awr_type_count') and type_count > 0:
+                    dbcsi_metrics['awr_type_count'] = type_count
             
             integrator = AnalysisResultIntegrator()
             integrated_result = integrator.integrate(

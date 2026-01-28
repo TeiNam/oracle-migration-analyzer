@@ -423,6 +423,8 @@ class AnalysisResultIntegrator:
             awr_procedure_count=awr_procedure_count,
             awr_function_count=awr_function_count,
             awr_package_count=awr_package_count,
+            awr_trigger_count=dbcsi_metrics.get('awr_trigger_count') if dbcsi_metrics else None,
+            awr_type_count=dbcsi_metrics.get('awr_type_count') if dbcsi_metrics else None,
             # 신규 필드: 데이터베이스 기본 정보
             db_name=dbcsi_metrics.get('db_name') if dbcsi_metrics else None,
             db_version=dbcsi_metrics.get('db_version') if dbcsi_metrics else None,

@@ -208,10 +208,11 @@ def test_property_17_performance_metrics_accuracy(dbcsi_data):
         f"평균 메모리 불일치: {metrics.avg_memory_usage} != {expected_avg_memory}"
 
 
-# Property 16: 복잡도 7.0 이상 집계 정확성
+# Property 16: 고난이도 복잡도 집계 정확성
 # Feature: migration-recommendation, Property 16: For any SQL/PL-SQL analysis results, 
-# counting objects with complexity >= 7.0 should match the actual count
+# counting objects with complexity >= threshold should match the actual count
 # Validates: Requirements 12.1, 12.2
+# Note: PostgreSQL 임계값은 5.0, MySQL 임계값은 7.0 (weights.py 참조)
 
 @given(
     sql_results=st.lists(sql_analysis_result(), min_size=1, max_size=50),
@@ -219,27 +220,35 @@ def test_property_17_performance_metrics_accuracy(dbcsi_data):
 )
 def test_property_16_high_complexity_count_accuracy(sql_results, plsql_results):
     """
-    Property 16: 복잡도 7.0 이상 집계 정확성
+    Property 16: 고난이도 복잡도 집계 정확성
     
-    For any SQL/PL-SQL analysis results, counting objects with complexity >= 7.0 
+    For any SQL/PL-SQL analysis results, counting objects with complexity >= threshold 
     should match the actual count
+    
+    Note: PostgreSQL 타겟의 고난이도 임계값은 5.0 (weights.py HIGH_COMPLEXITY_THRESHOLD 참조)
     
     Validates: Requirements 12.1, 12.2
     """
+    from src.oracle_complexity_analyzer.weights import HIGH_COMPLEXITY_THRESHOLD
+    from src.oracle_complexity_analyzer.enums import TargetDatabase
+    
     integrator = AnalysisResultIntegrator()
     
     # 메트릭 추출
     metrics = integrator.extract_metrics(None, sql_results, plsql_results)
     
-    # 예상 복잡도 7.0 이상 SQL 개수
-    expected_high_sql = sum(1 for r in sql_results if r.normalized_score >= 7.0)
-    assert metrics.high_complexity_sql_count == expected_high_sql, \
-        f"복잡도 7.0 이상 SQL 개수 불일치: {metrics.high_complexity_sql_count} != {expected_high_sql}"
+    # PostgreSQL 타겟 임계값 (5.0)
+    pg_threshold = HIGH_COMPLEXITY_THRESHOLD[TargetDatabase.POSTGRESQL]
     
-    # 예상 복잡도 7.0 이상 PL/SQL 개수
-    expected_high_plsql = sum(1 for r in plsql_results if r.normalized_score >= 7.0)
+    # 예상 고난이도 SQL 개수 (PostgreSQL 임계값 기준)
+    expected_high_sql = sum(1 for r in sql_results if r.normalized_score >= pg_threshold)
+    assert metrics.high_complexity_sql_count == expected_high_sql, \
+        f"고난이도 SQL 개수 불일치 (임계값 {pg_threshold}): {metrics.high_complexity_sql_count} != {expected_high_sql}"
+    
+    # 예상 고난이도 PL/SQL 개수 (PostgreSQL 임계값 기준)
+    expected_high_plsql = sum(1 for r in plsql_results if r.normalized_score >= pg_threshold)
     assert metrics.high_complexity_plsql_count == expected_high_plsql, \
-        f"복잡도 7.0 이상 PL/SQL 개수 불일치: {metrics.high_complexity_plsql_count} != {expected_high_plsql}"
+        f"고난이도 PL/SQL 개수 불일치 (임계값 {pg_threshold}): {metrics.high_complexity_plsql_count} != {expected_high_plsql}"
     
     # 복잡 오브젝트 비율 검증
     total_count = len(sql_results) + len(plsql_results)
@@ -353,10 +362,18 @@ def test_extract_metrics_with_no_dbcsi():
 
 
 def test_high_complexity_ratio_calculation():
-    """복잡 오브젝트 비율 계산 테스트"""
+    """복잡 오브젝트 비율 계산 테스트
+    
+    Note: PostgreSQL 타겟의 고난이도 임계값은 5.0 (weights.py HIGH_COMPLEXITY_THRESHOLD 참조)
+    """
+    from src.oracle_complexity_analyzer.weights import HIGH_COMPLEXITY_THRESHOLD
+    
     integrator = AnalysisResultIntegrator()
     
-    # 10개 중 3개가 복잡도 7.0 이상
+    # PostgreSQL 임계값 (5.0) 기준으로 테스트 데이터 설계
+    # 점수: [5.0, 6.0, 7.5, 4.0, 8.0, 3.0, 9.0, 2.0, 5.5, 6.5]
+    # 5.0 이상: 5.0, 6.0, 7.5, 8.0, 9.0, 5.5, 6.5 = 7개
+    # 5.0 미만: 4.0, 3.0, 2.0 = 3개
     sql_results = [
         SQLAnalysisResult(
             query=f"SELECT {i}",
@@ -377,6 +394,13 @@ def test_high_complexity_ratio_calculation():
     
     metrics = integrator.extract_metrics(None, sql_results, [])
     
-    assert metrics.high_complexity_sql_count == 3  # 7.5, 8.0, 9.0
+    # PostgreSQL 임계값 5.0 기준: 5.0, 6.0, 7.5, 8.0, 9.0, 5.5, 6.5 = 7개
+    pg_threshold = HIGH_COMPLEXITY_THRESHOLD[TargetDatabase.POSTGRESQL]
+    expected_high_count = sum(1 for score in [5.0, 6.0, 7.5, 4.0, 8.0, 3.0, 9.0, 2.0, 5.5, 6.5] if score >= pg_threshold)
+    
+    assert metrics.high_complexity_sql_count == expected_high_count, \
+        f"고난이도 SQL 개수 불일치 (임계값 {pg_threshold}): {metrics.high_complexity_sql_count} != {expected_high_count}"
     assert metrics.total_sql_count == 10
-    assert abs(metrics.high_complexity_ratio - 0.3) < 0.01  # 30%
+    expected_ratio = expected_high_count / 10
+    assert abs(metrics.high_complexity_ratio - expected_ratio) < 0.01, \
+        f"복잡 오브젝트 비율 불일치: {metrics.high_complexity_ratio} != {expected_ratio}"

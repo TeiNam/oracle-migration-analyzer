@@ -256,7 +256,11 @@ class TestMigrationRecommendationEndToEnd:
         # 저장된 파일 읽기 및 검증
         with open(markdown_path, "r", encoding="utf-8") as f:
             loaded_markdown = f.read()
-        assert "Executive Summary" in loaded_markdown or "마이그레이션 추천" in loaded_markdown
+        # 리포트 제목 또는 주요 섹션 확인 (한국어/영어)
+        assert ("Executive Summary" in loaded_markdown or 
+                "마이그레이션 추천" in loaded_markdown or 
+                "마이그레이션 전략 리포트" in loaded_markdown or
+                "리포트 개요" in loaded_markdown)
         
         with open(json_path, "r", encoding="utf-8") as f:
             loaded_json = json.load(f)

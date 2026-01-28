@@ -4,7 +4,9 @@ Markdown 추천 전략 포맷터
 추천 전략 섹션을 Markdown 형식으로 변환합니다.
 """
 
+from typing import List
 from ...data_models import MigrationRecommendation, MigrationStrategy, AnalysisMetrics
+from ...decision_engine import ReplatformReason
 
 
 class StrategyFormatterMixin:
@@ -52,10 +54,97 @@ class StrategyFormatterMixin:
         
         info = strategy_info[strategy]
         
+        lines = []
         if language == "ko":
-            return f"# 추천 전략\n\n**{info['method_ko']}** → {info['target_ko']}\n"
+            lines.append(f"# 추천 전략\n")
+            lines.append(f"**{info['method_ko']}** → {info['target_ko']}\n")
         else:
-            return f"# Recommended Strategy\n\n**{info['method_en']}** → {info['target_en']}\n"
+            lines.append(f"# Recommended Strategy\n")
+            lines.append(f"**{info['method_en']}** → {info['target_en']}\n")
+        
+        # Replatform 선택 이유 표시
+        if strategy == MigrationStrategy.REPLATFORM and recommendation.replatform_reasons:
+            lines.append(
+                StrategyFormatterMixin._format_replatform_reasons(
+                    recommendation.replatform_reasons, language
+                )
+            )
+        
+        return "\n".join(lines)
+    
+    @staticmethod
+    def _format_replatform_reasons(reasons: List[str], language: str) -> str:
+        """Replatform 선택 이유 포맷
+        
+        Args:
+            reasons: Replatform 선택 이유 코드 목록
+            language: 언어 ("ko" 또는 "en")
+            
+        Returns:
+            Markdown 형식 문자열
+        """
+        if not reasons:
+            return ""
+        
+        descriptions = (
+            ReplatformReason.DESCRIPTIONS_KO if language == "ko" 
+            else ReplatformReason.DESCRIPTIONS_EN
+        )
+        
+        lines = []
+        if language == "ko":
+            lines.append("## Replatform 선택 이유\n")
+            lines.append("> **왜 Replatform인가?** 아래 조건 중 하나 이상이 충족되어 ")
+            lines.append("> 코드 변환(Refactoring)보다 Replatform이 더 적합합니다.\n")
+            lines.append("| 조건 | 설명 |")
+            lines.append("|------|------|")
+        else:
+            lines.append("## Replatform Selection Reasons\n")
+            lines.append("> **Why Replatform?** One or more of the following conditions are met, ")
+            lines.append("> making Replatform more suitable than code conversion (Refactoring).\n")
+            lines.append("| Condition | Description |")
+            lines.append("|-----------|-------------|")
+        
+        # 중복 제거
+        unique_reasons = list(dict.fromkeys(reasons))
+        
+        for reason in unique_reasons:
+            description = descriptions.get(reason, reason)
+            if language == "ko":
+                # 이유 코드를 한국어 조건명으로 변환
+                condition_names = {
+                    ReplatformReason.HIGH_SQL_COMPLEXITY: "SQL 복잡도",
+                    ReplatformReason.HIGH_PLSQL_COMPLEXITY: "PL/SQL 복잡도",
+                    ReplatformReason.HIGH_COMPLEXITY_RATIO: "고난이도 비율",
+                    ReplatformReason.HIGH_COMPLEXITY_COUNT: "고난이도 개수",
+                    ReplatformReason.VERY_HIGH_DIFFICULTY: "코드량",
+                    ReplatformReason.LARGE_PLSQL_COUNT: "오브젝트 개수",
+                }
+                condition_name = condition_names.get(reason, reason)
+            else:
+                condition_names = {
+                    ReplatformReason.HIGH_SQL_COMPLEXITY: "SQL Complexity",
+                    ReplatformReason.HIGH_PLSQL_COMPLEXITY: "PL/SQL Complexity",
+                    ReplatformReason.HIGH_COMPLEXITY_RATIO: "High Complexity Ratio",
+                    ReplatformReason.HIGH_COMPLEXITY_COUNT: "High Complexity Count",
+                    ReplatformReason.VERY_HIGH_DIFFICULTY: "Code Volume",
+                    ReplatformReason.LARGE_PLSQL_COUNT: "Object Count",
+                }
+                condition_name = condition_names.get(reason, reason)
+            
+            lines.append(f"| {condition_name} | {description} |")
+        
+        lines.append("")
+        
+        if language == "ko":
+            lines.append("> 💡 **참고**: Replatform은 코드 변경을 최소화하여 마이그레이션 위험을 낮추고,")
+            lines.append("> 기존 비즈니스 로직을 그대로 유지할 수 있습니다.")
+        else:
+            lines.append("> 💡 **Note**: Replatform minimizes code changes to reduce migration risk")
+            lines.append("> and preserves existing business logic.")
+        
+        lines.append("")
+        return "\n".join(lines)
     
     @staticmethod
     def _format_toc(language: str) -> str:

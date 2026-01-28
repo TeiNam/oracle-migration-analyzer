@@ -80,7 +80,9 @@ class RationaleFormatterMixin:
             has_type_counts = any([
                 metrics.awr_package_count,
                 metrics.awr_procedure_count,
-                metrics.awr_function_count
+                metrics.awr_function_count,
+                metrics.awr_trigger_count,
+                metrics.awr_type_count
             ])
             
             if has_type_counts:
@@ -113,11 +115,28 @@ class RationaleFormatterMixin:
                         f"| 함수 | {metrics.awr_function_count:,}개 | "
                         f"{pg_func:.1f} | {mysql_func:.1f} |"
                     )
+                if metrics.awr_trigger_count:
+                    pg_trig = pg_scores[PLSQLObjectType.TRIGGER]
+                    mysql_trig = mysql_scores[PLSQLObjectType.TRIGGER]
+                    sections.append(
+                        f"| 트리거 | {metrics.awr_trigger_count:,}개 | "
+                        f"{pg_trig:.1f} | {mysql_trig:.1f} |"
+                    )
+                if metrics.awr_type_count:
+                    # TYPE은 PROCEDURE로 매핑됨
+                    pg_type = pg_scores[PLSQLObjectType.PROCEDURE]
+                    mysql_type = mysql_scores[PLSQLObjectType.PROCEDURE]
+                    sections.append(
+                        f"| 타입 | {metrics.awr_type_count:,}개 | "
+                        f"{pg_type:.1f} | {mysql_type:.1f} |"
+                    )
                 
                 total_objects = sum(filter(None, [
                     metrics.awr_package_count,
                     metrics.awr_procedure_count,
-                    metrics.awr_function_count
+                    metrics.awr_function_count,
+                    metrics.awr_trigger_count,
+                    metrics.awr_type_count
                 ]))
                 sections.append(f"| **합계** | **{total_objects:,}개** | - | - |")
                 sections.append("")
@@ -774,13 +793,14 @@ class RationaleFormatterMixin:
         - PL/SQL 평균 복잡도: 0~3점
         - PL/SQL 코드량: 0~3점
         - 고난이도 오브젝트 비율: 0~2점
+        - 고난이도 오브젝트 절대 개수: 0~3점 (신규 추가)
         - 패키지 개수: 0~2점 (패키지는 변환이 가장 복잡)
         
         총점 기준:
         - 0~2점: low
         - 3~5점: medium
-        - 6~7점: high
-        - 8점 이상: very_high
+        - 6~8점: high
+        - 9점 이상: very_high
         """
         score = 0
         
@@ -810,6 +830,16 @@ class RationaleFormatterMixin:
             elif ratio >= 0.1:
                 score += 1
         
+        # 고난이도 오브젝트 절대 개수 기반 (0~3점) - 신규 추가
+        # 비율이 낮아도 절대 개수가 많으면 리팩토링 난이도가 높음
+        high_count = (metrics.high_complexity_plsql_count or 0) + (metrics.high_complexity_sql_count or 0)
+        if high_count >= 100:
+            score += 3
+        elif high_count >= 50:
+            score += 2
+        elif high_count >= 20:
+            score += 1
+        
         # 패키지 개수 기반 (0~2점) - 패키지는 변환이 가장 복잡
         if metrics.awr_package_count:
             if metrics.awr_package_count >= 100:
@@ -817,7 +847,7 @@ class RationaleFormatterMixin:
             elif metrics.awr_package_count >= 50:
                 score += 1
         
-        if score >= 8:
+        if score >= 9:
             return "very_high"
         elif score >= 6:
             return "high"
@@ -937,7 +967,27 @@ class RationaleFormatterMixin:
             f"0~2 | {high_count}/{total_count}개 ({ratio:.1f}%) | {ratio_score}점 |"
         )
         
-        # 4. 패키지 개수 (0~2점)
+        # 4. 고난이도 오브젝트 절대 개수 (0~3점) - 신규 추가
+        high_count_total = (metrics.high_complexity_plsql_count or 0) + (metrics.high_complexity_sql_count or 0)
+        if high_count_total >= 100:
+            count_score = 3
+            count_level = "매우 많음 (≥100개)"
+        elif high_count_total >= 50:
+            count_score = 2
+            count_level = "많음 (50~100개)"
+        elif high_count_total >= 20:
+            count_score = 1
+            count_level = "중간 (20~50개)"
+        else:
+            count_score = 0
+            count_level = "적음 (<20개)"
+        total_score += count_score
+        lines.append(
+            f"| 고난이도 절대 개수 | <20: 0점, 20~50: 1점, 50~100: 2점, ≥100: 3점 | "
+            f"0~3 | {high_count_total:,}개 ({count_level}) | {count_score}점 |"
+        )
+        
+        # 5. 패키지 개수 (0~2점)
         pkg_count = metrics.awr_package_count or 0
         if pkg_count >= 100:
             pkg_score = 2
@@ -954,11 +1004,11 @@ class RationaleFormatterMixin:
             f"0~2 | {pkg_count:,}개 ({pkg_level}) | {pkg_score}점 |"
         )
         
-        lines.append(f"| **합계** | - | **0~10** | - | **{total_score}점** |")
+        lines.append(f"| **합계** | - | **0~13** | - | **{total_score}점** |")
         lines.append("")
         
         # 난이도 등급 기준
-        lines.append("> **난이도 등급 기준**: 0~2점 낮음, 3~5점 중간, 6~7점 높음, 8점 이상 매우 높음")
+        lines.append("> **난이도 등급 기준**: 0~2점 낮음, 3~5점 중간, 6~8점 높음, 9점 이상 매우 높음")
         lines.append("")
         
         # 복잡도 점수 산정 기준 (weights.py 기반)

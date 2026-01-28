@@ -440,10 +440,8 @@ class ResultFormatter:
                 # 감지된 Oracle 특화 기능
                 if analysis.detected_oracle_features:
                     md.append("**감지된 Oracle 특화 기능**:")
-                    for feature in analysis.detected_oracle_features[:5]:  # 상위 5개만
+                    for feature in analysis.detected_oracle_features:
                         md.append(f"- {feature}")
-                    if len(analysis.detected_oracle_features) > 5:
-                        md.append(f"- ... 외 {len(analysis.detected_oracle_features) - 5}개")
                     md.append("")
         
         # 분석 실패 객체
