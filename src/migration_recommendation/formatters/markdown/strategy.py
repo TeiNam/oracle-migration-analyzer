@@ -4,72 +4,58 @@ Markdown 추천 전략 포맷터
 추천 전략 섹션을 Markdown 형식으로 변환합니다.
 """
 
-from ...data_models import MigrationRecommendation, MigrationStrategy
+from ...data_models import MigrationRecommendation, MigrationStrategy, AnalysisMetrics
 
 
 class StrategyFormatterMixin:
     """추천 전략 포맷터 믹스인"""
     
     @staticmethod
-    def _format_strategy(recommendation: MigrationRecommendation, language: str) -> str:
-        """추천 전략 섹션 포맷
+    def _format_strategy(
+        recommendation: MigrationRecommendation,
+        metrics: AnalysisMetrics,  # noqa: ARG004 - 향후 확장용
+        language: str
+    ) -> str:
+        """추천 전략 섹션 포맷 (새 양식)
         
         Args:
             recommendation: 마이그레이션 추천 데이터
+            metrics: 분석 메트릭 데이터 (향후 확장용)
             language: 언어 ("ko" 또는 "en")
             
         Returns:
             Markdown 형식 문자열
         """
-        strategy_names = {
-            "ko": {
-                MigrationStrategy.REPLATFORM: "RDS for Oracle SE2 (리플랫폼)",
-                MigrationStrategy.REFACTOR_MYSQL: "Aurora MySQL (리팩토링)",
-                MigrationStrategy.REFACTOR_POSTGRESQL: "Aurora PostgreSQL (리팩토링)"
+        strategy = recommendation.recommended_strategy
+        
+        # 전략 방법 및 타겟 DB
+        strategy_info = {
+            MigrationStrategy.REPLATFORM: {
+                "method_ko": "Replatform (리플랫폼)",
+                "method_en": "Replatform",
+                "target_ko": "RDS for Oracle SE2",
+                "target_en": "RDS for Oracle SE2"
             },
-            "en": {
-                MigrationStrategy.REPLATFORM: "RDS for Oracle SE2 (Replatform)",
-                MigrationStrategy.REFACTOR_MYSQL: "Aurora MySQL (Refactoring)",
-                MigrationStrategy.REFACTOR_POSTGRESQL: "Aurora PostgreSQL (Refactoring)"
+            MigrationStrategy.REFACTOR_MYSQL: {
+                "method_ko": "Refactoring (리팩토링)",
+                "method_en": "Refactoring",
+                "target_ko": "Aurora MySQL",
+                "target_en": "Aurora MySQL"
+            },
+            MigrationStrategy.REFACTOR_POSTGRESQL: {
+                "method_ko": "Refactoring (리팩토링)",
+                "method_en": "Refactoring",
+                "target_ko": "Aurora PostgreSQL",
+                "target_en": "Aurora PostgreSQL"
             }
         }
         
-        strategy_name = strategy_names[language][recommendation.recommended_strategy]
-        confidence = recommendation.confidence_level
-        
-        confidence_names = {
-            "ko": {
-                "high": "높음",
-                "medium": "중간",
-                "low": "낮음"
-            },
-            "en": {
-                "high": "high",
-                "medium": "medium",
-                "low": "low"
-            }
-        }
-        
-        confidence_text = confidence_names[language].get(confidence, confidence)
+        info = strategy_info[strategy]
         
         if language == "ko":
-            return f"""# 추천 전략
-
-## {strategy_name}
-
-**신뢰도**: {confidence_text}
-
-이 전략은 AWR/STATSPACK의 누적 데이터 분석을 통해 작성되었습니다.
-"""
+            return f"# 추천 전략\n\n**{info['method_ko']}** → {info['target_ko']}\n"
         else:
-            return f"""# Recommended Strategy
-
-## {strategy_name}
-
-**Confidence Level**: {confidence_text}
-
-This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
-"""
+            return f"# Recommended Strategy\n\n**{info['method_en']}** → {info['target_en']}\n"
     
     @staticmethod
     def _format_toc(language: str) -> str:
@@ -82,26 +68,38 @@ This strategy has been selected based on AWR/STATSPACK cumulative data analysis.
             Markdown 형식 문자열
         """
         if language == "ko":
-            return """# 목차
+            return """---
 
-1. [요약](#요약)
-2. [추천 전략](#추천-전략)
-3. [인스턴스 추천](#인스턴스-추천)
-4. [추천 근거](#추천-근거)
-5. [대안 전략](#대안-전략)
-6. [위험 요소 및 완화 방안](#위험-요소-및-완화-방안)
-7. [마이그레이션 로드맵](#마이그레이션-로드맵)
-8. [분석 메트릭 (부록)](#분석-메트릭-부록)
+## 목차
+
+### Part 1: 의사결정 정보
+1. [분석 신뢰도](#-분석-신뢰도-및-데이터-가용성)
+2. [데이터베이스 개요](#데이터베이스-개요)
+3. [Oracle 기능 사용 현황](#oracle-기능-사용-현황)
+4. [추천 전략 및 근거](#추천-전략)
+5. [최종 난이도 판정](#최종-난이도-판정)
+6. [대안 전략 비교](#대안-전략)
+7. [위험 요소 및 완화 방안](#위험-요소-및-완화-방안)
+
+### Part 2: 기술 상세 (부록)
+- [인스턴스 추천](#인스턴스-추천)
+- [분석 메트릭](#분석-메트릭-부록)
 """
         else:
-            return """# Table of Contents
+            return """---
 
-1. [Executive Summary](#executive-summary)
-2. [Recommended Strategy](#recommended-strategy)
-3. [Instance Recommendation](#instance-recommendation)
-4. [Rationales](#rationales)
-5. [Alternative Strategies](#alternative-strategies)
-6. [Risks and Mitigation](#risks-and-mitigation)
-7. [Migration Roadmap](#migration-roadmap)
-8. [Analysis Metrics (Appendix)](#analysis-metrics-appendix)
+## Table of Contents
+
+### Part 1: Decision Information
+1. [Analysis Confidence](#-analysis-confidence--data-availability)
+2. [Database Overview](#database-overview)
+3. [Oracle Feature Usage](#oracle-feature-usage)
+4. [Recommended Strategy & Rationale](#recommended-strategy)
+5. [Final Difficulty Assessment](#final-difficulty-assessment)
+6. [Alternative Strategies](#alternative-strategies)
+7. [Risks and Mitigation](#risks-and-mitigation)
+
+### Part 2: Technical Details (Appendix)
+- [Instance Recommendation](#instance-recommendation)
+- [Analysis Metrics](#analysis-metrics-appendix)
 """

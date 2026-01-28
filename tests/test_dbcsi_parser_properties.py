@@ -19,15 +19,18 @@ from src.dbcsi.parser import (
 # 테스트용 유효한 Statspack 섹션 생성 전략
 @st.composite
 def valid_statspack_section(draw, section_name="TEST-SECTION"):
-    """유효한 Statspack 섹션 데이터 생성"""
-    # 섹션 내부 데이터 (최소 1줄 이상)
+    """유효한 Statspack 섹션 데이터 생성
+    
+    최소 1줄 이상의 비어있지 않은 데이터를 포함하는 섹션을 생성합니다.
+    """
+    # 섹션 내부 데이터 (최소 1줄 이상, 비어있지 않은 텍스트)
     num_lines = draw(st.integers(min_value=1, max_value=10))
     data_lines = [
         draw(st.text(
             min_size=1, 
             max_size=100, 
             alphabet=st.characters(
-                min_codepoint=0x20,  # 공백
+                min_codepoint=0x21,  # ! (공백 제외, 비어있지 않은 문자만)
                 max_codepoint=0x7E,  # ~
                 blacklist_characters=['\n', '\r']
             )
@@ -314,7 +317,7 @@ def test_property_minimum_section_extraction(section_content):
             alphabet=st.characters(
                 min_codepoint=0x21,  # ! (공백 제외)
                 max_codepoint=0x7E,
-                blacklist_characters=['\n', '\r']
+                blacklist_characters=['\n', '\r', '~']  # 마커 문자 제외
             )
         ), 
         min_size=1, 
@@ -374,9 +377,9 @@ def test_property_section_marker_recognition(section_name, data_lines):
             min_size=1, 
             max_size=100,
             alphabet=st.characters(
-                min_codepoint=0x20,
+                min_codepoint=0x21,  # ! (공백 제외)
                 max_codepoint=0x7E,
-                blacklist_characters=['\n', '\r']
+                blacklist_characters=['\n', '\r', '~']  # 마커 문자 제외
             )
         ), 
         min_size=1, 
@@ -394,6 +397,9 @@ def test_property_section_data_extraction(data_lines):
     
     Validates: Requirements 2.3
     """
+    # 마커 문자열이 포함된 데이터는 제외
+    assume(not any("~~BEGIN-" in line or "~~END-" in line for line in data_lines))
+    
     section_name = "TEST-DATA"
     
     # 섹션 콘텐츠 생성
@@ -424,7 +430,6 @@ def test_property_section_data_extraction(data_lines):
         non_empty_lines = [line for line in data_lines if line.strip()]
         assert len(section_data) == len(non_empty_lines), \
             f"추출된 데이터는 마커를 제외하고 빈 라인을 제거한 순수 데이터만 포함해야 합니다 (추출: {len(section_data)}, 예상: {len(non_empty_lines)})"
-        
     finally:
         if os.path.exists(temp_path):
             os.unlink(temp_path)

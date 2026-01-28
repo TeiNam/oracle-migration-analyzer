@@ -320,11 +320,9 @@ class SQLComplexityCalculator:
     def _calculate_data_volume_score(self, query_length: int) -> float:
         """데이터 처리 볼륨 점수 계산
         
-        Requirements 5.1-5.4를 구현합니다.
-        - 5.1: 200자 미만 = 0.5점
-        - 5.2: 200-500자 = PostgreSQL 1.0점, MySQL 1.2점
-        - 5.3: 500-1000자 = PostgreSQL 1.5점, MySQL 2.0점
-        - 5.4: 1000자 이상 = PostgreSQL 2.0점, MySQL 2.5점
+        SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 기반 개선:
+        - 쿼리 길이와 복잡도의 약한 상관관계를 반영하여 점수 대폭 축소
+        - 기준 변경: 200자 → 500자 (긴 단순 쿼리 과대평가 방지)
         
         Args:
             query_length: 쿼리 길이 (문자 수)
@@ -332,14 +330,13 @@ class SQLComplexityCalculator:
         Returns:
             float: 데이터 볼륨 점수
         """
-        if query_length < 200:
-            return self.weights.data_volume_scores['small']  # 0.5
-        elif query_length < 500:
-            return self.weights.data_volume_scores['medium']  # PostgreSQL 1.0, MySQL 1.2
+        # 기준 변경: 500자 미만 = small, 500-1000자 = medium/large, 1000자 이상 = xlarge
+        if query_length < 500:
+            return self.weights.data_volume_scores['small']  # 0.3
         elif query_length < 1000:
-            return self.weights.data_volume_scores['large']  # PostgreSQL 1.5, MySQL 2.0
+            return self.weights.data_volume_scores['large']  # PostgreSQL 0.5, MySQL 0.7
         else:
-            return self.weights.data_volume_scores['xlarge']  # PostgreSQL 2.0, MySQL 2.5
+            return self.weights.data_volume_scores['xlarge']  # PostgreSQL 0.8, MySQL 1.0
     
     def _calculate_execution_complexity(self, parser: SQLParser) -> float:
         """실행 계획 복잡성 점수 계산
@@ -413,14 +410,16 @@ class SQLComplexityCalculator:
     def _calculate_conversion_difficulty(self, parser: SQLParser) -> float:
         """변환 난이도 점수 계산 (힌트 + Oracle 특화 기능 포함)
         
-        Requirements 7.1-7.5를 구현합니다.
+        SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 기반 개선:
+        - 힌트 점수 상향 (성능 튜닝 필요성 반영)
+        - 복잡한 ROWNUM 패턴 별도 감지
+        - 빈 문자열 비교 패턴 감지
         
-        힌트 점수:
-        - 7.1: 힌트 개수 계산
-        - 7.2: 0개 = 0점
-        - 7.3: 1-2개 = 0.5점
-        - 7.4: 3-5개 = 1.0점
-        - 7.5: 6개 이상 = 1.5점
+        힌트 점수 (상향 조정):
+        - 0개 = 0점
+        - 1-2개 = 1.0점 (기존 0.5점)
+        - 3-5개 = 1.5점 (기존 1.0점)
+        - 6개 이상 = 2.0점 (기존 1.5점)
         
         Oracle 특화 기능 변환 난이도:
         - 각 기능별로 변환 난이도 가중치 적용
@@ -433,22 +432,22 @@ class SQLComplexityCalculator:
             parser: SQL 파서 객체
             
         Returns:
-            float: 변환 난이도 점수 (최대 4.5점)
+            float: 변환 난이도 점수 (최대 5.5점)
         """
         score = 0.0
         
-        # 1. 힌트 점수 계산
+        # 1. 힌트 점수 계산 (상향 조정 - SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 반영)
         hints = parser.count_hints()
         hint_count = len(hints)
         
         if hint_count == 0:
             hint_score = 0.0
         elif hint_count <= 2:
-            hint_score = 0.5
+            hint_score = 1.0   # 기존 0.5 → 1.0 (성능 튜닝 필요성 반영)
         elif hint_count <= 5:
-            hint_score = 1.0
+            hint_score = 1.5   # 기존 1.0 → 1.5
         else:
-            hint_score = 1.5
+            hint_score = 2.0   # 기존 1.5 → 2.0
         
         score += hint_score
         
@@ -464,6 +463,11 @@ class SQLComplexityCalculator:
             'PRIOR': 0.3,  # CONNECT BY와 함께 사용되므로 0.3점
             'FLASHBACK': 1.0,
             'MATERIALIZED VIEW': 1.0,
+            'VERSIONS BETWEEN': 1.0,  # Flashback 버전 쿼리 (신규)
+            'AS OF TIMESTAMP': 1.0,   # Flashback 시점 쿼리 (신규)
+            'AS OF SCN': 1.0,         # Flashback SCN 쿼리 (신규)
+            'KEEP': 1.0,              # KEEP 절 (신규)
+            'MATCH_RECOGNIZE': 1.0,   # 패턴 매칭 (신규)
             
             # 어려운 기능 (0.5점)
             'PIVOT': 0.5,
@@ -472,10 +476,12 @@ class SQLComplexityCalculator:
             'XMLTABLE': 0.5,
             'XMLQUERY': 0.5,
             'XMLEXISTS': 0.5,
-            'MATCH_RECOGNIZE': 0.5,
+            'JSON_TABLE': 0.5,        # JSON 테이블 (신규)
+            'WITHIN GROUP': 0.5,      # 정렬 집계 (신규)
+            'SAMPLE': 0.5,            # 테이블 샘플링 (신규)
             
             # 보통 기능 (0.3점)
-            'ROWNUM': 0.3,
+            'ROWNUM': 0.2,  # 단순 ROWNUM은 낮은 점수 (기존 0.3 → 0.2)
             'DECODE': 0.3,
             'DUAL': 0.1,  # 간단하지만 변환 필요
             'LEVEL': 0.3,
@@ -483,11 +489,16 @@ class SQLComplexityCalculator:
             'CONNECT_BY_ROOT': 0.3,
             'CONNECT_BY_ISLEAF': 0.3,
             'CONNECT_BY_ISCYCLE': 0.3,
+            'JSON_VALUE': 0.3,        # JSON 값 추출 (신규)
+            'JSON_QUERY': 0.3,        # JSON 쿼리 (신규)
             
             # 기타 기능 (0.2점)
             'ROWID': 0.2,
             'SYSDATE': 0.1,
             'SYSTIMESTAMP': 0.1,
+            'FOR UPDATE': 0.2,        # 트랜잭션 옵션 (신규)
+            'SKIP LOCKED': 0.3,       # 트랜잭션 옵션 (신규)
+            'NOWAIT': 0.3,            # 트랜잭션 옵션 (신규)
         }
         
         feature_score = 0.0
@@ -495,9 +506,17 @@ class SQLComplexityCalculator:
             if feature in feature_difficulty:
                 feature_score += feature_difficulty[feature]
         
-        # Oracle 특화 기능 점수는 최대 3.0점
-        feature_score = min(feature_score, 3.0)
+        # 3. 복잡한 ROWNUM 패턴 감지 (페이징 등) - 추가 점수
+        if parser.detect_complex_rownum_pattern():
+            feature_score += 1.5  # 복잡한 ROWNUM 패턴은 추가 1.5점
+        
+        # 4. 빈 문자열 비교 패턴 감지 (Oracle NULL 처리 차이)
+        if parser.detect_empty_string_comparison():
+            feature_score += 0.5  # 빈 문자열 비교는 0.5점 추가
+        
+        # Oracle 특화 기능 점수는 최대 3.5점
+        feature_score = min(feature_score, 3.5)
         score += feature_score
         
-        # 전체 변환 난이도는 최대 4.5점 (힌트 1.5 + 기능 3.0)
-        return min(score, 4.5)
+        # 전체 변환 난이도는 최대 5.5점 (힌트 2.0 + 기능 3.5)
+        return min(score, 5.5)

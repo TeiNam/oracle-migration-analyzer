@@ -44,6 +44,7 @@ from .constants import (
     ORACLE_HINTS,
     PLSQL_ADVANCED_FEATURES,
     EXTERNAL_DEPENDENCIES,
+    EXTERNAL_DEPENDENCY_SCORES,
 )
 
 # 가중치 설정 (weights.py에서 import)
@@ -101,6 +102,7 @@ __all__ = [
     "ORACLE_HINTS",
     "PLSQL_ADVANCED_FEATURES",
     "EXTERNAL_DEPENDENCIES",
+    "EXTERNAL_DEPENDENCY_SCORES",
     # Weights and Scores
     "POSTGRESQL_WEIGHTS",
     "MYSQL_WEIGHTS",

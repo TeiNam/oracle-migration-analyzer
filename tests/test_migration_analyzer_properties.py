@@ -20,23 +20,40 @@ from src.dbcsi.migration_analyzer import MigrationAnalyzer
 # 전략: Oracle 에디션 문자열 생성
 @st.composite
 def oracle_edition_banner(draw):
-    """Oracle 에디션을 포함하는 BANNER 문자열 생성"""
-    editions = [
+    """Oracle 에디션을 포함하는 BANNER 문자열 생성
+    
+    실제 Oracle BANNER 형식을 모방하여 에디션 문자열을 생성합니다.
+    약어 사용 시 다른 에디션 약어가 포함되지 않도록 합니다.
+    """
+    # 전체 이름 에디션 (우선순위 높음, 충돌 없음)
+    full_name_editions = [
         ("Enterprise Edition", OracleEdition.ENTERPRISE),
         ("Standard Edition 2", OracleEdition.STANDARD_2),
         ("Standard Edition", OracleEdition.STANDARD),
         ("Express Edition", OracleEdition.EXPRESS),
+    ]
+    
+    # 약어 에디션 (단독 사용)
+    abbrev_editions = [
         ("EE", OracleEdition.ENTERPRISE),
         ("SE2", OracleEdition.STANDARD_2),
         ("SE", OracleEdition.STANDARD),
         ("XE", OracleEdition.EXPRESS),
     ]
     
-    edition_str, expected_edition = draw(st.sampled_from(editions))
+    # 전체 이름 또는 약어 선택
+    use_full_name = draw(st.booleans())
     
-    # BANNER 문자열 생성 (에디션 문자열 포함)
-    prefix = draw(st.text(alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd')), min_size=0, max_size=20))
-    suffix = draw(st.text(alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd')), min_size=0, max_size=20))
+    if use_full_name:
+        edition_str, expected_edition = draw(st.sampled_from(full_name_editions))
+        # 전체 이름은 prefix/suffix에 제한 없음
+        prefix = draw(st.text(alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd')), min_size=0, max_size=20))
+        suffix = draw(st.text(alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd')), min_size=0, max_size=20))
+    else:
+        edition_str, expected_edition = draw(st.sampled_from(abbrev_editions))
+        # 약어 사용 시 다른 에디션 약어가 포함되지 않도록 숫자만 사용
+        prefix = draw(st.text(alphabet=st.characters(whitelist_categories=('Nd',)), min_size=0, max_size=10))
+        suffix = draw(st.text(alphabet=st.characters(whitelist_categories=('Nd',)), min_size=0, max_size=10))
     
     banner = f"{prefix} {edition_str} {suffix}".strip()
     

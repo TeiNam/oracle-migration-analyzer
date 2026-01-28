@@ -407,7 +407,12 @@ class TestWeightConfig:
         assert config.max_total_score == 0.0
         
     def test_postgresql_weights_configuration(self):
-        """PostgreSQL 가중치 설정이 올바르게 정의되었는지 테스트"""
+        """PostgreSQL 가중치 설정이 올바르게 정의되었는지 테스트
+        
+        v2.2.0에서 데이터 볼륨 점수가 대폭 축소됨 (SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 반영):
+        - 쿼리 길이와 복잡도의 약한 상관관계를 반영
+        - small: 0.5 → 0.3, medium: 1.0 → 0.3, large: 1.5 → 0.5, xlarge: 2.0 → 0.8
+        """
         # Requirements 1.1-1.5, 3.1, 5.1-5.4, 6.1-6.5 검증
         
         # 구조적 복잡성 최대 점수
@@ -437,11 +442,12 @@ class TestWeightConfig:
         # 풀스캔 페널티 검증 (PostgreSQL은 페널티 없음)
         assert POSTGRESQL_WEIGHTS.fullscan_penalty == 0.0
         
-        # 데이터 볼륨 점수 검증 (Requirements 5.1-5.4)
-        assert POSTGRESQL_WEIGHTS.data_volume_scores['small'] == 0.5
-        assert POSTGRESQL_WEIGHTS.data_volume_scores['medium'] == 1.0
-        assert POSTGRESQL_WEIGHTS.data_volume_scores['large'] == 1.5
-        assert POSTGRESQL_WEIGHTS.data_volume_scores['xlarge'] == 2.0
+        # 데이터 볼륨 점수 검증 (v2.2.0 축소된 값)
+        # 쿼리 길이와 복잡도의 약한 상관관계를 반영
+        assert POSTGRESQL_WEIGHTS.data_volume_scores['small'] == 0.3
+        assert POSTGRESQL_WEIGHTS.data_volume_scores['medium'] == 0.3
+        assert POSTGRESQL_WEIGHTS.data_volume_scores['large'] == 0.5
+        assert POSTGRESQL_WEIGHTS.data_volume_scores['xlarge'] == 0.8
         
         # 실행 복잡성 점수 검증 (Requirements 6.1, 6.3-6.5)
         assert POSTGRESQL_WEIGHTS.execution_scores['order_by'] == 0.2
@@ -453,7 +459,12 @@ class TestWeightConfig:
         assert POSTGRESQL_WEIGHTS.max_total_score == 13.5
         
     def test_mysql_weights_configuration(self):
-        """MySQL 가중치 설정이 올바르게 정의되었는지 테스트"""
+        """MySQL 가중치 설정이 올바르게 정의되었는지 테스트
+        
+        v2.2.0에서 변경된 값 (SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 반영):
+        - CTE 점수 하향: MySQL 8.0 CTE 지원 반영 (0.8 → 0.5, max 2.0 → 1.5)
+        - 데이터 볼륨 점수 대폭 축소: 쿼리 길이와 복잡도의 약한 상관관계 반영
+        """
         # Requirements 1.1-1.5, 3.2, 5.1-5.4, 6.1-6.7 검증
         
         # 구조적 복잡성 최대 점수
@@ -473,9 +484,9 @@ class TestWeightConfig:
         assert MYSQL_WEIGHTS.subquery_thresholds[1] == (1, 1.5)
         assert MYSQL_WEIGHTS.subquery_thresholds[2] == (2, 3.0)
         
-        # CTE 설정 검증 (Requirements 1.3)
-        assert MYSQL_WEIGHTS.cte_coefficient == 0.8
-        assert MYSQL_WEIGHTS.cte_max == 2.0
+        # CTE 설정 검증 (v2.2.0 하향 조정 - MySQL 8.0 CTE 지원 반영)
+        assert MYSQL_WEIGHTS.cte_coefficient == 0.5
+        assert MYSQL_WEIGHTS.cte_max == 1.5
         
         # 집합 연산자 설정 검증 (Requirements 1.4)
         assert MYSQL_WEIGHTS.set_operator_coefficient == 0.8
@@ -484,11 +495,11 @@ class TestWeightConfig:
         # 풀스캔 페널티 검증 (Requirements 1.5)
         assert MYSQL_WEIGHTS.fullscan_penalty == 1.0
         
-        # 데이터 볼륨 점수 검증 (Requirements 5.1-5.4)
-        assert MYSQL_WEIGHTS.data_volume_scores['small'] == 0.5
-        assert MYSQL_WEIGHTS.data_volume_scores['medium'] == 1.2
-        assert MYSQL_WEIGHTS.data_volume_scores['large'] == 2.0
-        assert MYSQL_WEIGHTS.data_volume_scores['xlarge'] == 2.5
+        # 데이터 볼륨 점수 검증 (v2.2.0 축소된 값)
+        assert MYSQL_WEIGHTS.data_volume_scores['small'] == 0.3
+        assert MYSQL_WEIGHTS.data_volume_scores['medium'] == 0.3
+        assert MYSQL_WEIGHTS.data_volume_scores['large'] == 0.7
+        assert MYSQL_WEIGHTS.data_volume_scores['xlarge'] == 1.0
         
         # 실행 복잡성 점수 검증 (Requirements 6.1-6.7)
         assert MYSQL_WEIGHTS.execution_scores['order_by'] == 0.5
@@ -506,14 +517,21 @@ class TestWeightConfig:
         assert MYSQL_WEIGHTS.max_total_score == 18.0
         
     def test_postgresql_vs_mysql_weights_differences(self):
-        """PostgreSQL과 MySQL 가중치 설정의 차이점 검증"""
+        """PostgreSQL과 MySQL 가중치 설정의 차이점 검증
+        
+        v2.2.0에서 MySQL CTE 점수가 하향 조정되어 PostgreSQL과 동일해짐:
+        - MySQL 8.0의 CTE 지원 개선을 반영
+        - cte_coefficient: 0.8 → 0.5 (PostgreSQL과 동일)
+        """
         # MySQL이 PostgreSQL보다 더 엄격한 가중치를 가져야 함
         
         # 구조적 복잡성 최대 점수
         assert MYSQL_WEIGHTS.max_structural > POSTGRESQL_WEIGHTS.max_structural
         
-        # CTE 계수
-        assert MYSQL_WEIGHTS.cte_coefficient > POSTGRESQL_WEIGHTS.cte_coefficient
+        # CTE 계수 (v2.2.0: MySQL 8.0 CTE 지원으로 동일해짐)
+        assert MYSQL_WEIGHTS.cte_coefficient == POSTGRESQL_WEIGHTS.cte_coefficient
+        # 단, CTE max는 MySQL이 더 높음
+        assert MYSQL_WEIGHTS.cte_max > POSTGRESQL_WEIGHTS.cte_max
         
         # 집합 연산자 계수
         assert MYSQL_WEIGHTS.set_operator_coefficient > POSTGRESQL_WEIGHTS.set_operator_coefficient
@@ -522,7 +540,9 @@ class TestWeightConfig:
         assert MYSQL_WEIGHTS.fullscan_penalty > POSTGRESQL_WEIGHTS.fullscan_penalty
         
         # 데이터 볼륨 점수 (MySQL이 더 높음)
-        assert MYSQL_WEIGHTS.data_volume_scores['medium'] > POSTGRESQL_WEIGHTS.data_volume_scores['medium']
+        # v2.2.0: small/medium은 동일, large/xlarge는 MySQL이 더 높음
+        assert MYSQL_WEIGHTS.data_volume_scores['small'] == POSTGRESQL_WEIGHTS.data_volume_scores['small']
+        assert MYSQL_WEIGHTS.data_volume_scores['medium'] == POSTGRESQL_WEIGHTS.data_volume_scores['medium']
         assert MYSQL_WEIGHTS.data_volume_scores['large'] > POSTGRESQL_WEIGHTS.data_volume_scores['large']
         assert MYSQL_WEIGHTS.data_volume_scores['xlarge'] > POSTGRESQL_WEIGHTS.data_volume_scores['xlarge']
         
@@ -574,7 +594,14 @@ class TestOracleConstants:
     """Oracle 특화 기능/함수/힌트 상수 테스트"""
     
     def test_oracle_specific_syntax_constants(self):
-        """Oracle 특화 문법 상수가 올바르게 정의되었는지 테스트 (Requirements 2.1-2.5)"""
+        """Oracle 특화 문법 상수가 올바르게 정의되었는지 테스트 (Requirements 2.1-2.5)
+        
+        v2.2.0에서 점수 조정 (SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 반영):
+        - ROWNUM: 1.5 → 0.5 (단순 패턴은 쉬움)
+        - NEXTVAL: 1.0 → 0.8 (하향)
+        - CURRVAL: 1.0 → 1.5 (세션 의존성으로 상향)
+        - 신규 기능 추가: KEEP, WITHIN GROUP, XML/JSON, Flashback 등
+        """
         from src.oracle_complexity_analyzer import ORACLE_SPECIFIC_SYNTAX
         
         # 필수 Oracle 특화 문법 검증
@@ -590,15 +617,32 @@ class TestOracleConstants:
         assert 'MERGE' in ORACLE_SPECIFIC_SYNTAX
         assert 'DUAL' in ORACLE_SPECIFIC_SYNTAX
         
-        # 점수 검증 (Requirements 2.1-2.5에 따른 가중치)
+        # 점수 검증 (v2.2.0 조정된 가중치)
         assert ORACLE_SPECIFIC_SYNTAX['CONNECT BY'] == 2.0  # 계층적 쿼리 (매우 어려움)
         assert ORACLE_SPECIFIC_SYNTAX['MERGE'] == 2.0  # MERGE 문 (어려움)
         assert ORACLE_SPECIFIC_SYNTAX['DUAL'] == 0.5  # DUAL 테이블 (쉬움)
-        assert ORACLE_SPECIFIC_SYNTAX['NEXTVAL'] == 1.0  # 시퀀스 다음 값
-        assert ORACLE_SPECIFIC_SYNTAX['CURRVAL'] == 1.0  # 시퀀스 현재 값
+        assert ORACLE_SPECIFIC_SYNTAX['ROWNUM'] == 0.5  # 단순 패턴 (v2.2.0: 1.5 → 0.5)
+        assert ORACLE_SPECIFIC_SYNTAX['NEXTVAL'] == 0.8  # 시퀀스 다음 값 (v2.2.0: 1.0 → 0.8)
+        assert ORACLE_SPECIFIC_SYNTAX['CURRVAL'] == 1.5  # 시퀀스 현재 값 - 세션 의존성 (v2.2.0: 1.0 → 1.5)
+        
+        # v2.2.0 신규 기능 검증
+        assert 'KEEP' in ORACLE_SPECIFIC_SYNTAX  # KEEP (DENSE_RANK FIRST/LAST)
+        assert 'WITHIN GROUP' in ORACLE_SPECIFIC_SYNTAX  # 정렬 집계
+        assert 'XMLTABLE' in ORACLE_SPECIFIC_SYNTAX  # XML 처리
+        assert 'JSON_TABLE' in ORACLE_SPECIFIC_SYNTAX  # JSON 처리
+        assert 'FLASHBACK' in ORACLE_SPECIFIC_SYNTAX  # Flashback 쿼리
+        assert 'MATCH_RECOGNIZE' in ORACLE_SPECIFIC_SYNTAX  # 패턴 매칭
+        assert 'SKIP LOCKED' in ORACLE_SPECIFIC_SYNTAX  # FOR UPDATE 옵션
         
     def test_oracle_specific_functions_constants(self):
-        """Oracle 특화 함수 상수가 올바르게 정의되었는지 테스트 (Requirements 3.1, 3.2)"""
+        """Oracle 특화 함수 상수가 올바르게 정의되었는지 테스트 (Requirements 3.1, 3.2)
+        
+        v2.2.0에서 점수 조정 (SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 반영):
+        - DECODE: 0.8 → 1.2 (중첩 DECODE 고려)
+        - LISTAGG: 1.0 → 1.5 (MySQL 제한 고려)
+        - TO_CHAR/TO_DATE: 0.7 → 1.0 (포맷 차이로 버그 빈번)
+        - 신규 함수 추가: LNNVL, WM_CONCAT, REGEXP_COUNT, 타임존 함수 등
+        """
         from src.oracle_complexity_analyzer import ORACLE_SPECIFIC_FUNCTIONS
         
         # 조건/변환 함수
@@ -637,20 +681,21 @@ class TestOracleConstants:
         assert 'CHR' in ORACLE_SPECIFIC_FUNCTIONS
         assert 'TRANSLATE' in ORACLE_SPECIFIC_FUNCTIONS
         
-        # 점수 검증 (Requirements 3.1, 3.2에 따른 가중치)
+        # 점수 검증 (v2.2.0 조정된 가중치)
         # 조건/변환 함수
-        assert ORACLE_SPECIFIC_FUNCTIONS['DECODE'] == 0.8
+        assert ORACLE_SPECIFIC_FUNCTIONS['DECODE'] == 1.2  # v2.2.0: 0.8 → 1.2
         assert ORACLE_SPECIFIC_FUNCTIONS['NVL'] == 0.6
         assert ORACLE_SPECIFIC_FUNCTIONS['NVL2'] == 0.7
         
         # 집계 함수
-        assert ORACLE_SPECIFIC_FUNCTIONS['LISTAGG'] == 1.0
+        assert ORACLE_SPECIFIC_FUNCTIONS['LISTAGG'] == 1.5  # v2.2.0: 1.0 → 1.5
         
         # 시스템 함수
         assert ORACLE_SPECIFIC_FUNCTIONS['SYS_CONTEXT'] == 1.5
         
-        # 변환 함수
-        assert ORACLE_SPECIFIC_FUNCTIONS['TO_CHAR'] == 0.7
+        # 변환 함수 (v2.2.0: 포맷 차이로 버그 빈번하여 상향)
+        assert ORACLE_SPECIFIC_FUNCTIONS['TO_CHAR'] == 1.0  # v2.2.0: 0.7 → 1.0
+        assert ORACLE_SPECIFIC_FUNCTIONS['TO_DATE'] == 1.0  # v2.2.0: 0.7 → 1.0
         assert ORACLE_SPECIFIC_FUNCTIONS['TRUNC'] == 0.7
         
         # 날짜 함수
@@ -658,9 +703,21 @@ class TestOracleConstants:
         
         # 문자열 함수
         assert ORACLE_SPECIFIC_FUNCTIONS['SUBSTR'] == 0.6
+        
+        # v2.2.0 신규 함수 검증
+        assert 'LNNVL' in ORACLE_SPECIFIC_FUNCTIONS  # NULL 안전 비교
+        assert 'WM_CONCAT' in ORACLE_SPECIFIC_FUNCTIONS  # 문자열 집계 (비공식)
+        assert 'REGEXP_COUNT' in ORACLE_SPECIFIC_FUNCTIONS  # 정규식 매칭 개수
+        assert 'TO_TIMESTAMP_TZ' in ORACLE_SPECIFIC_FUNCTIONS  # 타임존 타임스탬프
+        assert 'GREATEST' in ORACLE_SPECIFIC_FUNCTIONS  # 최대값 (NULL 처리 차이)
+        assert 'LEAST' in ORACLE_SPECIFIC_FUNCTIONS  # 최소값 (NULL 처리 차이)
             
     def test_analytic_functions_constants(self):
-        """분석 함수 상수가 올바르게 정의되었는지 테스트 (Requirements 2.2)"""
+        """분석 함수 상수가 올바르게 정의되었는지 테스트 (Requirements 2.2)
+        
+        v2.2.0에서 신규 분석 함수 추가 (SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 반영):
+        - NTH_VALUE, LISTAGG (윈도우), PERCENTILE_CONT, PERCENTILE_DISC
+        """
         from src.oracle_complexity_analyzer import ANALYTIC_FUNCTIONS
         
         # 필수 분석 함수 검증
@@ -676,8 +733,14 @@ class TestOracleConstants:
         assert 'PERCENT_RANK' in ANALYTIC_FUNCTIONS
         assert 'RATIO_TO_REPORT' in ANALYTIC_FUNCTIONS
         
-        # 총 11개의 분석 함수가 정의되어 있는지 검증
-        assert len(ANALYTIC_FUNCTIONS) == 11
+        # v2.2.0 신규 분석 함수 검증
+        assert 'NTH_VALUE' in ANALYTIC_FUNCTIONS
+        assert 'LISTAGG' in ANALYTIC_FUNCTIONS  # 윈도우 LISTAGG
+        assert 'PERCENTILE_CONT' in ANALYTIC_FUNCTIONS
+        assert 'PERCENTILE_DISC' in ANALYTIC_FUNCTIONS
+        
+        # 총 15개의 분석 함수가 정의되어 있는지 검증 (v2.2.0: 11 → 15)
+        assert len(ANALYTIC_FUNCTIONS) == 15
         
     def test_aggregate_functions_constants(self):
         """집계 함수 상수가 올바르게 정의되었는지 테스트 (Requirements 4.1)"""
@@ -699,10 +762,18 @@ class TestOracleConstants:
         assert len(AGGREGATE_FUNCTIONS) == 10
         
     def test_oracle_hints_constants(self):
-        """Oracle 힌트 상수가 올바르게 정의되었는지 테스트 (Requirements 7.1-7.5)"""
+        """Oracle 힌트 상수가 올바르게 정의되었는지 테스트 (Requirements 7.1-7.5)
+        
+        v2.2.0에서 힌트 목록 대폭 확장 (SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 반영):
+        - 인덱스 관련: NO_INDEX, INDEX_FFS, INDEX_SS, INDEX_JOIN, INDEX_COMBINE
+        - 조인 관련: USE_MERGE, NO_USE_HASH, NO_USE_NL, NO_USE_MERGE
+        - 서브쿼리/뷰 관련: PUSH_PRED, PUSH_SUBQ, UNNEST, MATERIALIZE, INLINE 등
+        - 옵티마이저 관련: CARDINALITY, OPT_ESTIMATE, DYNAMIC_SAMPLING 등
+        - 캐시/병렬 관련: RESULT_CACHE, NO_PARALLEL, PQ_DISTRIBUTE 등
+        """
         from src.oracle_complexity_analyzer import ORACLE_HINTS
         
-        # 필수 힌트 검증
+        # 기존 필수 힌트 검증
         assert 'INDEX' in ORACLE_HINTS
         assert 'FULL' in ORACLE_HINTS
         assert 'PARALLEL' in ORACLE_HINTS
@@ -718,8 +789,31 @@ class TestOracleConstants:
         assert 'CHOOSE' in ORACLE_HINTS
         assert 'DRIVING_SITE' in ORACLE_HINTS
         
-        # 총 14개의 힌트가 정의되어 있는지 검증
-        assert len(ORACLE_HINTS) == 14
+        # v2.2.0 신규 힌트 검증
+        # 인덱스 관련
+        assert 'NO_INDEX' in ORACLE_HINTS
+        assert 'INDEX_FFS' in ORACLE_HINTS
+        assert 'INDEX_SS' in ORACLE_HINTS
+        
+        # 조인 관련
+        assert 'USE_MERGE' in ORACLE_HINTS
+        assert 'NO_USE_HASH' in ORACLE_HINTS
+        
+        # 서브쿼리/뷰 관련
+        assert 'PUSH_PRED' in ORACLE_HINTS
+        assert 'UNNEST' in ORACLE_HINTS
+        assert 'MATERIALIZE' in ORACLE_HINTS
+        
+        # 옵티마이저 관련
+        assert 'CARDINALITY' in ORACLE_HINTS
+        assert 'DYNAMIC_SAMPLING' in ORACLE_HINTS
+        
+        # 캐시/병렬 관련
+        assert 'RESULT_CACHE' in ORACLE_HINTS
+        assert 'NO_PARALLEL' in ORACLE_HINTS
+        
+        # 총 44개의 힌트가 정의되어 있는지 검증 (v2.2.0: 14 → 44)
+        assert len(ORACLE_HINTS) == 44
         
     def test_plsql_advanced_features_constants(self):
         """PL/SQL 고급 기능 상수가 올바르게 정의되었는지 테스트 (Requirements 9.5)"""
@@ -741,7 +835,7 @@ class TestOracleConstants:
         """외부 의존성 상수가 올바르게 정의되었는지 테스트 (Requirements 10.6)"""
         from src.oracle_complexity_analyzer import EXTERNAL_DEPENDENCIES
         
-        # 필수 외부 의존성 검증
+        # 필수 외부 의존성 검증 (기존 10개)
         assert 'UTL_FILE' in EXTERNAL_DEPENDENCIES
         assert 'UTL_HTTP' in EXTERNAL_DEPENDENCIES
         assert 'UTL_MAIL' in EXTERNAL_DEPENDENCIES
@@ -753,30 +847,55 @@ class TestOracleConstants:
         assert 'DBMS_CRYPTO' in EXTERNAL_DEPENDENCIES
         assert 'DBMS_SQL' in EXTERNAL_DEPENDENCIES
         
-        # 총 10개의 외부 의존성이 정의되어 있는지 검증
-        assert len(EXTERNAL_DEPENDENCIES) == 10
+        # 추가된 외부 의존성 검증 (v2.2.0에서 확장)
+        assert 'DBMS_PIPE' in EXTERNAL_DEPENDENCIES
+        assert 'DBMS_ALERT' in EXTERNAL_DEPENDENCIES
+        assert 'DBMS_LOCK' in EXTERNAL_DEPENDENCIES
+        assert 'DBMS_AQ' in EXTERNAL_DEPENDENCIES
+        assert 'DBMS_XMLGEN' in EXTERNAL_DEPENDENCIES
+        assert 'DBMS_XMLPARSER' in EXTERNAL_DEPENDENCIES
+        assert 'DBMS_METADATA' in EXTERNAL_DEPENDENCIES
+        assert 'DBMS_STATS' in EXTERNAL_DEPENDENCIES
+        assert 'DBMS_PROFILER' in EXTERNAL_DEPENDENCIES
+        assert 'DBMS_TRACE' in EXTERNAL_DEPENDENCIES
+        assert 'UTL_RAW' in EXTERNAL_DEPENDENCIES
+        assert 'UTL_ENCODE' in EXTERNAL_DEPENDENCIES
+        assert 'UTL_COMPRESS' in EXTERNAL_DEPENDENCIES
+        assert 'UTL_I18N' in EXTERNAL_DEPENDENCIES
+        
+        # 총 24개의 외부 의존성이 정의되어 있는지 검증
+        assert len(EXTERNAL_DEPENDENCIES) == 24
         
     def test_plsql_base_scores_constants(self):
-        """PL/SQL 오브젝트 기본 점수 상수가 올바르게 정의되었는지 테스트 (Requirements 8.1)"""
+        """PL/SQL 오브젝트 기본 점수 상수가 올바르게 정의되었는지 테스트 (Requirements 8.1)
+        
+        v2.2.0에서 기본 점수가 하향 조정됨:
+        - PACKAGE: 7.0 → 4.0 (PostgreSQL), 8.0 → 5.0 (MySQL)
+        - PROCEDURE: 5.0 → 2.5 (PostgreSQL), 6.0 → 3.5 (MySQL)
+        - FUNCTION: 4.0 → 2.0 (PostgreSQL), 5.0 → 3.0 (MySQL)
+        - TRIGGER: 6.0 → 3.5 (PostgreSQL), 7.0 → 4.5 (MySQL)
+        - VIEW: 2.0 → 1.0 (PostgreSQL), 2.0 → 1.0 (MySQL)
+        - MATERIALIZED_VIEW: 4.0 → 2.5 (PostgreSQL), 5.0 → 3.5 (MySQL)
+        """
         from src.oracle_complexity_analyzer import PLSQL_BASE_SCORES
         
-        # PostgreSQL 기본 점수 검증
+        # PostgreSQL 기본 점수 검증 (v2.2.0 하향 조정된 값)
         pg_scores = PLSQL_BASE_SCORES[TargetDatabase.POSTGRESQL]
-        assert pg_scores[PLSQLObjectType.PACKAGE] == 7.0
-        assert pg_scores[PLSQLObjectType.PROCEDURE] == 5.0
-        assert pg_scores[PLSQLObjectType.FUNCTION] == 4.0
-        assert pg_scores[PLSQLObjectType.TRIGGER] == 6.0
-        assert pg_scores[PLSQLObjectType.VIEW] == 2.0
-        assert pg_scores[PLSQLObjectType.MATERIALIZED_VIEW] == 4.0
+        assert pg_scores[PLSQLObjectType.PACKAGE] == 4.0
+        assert pg_scores[PLSQLObjectType.PROCEDURE] == 2.5
+        assert pg_scores[PLSQLObjectType.FUNCTION] == 2.0
+        assert pg_scores[PLSQLObjectType.TRIGGER] == 3.5
+        assert pg_scores[PLSQLObjectType.VIEW] == 1.0
+        assert pg_scores[PLSQLObjectType.MATERIALIZED_VIEW] == 2.5
         
-        # MySQL 기본 점수 검증
+        # MySQL 기본 점수 검증 (v2.2.0 하향 조정된 값)
         mysql_scores = PLSQL_BASE_SCORES[TargetDatabase.MYSQL]
-        assert mysql_scores[PLSQLObjectType.PACKAGE] == 8.0
-        assert mysql_scores[PLSQLObjectType.PROCEDURE] == 6.0
-        assert mysql_scores[PLSQLObjectType.FUNCTION] == 5.0
-        assert mysql_scores[PLSQLObjectType.TRIGGER] == 7.0
-        assert mysql_scores[PLSQLObjectType.VIEW] == 2.0
-        assert mysql_scores[PLSQLObjectType.MATERIALIZED_VIEW] == 5.0
+        assert mysql_scores[PLSQLObjectType.PACKAGE] == 5.0
+        assert mysql_scores[PLSQLObjectType.PROCEDURE] == 3.5
+        assert mysql_scores[PLSQLObjectType.FUNCTION] == 3.0
+        assert mysql_scores[PLSQLObjectType.TRIGGER] == 4.5
+        assert mysql_scores[PLSQLObjectType.VIEW] == 1.0
+        assert mysql_scores[PLSQLObjectType.MATERIALIZED_VIEW] == 3.5
         
         # MySQL이 PostgreSQL보다 높은 점수를 가져야 함
         for obj_type in PLSQLObjectType:

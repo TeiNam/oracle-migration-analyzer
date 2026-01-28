@@ -104,17 +104,10 @@ def process_single_file(args: argparse.Namespace) -> int:
             else:
                 output = StatspackResultFormatter.to_json(data)
         else:  # markdown
-            # AWR 데이터는 항상 상세 리포트 생성, Statspack은 기본 리포트
-            if is_awr:
-                # output_path를 전달하여 그래프 이미지 생성
-                output = EnhancedResultFormatter.to_detailed_markdown(
-                    data, migration_analysis, args.language, output_path=args.output
-                )
-            else:
-                # output_path를 전달하여 그래프 이미지 생성
-                output = StatspackResultFormatter.to_markdown(
-                    data, migration_analysis, output_path=args.output
-                )
+            # 개선된 포맷을 기본값으로 사용
+            output = StatspackResultFormatter.to_enhanced_markdown(
+                data, migration_analysis, output_path=args.output, language=args.language
+            )
         
         print_progress(4, 4, "리포트 생성 완료")
         

@@ -216,7 +216,8 @@ class TestProcessSingleFile:
         
         content = output_file.read_text()
         assert "# Statspack 분석 보고서" in content or "# AWR 분석 보고서" in content
-        assert "시스템 정보 요약" in content or "시스템 정보" in content
+        # 개선된 포맷에서는 "데이터베이스 개요" 섹션이 표시됨
+        assert "데이터베이스 개요" in content or "시스템 정보" in content
     
     def test_process_file_json_output(self, tmp_path):
         """JSON 형식 출력 테스트"""

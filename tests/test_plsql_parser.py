@@ -1695,3 +1695,550 @@ class TestPLSQLParserCodeStructure:
         parser = PLSQLParser(code)
         types = parser.analyze_custom_types()
         assert types['total'] == 0
+
+
+# ============================================================================
+# 신규 기능 테스트 (PLSQL_COMPLEXITY_SCORE_IMPROVEMENT.md 기반)
+# ============================================================================
+
+
+class TestPLSQLParserTypeReferences:
+    """타입 참조 감지 테스트 (%TYPE, %ROWTYPE)"""
+    
+    def test_count_type_references_type(self):
+        """%TYPE 참조 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_name employees.employee_name%TYPE;
+            v_salary employees.salary%TYPE;
+            v_dept departments.department_name%TYPE;
+        BEGIN
+            NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        refs = parser.count_type_references()
+        assert refs['type'] == 3
+        assert refs['rowtype'] == 0
+    
+    def test_count_type_references_rowtype(self):
+        """%ROWTYPE 참조 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_emp employees%ROWTYPE;
+            v_dept departments%ROWTYPE;
+        BEGIN
+            NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        refs = parser.count_type_references()
+        assert refs['type'] == 0
+        assert refs['rowtype'] == 2
+    
+    def test_count_type_references_mixed(self):
+        """혼합 타입 참조 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_emp employees%ROWTYPE;
+            v_name employees.name%TYPE;
+            v_salary employees.salary%TYPE;
+        BEGIN
+            NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        refs = parser.count_type_references()
+        assert refs['type'] == 2
+        assert refs['rowtype'] == 1
+    
+    def test_count_type_references_none(self):
+        """타입 참조가 없는 경우 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_name VARCHAR2(100);
+            v_salary NUMBER;
+        BEGIN
+            NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        refs = parser.count_type_references()
+        assert refs['type'] == 0
+        assert refs['rowtype'] == 0
+
+
+class TestPLSQLParserUserDefinedTypes:
+    """사용자 정의 타입 감지 테스트 (RECORD, TABLE OF, VARRAY, INDEX BY)"""
+    
+    def test_count_user_defined_types_record(self):
+        """RECORD 타입 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            TYPE emp_rec IS RECORD (
+                id NUMBER,
+                name VARCHAR2(100)
+            );
+            TYPE dept_rec IS RECORD (
+                dept_id NUMBER,
+                dept_name VARCHAR2(50)
+            );
+        BEGIN
+            NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        types = parser.count_user_defined_types()
+        assert types['record'] == 2
+    
+    def test_count_user_defined_types_table_of(self):
+        """TABLE OF 타입 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            TYPE emp_tab IS TABLE OF employees%ROWTYPE;
+            TYPE id_tab IS TABLE OF NUMBER;
+        BEGIN
+            NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        types = parser.count_user_defined_types()
+        assert types['table_of'] == 2
+    
+    def test_count_user_defined_types_varray(self):
+        """VARRAY 타입 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            TYPE name_arr IS VARRAY(100) OF VARCHAR2(100);
+            TYPE id_arr IS VARRAY(50) OF NUMBER;
+        BEGIN
+            NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        types = parser.count_user_defined_types()
+        assert types['varray'] == 2
+    
+    def test_count_user_defined_types_index_by(self):
+        """INDEX BY (연관 배열) 타입 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            TYPE emp_tab IS TABLE OF employees%ROWTYPE INDEX BY PLS_INTEGER;
+            TYPE name_tab IS TABLE OF VARCHAR2(100) INDEX BY VARCHAR2(50);
+        BEGIN
+            NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        types = parser.count_user_defined_types()
+        assert types['index_by'] == 2
+    
+    def test_count_user_defined_types_mixed(self):
+        """혼합 사용자 정의 타입 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            TYPE emp_rec IS RECORD (id NUMBER, name VARCHAR2(100));
+            TYPE emp_tab IS TABLE OF emp_rec;
+            TYPE name_arr IS VARRAY(10) OF VARCHAR2(50);
+            TYPE id_map IS TABLE OF NUMBER INDEX BY VARCHAR2(50);
+        BEGIN
+            NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        types = parser.count_user_defined_types()
+        assert types['record'] == 1
+        assert types['table_of'] == 2  # TABLE OF emp_rec, TABLE OF NUMBER
+        assert types['varray'] == 1
+        assert types['index_by'] == 1
+
+
+class TestPLSQLParserReturningInto:
+    """RETURNING INTO 절 감지 테스트"""
+    
+    def test_count_returning_into_insert(self):
+        """INSERT RETURNING INTO 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_id NUMBER;
+        BEGIN
+            INSERT INTO employees (name, salary)
+            VALUES ('John', 5000)
+            RETURNING employee_id INTO v_id;
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_returning_into()
+        assert count == 1
+    
+    def test_count_returning_into_update(self):
+        """UPDATE RETURNING INTO 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_new_salary NUMBER;
+        BEGIN
+            UPDATE employees SET salary = salary * 1.1
+            WHERE employee_id = 100
+            RETURNING salary INTO v_new_salary;
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_returning_into()
+        assert count == 1
+    
+    def test_count_returning_into_delete(self):
+        """DELETE RETURNING INTO 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_name VARCHAR2(100);
+        BEGIN
+            DELETE FROM employees WHERE employee_id = 100
+            RETURNING name INTO v_name;
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_returning_into()
+        assert count == 1
+    
+    def test_count_returning_into_multiple(self):
+        """여러 RETURNING INTO 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_id NUMBER;
+            v_salary NUMBER;
+        BEGIN
+            INSERT INTO employees (name) VALUES ('John')
+            RETURNING employee_id INTO v_id;
+            
+            UPDATE employees SET salary = 6000 WHERE employee_id = v_id
+            RETURNING salary INTO v_salary;
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_returning_into()
+        assert count == 2
+    
+    def test_count_returning_into_none(self):
+        """RETURNING INTO가 없는 경우 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+        BEGIN
+            INSERT INTO employees (name) VALUES ('John');
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_returning_into()
+        assert count == 0
+
+
+class TestPLSQLParserRaiseApplicationError:
+    """RAISE_APPLICATION_ERROR 감지 테스트"""
+    
+    def test_count_raise_application_error_single(self):
+        """단일 RAISE_APPLICATION_ERROR 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc(p_value NUMBER) IS
+        BEGIN
+            IF p_value < 0 THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Value cannot be negative');
+            END IF;
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_raise_application_error()
+        assert count == 1
+    
+    def test_count_raise_application_error_multiple(self):
+        """여러 RAISE_APPLICATION_ERROR 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc(p_status VARCHAR2) IS
+        BEGIN
+            IF p_status IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Status cannot be null');
+            ELSIF p_status NOT IN ('A', 'I') THEN
+                RAISE_APPLICATION_ERROR(-20002, 'Invalid status: ' || p_status);
+            ELSIF LENGTH(p_status) > 1 THEN
+                RAISE_APPLICATION_ERROR(-20003, 'Status must be single character');
+            END IF;
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_raise_application_error()
+        assert count == 3
+    
+    def test_count_raise_application_error_none(self):
+        """RAISE_APPLICATION_ERROR가 없는 경우 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+        BEGIN
+            UPDATE employees SET salary = salary * 1.1;
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_raise_application_error()
+        assert count == 0
+
+
+class TestPLSQLParserConditionalCompilation:
+    """조건부 컴파일 감지 테스트"""
+    
+    def test_count_conditional_compilation_single(self):
+        """단일 조건부 컴파일 블록 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+        BEGIN
+            $IF DBMS_DB_VERSION.VERSION >= 12 $THEN
+                -- Oracle 12c 이상 코드
+                NULL;
+            $ELSE
+                -- 이전 버전 코드
+                NULL;
+            $END
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_conditional_compilation()
+        assert count == 1
+    
+    def test_count_conditional_compilation_multiple(self):
+        """여러 조건부 컴파일 블록 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+        BEGIN
+            $IF DBMS_DB_VERSION.VERSION >= 12 $THEN
+                NULL;
+            $END
+            
+            $IF $$DEBUG $THEN
+                DBMS_OUTPUT.PUT_LINE('Debug mode');
+            $END
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_conditional_compilation()
+        assert count == 2
+    
+    def test_count_conditional_compilation_none(self):
+        """조건부 컴파일이 없는 경우 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+        BEGIN
+            UPDATE employees SET salary = salary * 1.1;
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_conditional_compilation()
+        assert count == 0
+
+
+class TestPLSQLParserDynamicDDL:
+    """동적 DDL 감지 테스트"""
+    
+    def test_count_dynamic_ddl_create_table(self):
+        """동적 CREATE TABLE 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc(p_table VARCHAR2) IS
+        BEGIN
+            EXECUTE IMMEDIATE 'CREATE TABLE temp_' || p_table || ' (id NUMBER)';
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_dynamic_ddl()
+        assert count >= 1
+    
+    def test_count_dynamic_ddl_drop_table(self):
+        """동적 DROP TABLE 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc(p_table VARCHAR2) IS
+        BEGIN
+            EXECUTE IMMEDIATE 'DROP TABLE ' || p_table;
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_dynamic_ddl()
+        assert count >= 1
+    
+    def test_count_dynamic_ddl_multiple(self):
+        """여러 동적 DDL 개수 계산 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc(p_table VARCHAR2) IS
+        BEGIN
+            EXECUTE IMMEDIATE 'CREATE TABLE temp_' || p_table || ' AS SELECT * FROM ' || p_table;
+            EXECUTE IMMEDIATE 'CREATE INDEX idx_temp_' || p_table || ' ON temp_' || p_table || '(id)';
+            EXECUTE IMMEDIATE 'DROP TABLE temp_' || p_table;
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_dynamic_ddl()
+        assert count >= 2
+    
+    def test_count_dynamic_ddl_none(self):
+        """동적 DDL이 없는 경우 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+        BEGIN
+            EXECUTE IMMEDIATE 'UPDATE employees SET salary = salary * 1.1';
+        END;
+        """
+        parser = PLSQLParser(code)
+        count = parser.count_dynamic_ddl()
+        assert count == 0
+
+
+class TestPLSQLParserOracleSpecificExceptions:
+    """Oracle 전용 예외 감지 테스트"""
+    
+    def test_detect_no_data_found(self):
+        """NO_DATA_FOUND 예외 감지 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_name VARCHAR2(100);
+        BEGIN
+            SELECT name INTO v_name FROM employees WHERE id = 999;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                v_name := 'Unknown';
+        END;
+        """
+        parser = PLSQLParser(code)
+        exceptions = parser.detect_oracle_specific_exceptions()
+        assert 'NO_DATA_FOUND' in exceptions
+    
+    def test_detect_too_many_rows(self):
+        """TOO_MANY_ROWS 예외 감지 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_name VARCHAR2(100);
+        BEGIN
+            SELECT name INTO v_name FROM employees;
+        EXCEPTION
+            WHEN TOO_MANY_ROWS THEN
+                v_name := 'Multiple';
+        END;
+        """
+        parser = PLSQLParser(code)
+        exceptions = parser.detect_oracle_specific_exceptions()
+        assert 'TOO_MANY_ROWS' in exceptions
+    
+    def test_detect_dup_val_on_index(self):
+        """DUP_VAL_ON_INDEX 예외 감지 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+        BEGIN
+            INSERT INTO employees (id, name) VALUES (1, 'John');
+        EXCEPTION
+            WHEN DUP_VAL_ON_INDEX THEN
+                NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        exceptions = parser.detect_oracle_specific_exceptions()
+        assert 'DUP_VAL_ON_INDEX' in exceptions
+    
+    def test_detect_multiple_oracle_exceptions(self):
+        """여러 Oracle 전용 예외 감지 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_name VARCHAR2(100);
+        BEGIN
+            SELECT name INTO v_name FROM employees WHERE id = 1;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                v_name := 'Not found';
+            WHEN TOO_MANY_ROWS THEN
+                v_name := 'Multiple';
+            WHEN VALUE_ERROR THEN
+                v_name := 'Error';
+        END;
+        """
+        parser = PLSQLParser(code)
+        exceptions = parser.detect_oracle_specific_exceptions()
+        assert 'NO_DATA_FOUND' in exceptions
+        assert 'TOO_MANY_ROWS' in exceptions
+        assert 'VALUE_ERROR' in exceptions
+    
+    def test_detect_no_oracle_exceptions(self):
+        """Oracle 전용 예외가 없는 경우 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+        BEGIN
+            UPDATE employees SET salary = salary * 1.1;
+        EXCEPTION
+            WHEN OTHERS THEN
+                NULL;
+        END;
+        """
+        parser = PLSQLParser(code)
+        exceptions = parser.detect_oracle_specific_exceptions()
+        assert len(exceptions) == 0
+
+
+class TestPLSQLParserSqlcodeSqlerrm:
+    """SQLCODE/SQLERRM 사용 감지 테스트"""
+    
+    def test_has_sqlcode(self):
+        """SQLCODE 사용 감지 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_code NUMBER;
+        BEGIN
+            NULL;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_code := SQLCODE;
+        END;
+        """
+        parser = PLSQLParser(code)
+        result = parser.has_sqlcode_sqlerrm()
+        assert result['sqlcode'] is True
+        assert result['sqlerrm'] is False
+    
+    def test_has_sqlerrm(self):
+        """SQLERRM 사용 감지 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_msg VARCHAR2(200);
+        BEGIN
+            NULL;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_msg := SQLERRM;
+        END;
+        """
+        parser = PLSQLParser(code)
+        result = parser.has_sqlcode_sqlerrm()
+        assert result['sqlcode'] is False
+        assert result['sqlerrm'] is True
+    
+    def test_has_both_sqlcode_sqlerrm(self):
+        """SQLCODE와 SQLERRM 모두 사용 감지 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+            v_code NUMBER;
+            v_msg VARCHAR2(200);
+        BEGIN
+            NULL;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_code := SQLCODE;
+                v_msg := SQLERRM;
+                INSERT INTO error_log (code, message) VALUES (v_code, v_msg);
+        END;
+        """
+        parser = PLSQLParser(code)
+        result = parser.has_sqlcode_sqlerrm()
+        assert result['sqlcode'] is True
+        assert result['sqlerrm'] is True
+    
+    def test_has_neither_sqlcode_sqlerrm(self):
+        """SQLCODE/SQLERRM 모두 없는 경우 테스트"""
+        code = """
+        CREATE PROCEDURE test_proc IS
+        BEGIN
+            UPDATE employees SET salary = salary * 1.1;
+        END;
+        """
+        parser = PLSQLParser(code)
+        result = parser.has_sqlcode_sqlerrm()
+        assert result['sqlcode'] is False
+        assert result['sqlerrm'] is False

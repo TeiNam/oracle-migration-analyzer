@@ -150,6 +150,19 @@ class RationaleGenerator:
                     "complexity_level_plsql": complexity_level_plsql
                 }
             ))
+        else:
+            # 복잡도가 낮고 개수도 적은 경우에도 complexity 카테고리 근거 추가
+            rationales.append(Rationale(
+                category="complexity",
+                reason=f"현재 시스템의 평균 코드 복잡도는 SQL {metrics.avg_sql_complexity:.1f}({complexity_level_sql}), PL/SQL {metrics.avg_plsql_complexity:.1f}({complexity_level_plsql}) 수준으로 낮습니다. Replatform을 통해 기존 코드를 그대로 유지하면서 안정적인 클라우드 전환이 가능합니다",
+                supporting_data={
+                    "avg_sql_complexity": metrics.avg_sql_complexity,
+                    "avg_plsql_complexity": metrics.avg_plsql_complexity,
+                    "plsql_count": plsql_count,
+                    "complexity_level_sql": complexity_level_sql,
+                    "complexity_level_plsql": complexity_level_plsql
+                }
+            ))
         
         # 3. 복잡 오브젝트 비율 근거
         if metrics.high_complexity_ratio >= 0.3:

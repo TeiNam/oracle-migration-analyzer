@@ -411,3 +411,92 @@ class SQLParser:
             penalties['function_in_where'] = bool(re.search(r'\(', where_clause))
         
         return penalties
+    
+    def detect_complex_rownum_pattern(self) -> bool:
+        """복잡한 ROWNUM 패턴 감지 (페이징 등)
+        
+        SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 기반 신규 기능:
+        - 중첩 서브쿼리 + ROWNUM 조합 감지
+        - 페이징 패턴 (WHERE ROWNUM <= N ... WHERE rnum > M)
+        
+        Returns:
+            복잡한 ROWNUM 패턴 존재 여부
+        """
+        # 패턴 1: 중첩 서브쿼리에서 ROWNUM 사용 (페이징)
+        # SELECT * FROM (SELECT a.*, ROWNUM rnum FROM (...) a WHERE ROWNUM <= 20) WHERE rnum > 10
+        paging_pattern = r'ROWNUM\s+\w+\s+FROM\s*\(.*?WHERE\s+ROWNUM'
+        if re.search(paging_pattern, self.normalized_query, re.DOTALL):
+            return True
+        
+        # 패턴 2: ROWNUM을 별칭으로 사용하고 외부에서 필터링
+        # WHERE rnum > N 또는 WHERE rnum >= N 패턴
+        alias_pattern = r'ROWNUM\s+(?:AS\s+)?\w+.*?WHERE\s+\w+\s*[>]'
+        if re.search(alias_pattern, self.normalized_query, re.DOTALL):
+            return True
+        
+        # 패턴 3: 두 개 이상의 ROWNUM 사용
+        rownum_count = len(re.findall(r'\bROWNUM\b', self.normalized_query))
+        if rownum_count >= 2:
+            return True
+        
+        return False
+    
+    def detect_empty_string_comparison(self) -> bool:
+        """빈 문자열 비교 패턴 감지
+        
+        SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 기반 신규 기능:
+        Oracle에서 빈 문자열은 NULL과 동일하지만,
+        PostgreSQL/MySQL에서는 다르게 처리됨.
+        
+        Returns:
+            빈 문자열 비교 패턴 존재 여부
+        """
+        patterns = [
+            r"=\s*''",           # = ''
+            r"<>\s*''",          # <> ''
+            r"!=\s*''",          # != ''
+            r"IN\s*\([^)]*''",   # IN ('', ...)
+        ]
+        for pattern in patterns:
+            if re.search(pattern, self.normalized_query):
+                return True
+        return False
+    
+    def detect_for_update_options(self) -> Dict[str, bool]:
+        """FOR UPDATE 옵션 감지
+        
+        SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 기반 신규 기능:
+        트랜잭션 관련 옵션 감지
+        
+        Returns:
+            FOR UPDATE 옵션 딕셔너리
+        """
+        options = {
+            'for_update': False,
+            'skip_locked': False,
+            'nowait': False,
+            'wait_n': False,
+            'of_column': False,
+        }
+        
+        # FOR UPDATE 기본
+        if re.search(r'\bFOR\s+UPDATE\b', self.normalized_query):
+            options['for_update'] = True
+            
+            # SKIP LOCKED
+            if re.search(r'\bSKIP\s+LOCKED\b', self.normalized_query):
+                options['skip_locked'] = True
+            
+            # NOWAIT
+            if re.search(r'\bNOWAIT\b', self.normalized_query):
+                options['nowait'] = True
+            
+            # WAIT N
+            if re.search(r'\bWAIT\s+\d+\b', self.normalized_query):
+                options['wait_n'] = True
+            
+            # OF column
+            if re.search(r'\bFOR\s+UPDATE\s+OF\b', self.normalized_query):
+                options['of_column'] = True
+        
+        return options

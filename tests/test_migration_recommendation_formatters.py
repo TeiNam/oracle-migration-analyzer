@@ -88,23 +88,23 @@ def test_markdown_output_validity_property(
     
     # 검증: 필수 섹션 포함 (언어별)
     if language == "ko":
-        assert "# 요약" in markdown_output, "요약 섹션이 없습니다"
-        assert "# 목차" in markdown_output, "목차 섹션이 없습니다"
+        assert "## 요약" in markdown_output, "요약 섹션이 없습니다"
+        assert "## 목차" in markdown_output, "목차 섹션이 없습니다"
         assert "# 추천 전략" in markdown_output, "추천 전략 섹션이 없습니다"
         assert "# 추천 근거" in markdown_output, "추천 근거 섹션이 없습니다"
         assert "# 대안 전략" in markdown_output, "대안 전략 섹션이 없습니다"
         assert "# 위험 요소 및 완화 방안" in markdown_output, "위험 요소 섹션이 없습니다"
-        assert "# 마이그레이션 로드맵" in markdown_output, "마이그레이션 로드맵 섹션이 없습니다"
-        assert "# 분석 메트릭 (부록)" in markdown_output, "분석 메트릭 섹션이 없습니다"
+        assert "# 최종 난이도 판정" in markdown_output, "최종 난이도 판정 섹션이 없습니다"
+        assert "## 분석 원본 데이터" in markdown_output, "분석 원본 데이터 섹션이 없습니다"
     else:  # English
-        assert "# Executive Summary" in markdown_output, "Executive Summary section is missing"
-        assert "# Table of Contents" in markdown_output, "Table of Contents section is missing"
+        assert "## Summary" in markdown_output, "Summary section is missing"
+        assert "## Table of Contents" in markdown_output, "Table of Contents section is missing"
         assert "# Recommended Strategy" in markdown_output, "Recommended Strategy section is missing"
-        assert "# Rationales" in markdown_output, "Rationales section is missing"
+        assert "# Rationale" in markdown_output, "Rationale section is missing"
         assert "# Alternative Strategies" in markdown_output, "Alternative Strategies section is missing"
         assert "# Risks and Mitigation" in markdown_output, "Risks and Mitigation section is missing"
-        assert "# Migration Roadmap" in markdown_output, "Migration Roadmap section is missing"
-        assert "# Analysis Metrics (Appendix)" in markdown_output, "Analysis Metrics section is missing"
+        assert "# Final Difficulty Assessment" in markdown_output, "Final Difficulty Assessment section is missing"
+        assert "## Analysis Source Data" in markdown_output, "Analysis Source Data section is missing"
     
     # 검증: Markdown 헤더 형식 확인
     assert markdown_output.count("# ") >= 8, "Markdown 헤더가 충분하지 않습니다"
@@ -301,14 +301,14 @@ def test_markdown_formatter_basic():
     markdown_ko = formatter.format(recommendation, language="ko")
     
     assert "# 요약" in markdown_ko
-    assert "# 목차" in markdown_ko
+    assert "## 목차" in markdown_ko
     assert "# 추천 전략" in markdown_ko
     
     # Markdown 포맷팅 (영어)
     markdown_en = formatter.format(recommendation, language="en")
     
-    assert "# Executive Summary" in markdown_en
-    assert "# Table of Contents" in markdown_en
+    assert "## Summary" in markdown_en
+    assert "## Table of Contents" in markdown_en
     assert "# Recommended Strategy" in markdown_en
 
 

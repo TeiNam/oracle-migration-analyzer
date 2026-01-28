@@ -163,7 +163,7 @@ class ResultFormatter:
         # 복잡도 점수 요약
         md.append("## 복잡도 점수 요약\n")
         md.append(f"- **타겟 데이터베이스**: {result.target_database.value.upper()}")
-        md.append(f"- **총점**: {result.total_score:.2f}")
+        md.append(f"- **원점수 (Raw Score)**: {result.total_score:.2f}")
         md.append(f"- **정규화 점수**: {result.normalized_score:.2f} / 10.0")
         md.append(f"- **복잡도 레벨**: {result.complexity_level.value}")
         md.append(f"- **권장사항**: {result.recommendation}\n")
@@ -253,7 +253,7 @@ class ResultFormatter:
         md.append("## 복잡도 점수 요약\n")
         md.append(f"- **오브젝트 타입**: {result.object_type.value.upper()}")
         md.append(f"- **타겟 데이터베이스**: {result.target_database.value.upper()}")
-        md.append(f"- **총점**: {result.total_score:.2f}")
+        md.append(f"- **원점수 (Raw Score)**: {result.total_score:.2f}")
         md.append(f"- **정규화 점수**: {result.normalized_score:.2f} / 10.0")
         md.append(f"- **복잡도 레벨**: {result.complexity_level.value}")
         md.append(f"- **권장사항**: {result.recommendation}\n")
@@ -421,7 +421,8 @@ class ResultFormatter:
                 md.append(f"### {i}. {obj_result['owner']}.{obj_result['object_name']}\n")
                 md.append(f"- **타입**: {obj_result['object_type']}")
                 md.append(f"- **라인 범위**: {obj_result['line_range']}")
-                md.append(f"- **복잡도 점수**: {analysis.normalized_score:.2f}/10")
+                md.append(f"- **원점수 (Raw Score)**: {analysis.total_score:.2f}")
+                md.append(f"- **정규화 점수**: {analysis.normalized_score:.2f}/10")
                 md.append(f"- **복잡도 레벨**: {analysis.complexity_level.value}")
                 md.append(f"- **추천사항**: {analysis.recommendation}\n")
                 

@@ -5,16 +5,19 @@
 """
 
 import logging
-from typing import List
+from typing import List, Optional
 from ..data_models import (
     IntegratedAnalysisResult,
     AnalysisMetrics,
     MigrationStrategy,
     MigrationRecommendation,
     ExecutiveSummary,
-    InstanceRecommendation
+    InstanceRecommendation,
+    DataAvailability,
+    ConfidenceAssessment,
 )
 from ..decision_engine import MigrationDecisionEngine
+from ..confidence_calculator import ConfidenceCalculator, determine_data_availability
 from .rationale_generator import RationaleGenerator
 from .alternative_generator import AlternativeGenerator
 from .risk_generator import RiskGenerator
@@ -68,41 +71,52 @@ class RecommendationReportGenerator:
         
         metrics = integrated_result.metrics
         
+        # 0. 데이터 가용성 결정
+        data_availability = self._determine_data_availability(integrated_result)
+        logger.info(f"분석 모드: {data_availability.get_analysis_mode().value}")
+        
         # 1. 추천 전략 결정
         logger.info("추천 전략 결정 중")
         recommended_strategy = self.decision_engine.decide_strategy(integrated_result)
         logger.info(f"추천 전략 결정 완료: {recommended_strategy.value}")
         
-        # 2. 신뢰도 계산
-        confidence_level = self._calculate_confidence(metrics, recommended_strategy)
-        logger.info(f"신뢰도 계산 완료: {confidence_level}")
+        # 2. 신뢰도 계산 (신규)
+        logger.info("신뢰도 계산 중")
+        confidence_assessment = ConfidenceCalculator.calculate(
+            data_availability, metrics, recommended_strategy
+        )
+        logger.info(f"종합 신뢰도: {confidence_assessment.overall_confidence}%")
         
-        # 3. 추천 근거 생성
+        # 3. 신뢰도 레벨 (기존 호환성 유지)
+        confidence_level = self._calculate_confidence(metrics, recommended_strategy)
+        logger.info(f"신뢰도 레벨: {confidence_level}")
+        
+        # 4. 추천 근거 생성
         logger.info("추천 근거 생성 중")
         rationales = self.rationale_generator.generate_rationales(recommended_strategy, metrics)
         logger.info(f"추천 근거 생성 완료: {len(rationales)}개")
         
-        # 4. 대안 전략 생성
+        # 5. 대안 전략 생성
         logger.info("대안 전략 생성 중")
         alternative_strategies = self.alternative_generator.generate_alternatives(recommended_strategy, metrics)
         logger.info(f"대안 전략 생성 완료: {len(alternative_strategies)}개")
         
-        # 5. 위험 요소 생성
+        # 6. 위험 요소 생성
         logger.info("위험 요소 생성 중")
         risks = self.risk_generator.generate_risks(recommended_strategy, metrics)
         logger.info(f"위험 요소 생성 완료: {len(risks)}개")
         
-        # 6. 마이그레이션 로드맵 생성
+        # 7. 마이그레이션 로드맵 생성
         logger.info("마이그레이션 로드맵 생성 중")
         roadmap = self.roadmap_generator.generate_roadmap(recommended_strategy, metrics)
         logger.info(f"마이그레이션 로드맵 생성 완료: {len(roadmap.phases)}단계")
         
-        # 7. 인스턴스 추천 생성
+        # 8. 인스턴스 추천 생성
         logger.info("인스턴스 추천 생성 중")
         instance_recommendation = self._generate_instance_recommendation(recommended_strategy, metrics)
         logger.info("인스턴스 추천 생성 완료")
         
-        # 8. MigrationRecommendation 객체 생성 (Executive Summary 제외)
+        # 9. MigrationRecommendation 객체 생성 (Executive Summary 제외)
         recommendation = MigrationRecommendation(
             recommended_strategy=recommended_strategy,
             confidence_level=confidence_level,
@@ -118,10 +132,12 @@ class RecommendationReportGenerator:
                 summary_text=""
             ),  # 임시 값
             instance_recommendation=instance_recommendation,
-            metrics=metrics
+            metrics=metrics,
+            confidence_assessment=confidence_assessment,
+            data_availability=data_availability,
         )
         
-        # 9. Executive Summary 생성 (recommendation 객체 필요)
+        # 10. Executive Summary 생성 (recommendation 객체 필요)
         logger.info("Executive Summary 생성 중")
         executive_summary = self.summary_generator.generate_executive_summary(recommendation)
         recommendation.executive_summary = executive_summary
@@ -129,6 +145,60 @@ class RecommendationReportGenerator:
         
         logger.info("마이그레이션 추천 리포트 생성 완료")
         return recommendation
+    
+    def _determine_data_availability(
+        self,
+        integrated_result: IntegratedAnalysisResult
+    ) -> DataAvailability:
+        """데이터 가용성 결정
+        
+        Args:
+            integrated_result: 통합 분석 결과
+            
+        Returns:
+            DataAvailability: 데이터 가용성 정보
+        """
+        sql_count = len(integrated_result.sql_analysis) if integrated_result.sql_analysis else 0
+        plsql_count = len(integrated_result.plsql_analysis) if integrated_result.plsql_analysis else 0
+        
+        # DBCSI 데이터 존재 여부 확인 (dbcsi_result 또는 metrics에서 확인)
+        has_dbcsi = integrated_result.dbcsi_result is not None
+        
+        # dbcsi_result가 없어도 metrics에 DBCSI 데이터가 있으면 has_dbcsi=True
+        if not has_dbcsi and integrated_result.metrics:
+            metrics = integrated_result.metrics
+            # db_name이 있거나 성능 메트릭이 있으면 DBCSI 데이터가 있는 것으로 판단
+            if (getattr(metrics, 'db_name', None) or 
+                getattr(metrics, 'avg_cpu_usage', 0) > 0 or
+                getattr(metrics, 'avg_io_load', 0) > 0):
+                has_dbcsi = True
+        
+        # DBCSI 타입 결정
+        dbcsi_type = ""
+        if has_dbcsi:
+            if integrated_result.dbcsi_result:
+                if hasattr(integrated_result.dbcsi_result, 'is_awr'):
+                    dbcsi_type = "awr" if integrated_result.dbcsi_result.is_awr() else "statspack"
+                else:
+                    dbcsi_type = "statspack"
+            else:
+                # dbcsi_result가 없지만 metrics에서 DBCSI 데이터가 있는 경우
+                # metrics에서 report_type 확인
+                report_type = getattr(metrics, 'report_type', None)
+                if report_type == 'awr':
+                    dbcsi_type = "awr"
+                else:
+                    dbcsi_type = "statspack"
+        
+        return determine_data_availability(
+            sql_count=sql_count,
+            plsql_count=plsql_count,
+            has_dbcsi=has_dbcsi,
+            dbcsi_type=dbcsi_type,
+            sql_source="file" if sql_count > 0 else "none",
+            plsql_source="file" if plsql_count > 0 else "none",
+            dbcsi_source="report" if has_dbcsi and not integrated_result.dbcsi_result else ("file" if has_dbcsi else "none"),
+        )
     
     def _calculate_confidence(
         self,

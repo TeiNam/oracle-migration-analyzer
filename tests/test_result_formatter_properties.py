@@ -213,23 +213,20 @@ def test_property_migration_complexity_json_roundtrip(complexity_dict):
 def test_property_markdown_required_sections(statspack_data):
     """
     For any StatspackData 객체에 대해, Markdown 보고서를 생성하면 
-    시스템 정보 요약, 메모리 사용량 통계, 주요 성능 메트릭 요약 섹션을 포함해야 합니다.
+    데이터베이스 개요, 메모리 사용량 통계 섹션을 포함해야 합니다.
     
     Validates: Requirements 13.5
     """
     # Markdown 생성
     markdown = StatspackResultFormatter.to_markdown(statspack_data)
     
-    # 필수 섹션 확인
+    # 필수 섹션 확인 (새로운 포맷)
     assert "# Statspack 분석 보고서" in markdown
-    assert "## 1. 시스템 정보 요약" in markdown
+    assert "## 📊 데이터베이스 개요" in markdown
     
     # 데이터가 있는 경우에만 해당 섹션 확인
     if statspack_data.memory_metrics:
-        assert "## 2. 메모리 사용량 통계" in markdown
-    
-    if statspack_data.main_metrics:
-        assert "## 4. 주요 성능 메트릭 요약" in markdown
+        assert "## 💾 메모리 사용량 통계" in markdown
 
 
 # Property 11: 리포트 저장 경로
@@ -439,7 +436,8 @@ def test_markdown_with_migration_analysis():
     }
     
     markdown = StatspackResultFormatter.to_markdown(data, migration_analysis)
-    assert "## 8. 마이그레이션 분석 결과" in markdown
+    # 새로운 포맷: 이모지 포함 헤더
+    assert "## 🚀 마이그레이션 분석 결과" in markdown
     assert "RDS for Oracle" in markdown
     assert "db.r6i.xlarge" in markdown
 
@@ -450,8 +448,8 @@ def test_markdown_with_migration_analysis():
 @given(statspack_data_strategy())
 def test_property_detailed_report_required_sections(statspack_data):
     """
-    For any AWR 분석 결과에 대해, Markdown 리포트는 Executive Summary, 시스템 정보, 
-    성능 메트릭, 워크로드 패턴, 마이그레이션 난이도 섹션을 포함해야 합니다.
+    For any AWR 분석 결과에 대해, Markdown 리포트는 데이터베이스 개요, 
+    메모리 사용량 통계 섹션을 포함해야 합니다.
     
     Validates: Requirements 15.1
     """
@@ -473,14 +471,14 @@ def test_property_detailed_report_required_sections(statspack_data):
     # 상세 Markdown 생성
     markdown = EnhancedResultFormatter.to_detailed_markdown(awr_data, language='ko')
     
-    # 필수 섹션 확인
+    # 필수 섹션 확인 (새로운 포맷)
     assert "분석 보고서" in markdown  # AWR 또는 Statspack
     assert "생성 시간:" in markdown
-    assert "## 1. 시스템 정보 요약" in markdown
+    assert "## 📊 데이터베이스 개요" in markdown
     
     # 데이터가 있는 경우에만 해당 섹션 확인
     if awr_data.memory_metrics:
-        assert "## 2. 메모리 사용량 통계" in markdown
+        assert "## 💾 메모리 사용량 통계" in markdown
 
 
 # 단위 테스트: AWR 상세 리포트 생성

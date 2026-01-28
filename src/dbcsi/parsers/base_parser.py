@@ -183,8 +183,24 @@ class BaseParser:
                 if len(parts) >= 2 and parts[0] == "COUNT_TABLE" and parts[1] == "PARTITION":
                     continue
                 
-                stat_name = parts[0]
-                stat_value = " ".join(parts[1:]) if len(parts) > 1 else ""
+                # 공백이 포함된 COUNT 키 처리 (예: COUNT_MATERIALIZED VIEW, COUNT_TYPE BODY)
+                if len(parts) >= 3 and parts[0].startswith("COUNT_"):
+                    if parts[1] == "VIEW" and parts[0] == "COUNT_MATERIALIZED":
+                        stat_name = "COUNT_MATERIALIZED_VIEW"
+                        stat_value = parts[2] if len(parts) > 2 else ""
+                    elif parts[1] == "BODY" and parts[0] == "COUNT_TYPE":
+                        stat_name = "COUNT_TYPE_BODY"
+                        stat_value = parts[2] if len(parts) > 2 else ""
+                    elif parts[1] == "BODY" and parts[0] == "COUNT_PACKAGE":
+                        continue  # PACKAGE BODY는 PACKAGE와 동일하므로 스킵
+                    elif parts[1] == "PARTITION":
+                        continue  # INDEX PARTITION, TABLE PARTITION 등 스킵
+                    else:
+                        stat_name = parts[0]
+                        stat_value = " ".join(parts[1:]) if len(parts) > 1 else ""
+                else:
+                    stat_name = parts[0]
+                    stat_value = " ".join(parts[1:]) if len(parts) > 1 else ""
                 
                 if stat_name == "DB_NAME":
                     converted_value = stat_value.strip()

@@ -12,7 +12,7 @@ import os
 import json
 import logging
 from pathlib import Path
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Any
 
 from ..dbcsi.parser import StatspackParser, AWRParser
 from ..dbcsi.models import StatspackData, AWRData
@@ -24,7 +24,7 @@ from .integrator import AnalysisResultIntegrator
 from .decision_engine import MigrationDecisionEngine
 from .report_generator import RecommendationReportGenerator
 from .formatters import MarkdownReportFormatter, JSONReportFormatter
-from .report_parser import ReportParser, find_reports_in_directory
+from .report_parser import ReportParser, find_reports_in_directory, find_reports_by_target
 
 # 로거 초기화 (모듈 레벨에서 기본 로거 생성)
 logger = logging.getLogger("migration_recommendation.cli")
@@ -298,39 +298,67 @@ def main() -> int:
             
             # 1. 리포트 파일 검색
             log_progress(logger, 1, 5, f"리포트 파일 검색 중: {args.reports_dir}")
-            dbcsi_reports, sql_complexity_reports = find_reports_in_directory(args.reports_dir)
+            reports_by_target = find_reports_by_target(args.reports_dir)
             
-            if not dbcsi_reports and not sql_complexity_reports:
+            has_reports = (
+                reports_by_target['dbcsi'] or 
+                reports_by_target['postgresql'] or 
+                reports_by_target['mysql']
+            )
+            if not has_reports:
                 logger.error("분석할 리포트 파일을 찾을 수 없습니다")
                 return 1
             
             # 2. 리포트 파일 파싱
             log_progress(logger, 2, 5, "리포트 파일 파싱 중...")
-            parser = ReportParser()
+            report_parser = ReportParser()
+            
+            # 타겟별 리포트 검색
+            reports_by_target = find_reports_by_target(args.reports_dir)
             
             # DBCSI 리포트 파싱 (메트릭만 추출)
             dbcsi_metrics = None
-            if dbcsi_reports:
-                logger.info(f"DBCSI 리포트 파싱: {dbcsi_reports[0]}")
-                dbcsi_metrics = parser.parse_dbcsi_metrics(dbcsi_reports[0])
+            if reports_by_target['dbcsi']:
+                logger.info(f"DBCSI 리포트 파싱: {reports_by_target['dbcsi'][0]}")
+                dbcsi_metrics = report_parser.parse_dbcsi_metrics(reports_by_target['dbcsi'][0])
                 if not dbcsi_metrics:
                     logger.warning("DBCSI 메트릭 추출 실패 (성능 메트릭 제외)")
             
-            # SQL 복잡도 리포트 파싱
+            # PostgreSQL 복잡도 리포트 파싱
             sql_results = []
             plsql_results = []
-            if sql_complexity_reports:
-                # 타겟 DB 자동 감지 (PGSQL 또는 MySQL 폴더)
-                target_db = "postgresql"
-                for report_path in sql_complexity_reports:
-                    if "MySQL" in report_path:
-                        target_db = "mysql"
-                        break
-                
-                logger.info(f"타겟 DB: {target_db}")
-                sql_results, plsql_results = parser.parse_sql_complexity_reports(
-                    sql_complexity_reports,
-                    target_db
+            complexity_summary: Dict[str, Any] = {
+                'oracle_features': [],
+                'external_dependencies': [],
+                'conversion_guide': {}
+            }
+            if reports_by_target['postgresql']:
+                logger.info(f"PostgreSQL 복잡도 리포트 파싱: {len(reports_by_target['postgresql'])}개")
+                # 요약 정보도 함께 파싱
+                for report_path in reports_by_target['postgresql']:
+                    if report_path.endswith('.md'):
+                        sql, plsql, summary = report_parser.md_parser.parse_plsql_complexity_markdown_with_summary(
+                            report_path, "postgresql"
+                        )
+                        sql_results.extend(sql)
+                        plsql_results.extend(plsql)
+                        # 요약 정보 병합
+                        complexity_summary['oracle_features'].extend(summary.get('oracle_features', []))
+                        complexity_summary['external_dependencies'].extend(summary.get('external_dependencies', []))
+                        complexity_summary['conversion_guide'].update(summary.get('conversion_guide', {}))
+                    else:
+                        sql, plsql = report_parser.parse_sql_complexity_reports([report_path], "postgresql")
+                        sql_results.extend(sql)
+                        plsql_results.extend(plsql)
+            
+            # MySQL 복잡도 리포트 파싱
+            sql_results_mysql = []
+            plsql_results_mysql = []
+            if reports_by_target['mysql']:
+                logger.info(f"MySQL 복잡도 리포트 파싱: {len(reports_by_target['mysql'])}개")
+                sql_results_mysql, plsql_results_mysql = report_parser.parse_sql_complexity_reports(
+                    reports_by_target['mysql'],
+                    "mysql"
                 )
             
             if not sql_results and not plsql_results:
@@ -341,8 +369,22 @@ def main() -> int:
             
             # 3. 분석 결과 통합
             log_progress(logger, 3, 5, "분석 결과 통합 중...")
+            
+            # dbcsi_metrics에 변환 가이드 및 외부 의존성 추가
+            if dbcsi_metrics is None:
+                dbcsi_metrics = {}
+            dbcsi_metrics['conversion_guide'] = complexity_summary.get('conversion_guide', {})
+            dbcsi_metrics['external_dependencies_from_report'] = complexity_summary.get('external_dependencies', [])
+            
             integrator = AnalysisResultIntegrator()
-            integrated_result = integrator.integrate(dbcsi_metrics, sql_results, plsql_results)
+            integrated_result = integrator.integrate(
+                dbcsi_result=None,
+                sql_analysis=sql_results,
+                plsql_analysis=plsql_results,
+                dbcsi_metrics=dbcsi_metrics,
+                sql_analysis_mysql=sql_results_mysql,
+                plsql_analysis_mysql=plsql_results_mysql
+            )
             log_progress(logger, 3, 5, "통합 완료")
             
             # 4. 마이그레이션 전략 결정 및 리포트 생성

@@ -63,20 +63,26 @@ class MigrationAnalyzer:
             self._oracle_edition = OracleEdition.ENTERPRISE
         elif "standard edition" in banner_lower:
             self._oracle_edition = OracleEdition.STANDARD
-        # 약어 체크 (단어 경계 고려)
+        # 약어 체크 (단어 경계 고려, 먼저 나오는 것 우선)
         else:
-            # 단어로 분리하여 약어 확인
+            # 단어로 분리하여 약어 확인 (먼저 나오는 약어 우선)
             words = banner_lower.split()
-            if "xe" in words:
-                self._oracle_edition = OracleEdition.EXPRESS
-            elif "se2" in words:
-                self._oracle_edition = OracleEdition.STANDARD_2
-            elif "ee" in words:
-                self._oracle_edition = OracleEdition.ENTERPRISE
-            elif "se" in words:
-                self._oracle_edition = OracleEdition.STANDARD
-            else:
-                self._oracle_edition = OracleEdition.UNKNOWN
+            edition_found = None
+            for word in words:
+                if word == "xe" and edition_found is None:
+                    edition_found = OracleEdition.EXPRESS
+                    break
+                elif word == "se2" and edition_found is None:
+                    edition_found = OracleEdition.STANDARD_2
+                    break
+                elif word == "ee" and edition_found is None:
+                    edition_found = OracleEdition.ENTERPRISE
+                    break
+                elif word == "se" and edition_found is None:
+                    edition_found = OracleEdition.STANDARD
+                    break
+            
+            self._oracle_edition = edition_found if edition_found else OracleEdition.UNKNOWN
         
         return self._oracle_edition
     

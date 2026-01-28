@@ -92,18 +92,34 @@ class PLSQLFeatureAnalyzer(PLSQLParserBase):
         """
         external_deps = []
         
-        # 외부 의존성 패키지 목록
+        # 외부 의존성 패키지 목록 (확장됨)
         external_packages = [
             'UTL_FILE',
             'UTL_HTTP',
             'UTL_MAIL',
             'UTL_SMTP',
+            'UTL_RAW',
+            'UTL_ENCODE',
+            'UTL_COMPRESS',
+            'UTL_I18N',
             'DBMS_SCHEDULER',
             'DBMS_JOB',
             'DBMS_LOB',
             'DBMS_OUTPUT',
             'DBMS_CRYPTO',
             'DBMS_SQL',
+            'DBMS_PIPE',
+            'DBMS_ALERT',
+            'DBMS_LOCK',
+            'DBMS_AQ',
+            'DBMS_XMLGEN',
+            'DBMS_XMLPARSER',
+            'DBMS_METADATA',
+            'DBMS_STATS',
+            'DBMS_PROFILER',
+            'DBMS_TRACE',
+            'DBMS_RANDOM',
+            'DBMS_UTILITY',
         ]
         
         # 각 패키지 사용 여부 확인
@@ -238,3 +254,131 @@ class PLSQLFeatureAnalyzer(PLSQLParserBase):
             context_deps.append('DBMS_APPLICATION_INFO')
         
         return context_deps
+
+    # =========================================================================
+    # 신규 감지 메서드 (PLSQL_COMPLEXITY_SCORE_IMPROVEMENT.md 기반)
+    # =========================================================================
+    
+    def count_type_references(self) -> dict:
+        """타입 참조 개수 계산 (%TYPE, %ROWTYPE)
+        
+        Returns:
+            타입 참조 개수 딕셔너리 {'type': int, 'rowtype': int}
+        """
+        return {
+            'type': len(re.findall(r'%TYPE\b', self.upper_code)),
+            'rowtype': len(re.findall(r'%ROWTYPE\b', self.upper_code)),
+        }
+    
+    def count_user_defined_types(self) -> dict:
+        """사용자 정의 타입 개수 계산 (RECORD, TABLE OF, VARRAY, INDEX BY)
+        
+        Returns:
+            사용자 정의 타입 개수 딕셔너리
+        """
+        return {
+            'record': len(re.findall(r'\bIS\s+RECORD\b', self.upper_code)),
+            'table_of': len(re.findall(r'\bTABLE\s+OF\b', self.upper_code)),
+            'varray': len(re.findall(r'\bVARRAY\b', self.upper_code)),
+            'index_by': len(re.findall(r'\bINDEX\s+BY\b', self.upper_code)),
+        }
+    
+    def count_returning_into(self) -> int:
+        """RETURNING INTO 절 개수 계산
+        
+        Returns:
+            RETURNING INTO 절 개수
+        """
+        return len(re.findall(r'\bRETURNING\b.*?\bINTO\b', self.upper_code, re.DOTALL))
+    
+    def count_raise_application_error(self) -> int:
+        """RAISE_APPLICATION_ERROR 개수 계산
+        
+        Returns:
+            RAISE_APPLICATION_ERROR 개수
+        """
+        return len(re.findall(r'\bRAISE_APPLICATION_ERROR\s*\(', self.upper_code))
+    
+    def count_conditional_compilation(self) -> int:
+        """조건부 컴파일 블록 개수 계산 ($IF, $ELSE, $END)
+        
+        Returns:
+            조건부 컴파일 블록 개수
+        """
+        return len(re.findall(r'\$IF\b', self.upper_code))
+    
+    def count_dynamic_ddl(self) -> int:
+        """동적 DDL 개수 계산
+        
+        EXECUTE IMMEDIATE 내에서 DDL 문(CREATE, DROP, ALTER, TRUNCATE)을 사용하는 경우
+        
+        Returns:
+            동적 DDL 개수
+        """
+        # EXECUTE IMMEDIATE 다음에 DDL 키워드가 있는지 확인
+        ddl_patterns = [
+            r"EXECUTE\s+IMMEDIATE\s+['\"]?\s*CREATE\s+TABLE",
+            r"EXECUTE\s+IMMEDIATE\s+['\"]?\s*CREATE\s+INDEX",
+            r"EXECUTE\s+IMMEDIATE\s+['\"]?\s*DROP\s+TABLE",
+            r"EXECUTE\s+IMMEDIATE\s+['\"]?\s*DROP\s+INDEX",
+            r"EXECUTE\s+IMMEDIATE\s+['\"]?\s*ALTER\s+TABLE",
+            r"EXECUTE\s+IMMEDIATE\s+['\"]?\s*TRUNCATE",
+            # 동적 문자열 연결로 DDL 생성하는 경우
+            r"EXECUTE\s+IMMEDIATE\s+.*?\|\|.*?CREATE",
+            r"EXECUTE\s+IMMEDIATE\s+.*?\|\|.*?DROP",
+            r"EXECUTE\s+IMMEDIATE\s+.*?\|\|.*?ALTER",
+            r"EXECUTE\s+IMMEDIATE\s+.*?\|\|.*?TRUNCATE",
+        ]
+        
+        count = 0
+        for pattern in ddl_patterns:
+            count += len(re.findall(pattern, self.upper_code, re.IGNORECASE | re.DOTALL))
+        
+        return count
+    
+    def detect_oracle_specific_exceptions(self) -> list:
+        """Oracle 전용 예외 감지
+        
+        Returns:
+            감지된 Oracle 전용 예외 목록
+        """
+        oracle_exceptions = [
+            'NO_DATA_FOUND',
+            'TOO_MANY_ROWS',
+            'DUP_VAL_ON_INDEX',
+            'VALUE_ERROR',
+            'INVALID_CURSOR',
+            'CURSOR_ALREADY_OPEN',
+            'INVALID_NUMBER',
+            'ZERO_DIVIDE',
+            'STORAGE_ERROR',
+            'PROGRAM_ERROR',
+            'LOGIN_DENIED',
+            'NOT_LOGGED_ON',
+            'TIMEOUT_ON_RESOURCE',
+            'ROWTYPE_MISMATCH',
+            'SELF_IS_NULL',
+            'CASE_NOT_FOUND',
+            'ACCESS_INTO_NULL',
+            'COLLECTION_IS_NULL',
+            'SUBSCRIPT_BEYOND_COUNT',
+            'SUBSCRIPT_OUTSIDE_LIMIT',
+        ]
+        
+        detected = []
+        for exc in oracle_exceptions:
+            if re.search(rf'\bWHEN\s+{exc}\b', self.upper_code):
+                detected.append(exc)
+        
+        return detected
+    
+    def has_sqlcode_sqlerrm(self) -> dict:
+        """SQLCODE/SQLERRM 사용 여부 감지
+        
+        Returns:
+            {'sqlcode': bool, 'sqlerrm': bool}
+        """
+        return {
+            'sqlcode': bool(re.search(r'\bSQLCODE\b', self.upper_code)),
+            'sqlerrm': bool(re.search(r'\bSQLERRM\b', self.upper_code)),
+        }

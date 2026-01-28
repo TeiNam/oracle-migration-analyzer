@@ -29,6 +29,18 @@ class OSInformation:
     count_packages: Optional[int] = None
     count_procedures: Optional[int] = None
     count_functions: Optional[int] = None
+    # 추가 PL/SQL 오브젝트
+    count_triggers: Optional[int] = None
+    count_types: Optional[int] = None
+    count_type_bodies: Optional[int] = None
+    # 추가 스키마 오브젝트
+    count_views: Optional[int] = None
+    count_indexes: Optional[int] = None
+    count_sequences: Optional[int] = None
+    count_lobs: Optional[int] = None
+    count_materialized_views: Optional[int] = None
+    count_db_links: Optional[int] = None
+    # 기타
     character_set: Optional[str] = None
     raw_data: Dict[str, Any] = field(default_factory=dict)
 

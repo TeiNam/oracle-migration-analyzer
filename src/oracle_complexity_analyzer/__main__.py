@@ -72,10 +72,10 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '-t', '--target',
         type=str,
-        choices=['postgresql', 'mysql', 'pg', 'my'],
+        choices=['postgresql', 'mysql', 'pg', 'my', 'all', 'both'],
         default='postgresql',
         metavar='DB',
-        help='타겟 데이터베이스 (postgresql, mysql, pg, my) [기본값: postgresql]'
+        help='타겟 데이터베이스 (postgresql, mysql, pg, my, all, both) [기본값: postgresql]'
     )
     
     # 출력 형식 선택
@@ -153,6 +153,18 @@ def normalize_target(target) -> TargetDatabase:
     raise ValueError(f"지원하지 않는 타겟 데이터베이스: {target}")
 
 
+def is_all_targets(target: str) -> bool:
+    """타겟이 'all' 또는 'both'인지 확인
+    
+    Args:
+        target: 타겟 데이터베이스 문자열
+        
+    Returns:
+        bool: 모든 타겟 분석 여부
+    """
+    return target.lower() in ['all', 'both']
+
+
 def print_result_console(result: Union[SQLAnalysisResult, PLSQLAnalysisResult]):
     """분석 결과를 콘솔에 출력
     
@@ -164,7 +176,8 @@ def print_result_console(result: Union[SQLAnalysisResult, PLSQLAnalysisResult]):
     print("="*80)
     
     print(f"\n타겟 데이터베이스: {result.target_database.value}")
-    print(f"복잡도 점수: {result.normalized_score:.2f} / 10")
+    print(f"원점수 (Raw Score): {result.total_score:.2f}")
+    print(f"정규화 점수: {result.normalized_score:.2f} / 10")
     print(f"복잡도 레벨: {result.complexity_level.value}")
     print(f"권장사항: {result.recommendation}")
     
@@ -253,7 +266,7 @@ def print_batch_analysis_summary(batch_result, target_db: TargetDatabase):
             for i, (filename, result) in enumerate(sorted_results[:5], 1):
                 if result:
                     print(f"  {i}. {filename}")
-                    print(f"     복잡도: {result.normalized_score:.2f}/10")
+                    print(f"     원점수: {result.total_score:.2f}, 정규화: {result.normalized_score:.2f}/10")
     
     if batch_result.failure_count > 0:
         print(f"\n❌ 실패한 파일: {batch_result.failure_count}개")
@@ -309,7 +322,7 @@ def print_batch_result_console(batch_result: dict, target_db: TargetDatabase):
         print("\n🔥 복잡도 높은 객체 Top 5:")
         for i, obj in enumerate(sorted_results[:5], 1):
             print(f"  {i}. {obj['owner']}.{obj['object_name']} ({obj['object_type']})")
-            print(f"     복잡도: {obj['analysis'].normalized_score:.2f}/10")
+            print(f"     원점수: {obj['analysis'].total_score:.2f}, 정규화: {obj['analysis'].normalized_score:.2f}/10")
     
     if batch_result.get('failed'):
         print("\n❌ 분석 실패 객체:")
@@ -334,6 +347,10 @@ def analyze_single_file(args):
     try:
         from src.formatters.result_formatter import ResultFormatter
         from .file_detector import detect_file_type
+        
+        # all/both 옵션인 경우 두 타겟 모두 분석
+        if is_all_targets(args.target):
+            return analyze_single_file_all_targets(args)
         
         target_db = normalize_target(args.target)
         
@@ -395,6 +412,81 @@ def analyze_single_file(args):
         return 1
 
 
+def analyze_single_file_all_targets(args):
+    """단일 파일 분석 - 모든 타겟 (PostgreSQL + MySQL)
+    
+    Args:
+        args: 명령줄 인자
+        
+    Returns:
+        int: 종료 코드 (0: 성공, 1: 실패)
+    """
+    from src.formatters.result_formatter import ResultFormatter
+    from .file_detector import detect_file_type
+    
+    targets = [TargetDatabase.POSTGRESQL, TargetDatabase.MYSQL]
+    
+    print(f"📄 파일 분석 중: {args.file}")
+    
+    # 파일 타입 감지
+    try:
+        with open(args.file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        file_type = detect_file_type(content)
+    except Exception as e:
+        logger.warning(f"파일 타입 감지 실패, 기본값(sql) 사용: {e}")
+        file_type = 'sql'
+    
+    for target_db in targets:
+        print(f"\n{'='*60}")
+        print(f"🎯 타겟 데이터베이스: {target_db.value}")
+        print(f"{'='*60}")
+        
+        try:
+            analyzer = OracleComplexityAnalyzer(
+                target_database=target_db,
+                output_dir=args.output_dir
+            )
+            
+            result = analyzer.analyze_file(args.file)
+            
+            if isinstance(result, dict) and 'total_objects' in result:
+                print_batch_result_console(result, target_db)
+                
+                if args.output in ['json', 'both']:
+                    json_output = ResultFormatter.batch_to_json(result)
+                    json_file = analyzer.export_json_string(json_output, args.file, file_type)
+                    print(f"✅ JSON 리포트 저장: {json_file}")
+                
+                if args.output in ['markdown', 'both']:
+                    md_output = ResultFormatter.batch_to_markdown(result, target_db.value)
+                    md_file = analyzer.export_markdown_string(md_output, args.file, file_type)
+                    print(f"✅ Markdown 리포트 저장: {md_file}")
+            else:
+                if args.output in ['console', 'both']:
+                    print_result_console(result)
+                
+                if args.output in ['json', 'both']:
+                    json_str = ResultFormatter.to_json(result)
+                    json_path = analyzer.export_json_string(json_str, args.file, file_type)
+                    print(f"✅ JSON 저장 완료: {json_path}")
+                
+                if args.output in ['markdown', 'both']:
+                    md_str = ResultFormatter.to_markdown(result)
+                    md_path = analyzer.export_markdown_string(md_str, args.file, file_type)
+                    print(f"✅ Markdown 저장 완료: {md_path}")
+                    
+        except Exception as e:
+            logger.error(f"{target_db.value} 분석 실패: {e}", exc_info=True)
+            continue
+    
+    print(f"\n{'='*60}")
+    print("✅ 모든 타겟 분석 완료")
+    print(f"{'='*60}")
+    
+    return 0
+
+
 def analyze_directory(args):
     """폴더 일괄 분석 실행
     
@@ -405,6 +497,10 @@ def analyze_directory(args):
         int: 종료 코드 (0: 성공, 1: 실패)
     """
     try:
+        # all/both 옵션인 경우 두 타겟 모두 분석
+        if is_all_targets(args.target):
+            return analyze_directory_all_targets(args)
+        
         target_db = normalize_target(args.target)
         
         analyzer = OracleComplexityAnalyzer(
@@ -474,6 +570,91 @@ def analyze_directory(args):
     except Exception as e:
         logger.error(f"예상치 못한 에러: {e}", exc_info=True)
         return 1
+
+
+def analyze_directory_all_targets(args):
+    """폴더 일괄 분석 - 모든 타겟 (PostgreSQL + MySQL)
+    
+    Args:
+        args: 명령줄 인자
+        
+    Returns:
+        int: 종료 코드 (0: 성공, 1: 실패)
+    """
+    targets = [TargetDatabase.POSTGRESQL, TargetDatabase.MYSQL]
+    
+    print(f"📁 폴더 검색 중: {args.directory}")
+    
+    for target_db in targets:
+        print(f"\n{'='*60}")
+        print(f"🎯 타겟 데이터베이스: {target_db.value}")
+        print(f"{'='*60}")
+        
+        try:
+            analyzer = OracleComplexityAnalyzer(
+                target_database=target_db,
+                output_dir=args.output_dir
+            )
+            
+            batch_analyzer = BatchAnalyzer(analyzer, max_workers=args.workers)
+            
+            sql_files = batch_analyzer.find_sql_files(args.directory)
+            
+            if not sql_files:
+                print("⚠️  분석할 파일이 없습니다.")
+                continue
+            
+            print(f"✅ {len(sql_files)}개 파일 발견")
+            print(f"🔄 분석 시작 (워커 수: {batch_analyzer.max_workers})")
+            
+            if not args.no_progress:
+                try:
+                    from tqdm import tqdm
+                    batch_result = batch_analyzer.analyze_folder_with_progress(
+                        args.directory,
+                        progress_callback=lambda current, total: None
+                    )
+                except ImportError:
+                    print("진행 중...", end='', flush=True)
+                    batch_result = batch_analyzer.analyze_folder(args.directory)
+                    print(" 완료!")
+            else:
+                batch_result = batch_analyzer.analyze_folder(args.directory)
+            
+            if args.output in ['console', 'both']:
+                if hasattr(batch_result, 'total_files'):
+                    print_batch_analysis_summary(batch_result, target_db)
+                else:
+                    print_batch_result_console(batch_result, target_db)
+            
+            if args.output in ['json', 'both']:
+                json_path = batch_analyzer.export_batch_json(
+                    batch_result,
+                    include_details=args.details
+                )
+                print(f"✅ JSON 저장 완료: {json_path}")
+            
+            if args.output in ['markdown', 'both']:
+                md_path = batch_analyzer.export_batch_markdown(
+                    batch_result,
+                    include_details=args.details
+                )
+                print(f"✅ Markdown 저장 완료: {md_path}")
+            
+            if args.output in ['markdown', 'both']:
+                print(f"\n📝 개별 파일 리포트 생성 중...")
+                individual_files = batch_analyzer.export_individual_reports(batch_result)
+                print(f"✅ {len(individual_files)}개 개별 리포트 생성 완료")
+                
+        except Exception as e:
+            logger.error(f"{target_db.value} 분석 실패: {e}", exc_info=True)
+            continue
+    
+    print(f"\n{'='*60}")
+    print("✅ 모든 타겟 분석 완료")
+    print(f"{'='*60}")
+    
+    return 0
 
 
 def main():

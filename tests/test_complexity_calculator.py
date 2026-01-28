@@ -221,7 +221,7 @@ class TestPLSQLComplexityCalculation:
         result = calc.calculate_plsql_complexity(parser)
         
         assert result.object_type == PLSQLObjectType.PACKAGE
-        assert result.base_score == 7.0  # PostgreSQL 패키지 기본 점수
+        assert result.base_score == 4.0  # PostgreSQL 패키지 기본 점수 (개선됨: 7.0 → 4.0)
     
     def test_calculate_package_mysql(self):
         """패키지 복잡도 계산 (MySQL)"""
@@ -236,7 +236,7 @@ class TestPLSQLComplexityCalculation:
         result = calc.calculate_plsql_complexity(parser)
         
         assert result.object_type == PLSQLObjectType.PACKAGE
-        assert result.base_score == 8.0  # MySQL 패키지 기본 점수
+        assert result.base_score == 5.0  # MySQL 패키지 기본 점수 (개선됨: 8.0 → 5.0)
         assert result.app_migration_penalty == 2.0  # MySQL 애플리케이션 이관 페널티
 
 
@@ -268,37 +268,42 @@ class TestStructuralComplexity:
 
 
 class TestDataVolumeScore:
-    """데이터 볼륨 점수 계산 테스트"""
+    """데이터 볼륨 점수 계산 테스트
+    
+    SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 기반 개선:
+    - 쿼리 길이 기준 변경: 200자 → 500자
+    - 점수 대폭 축소 (쿼리 길이와 복잡도의 약한 상관관계 반영)
+    """
     
     def test_data_volume_small(self):
-        """작은 쿼리 (< 200자)"""
+        """작은 쿼리 (< 500자)"""
         calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
         score = calc._calculate_data_volume_score(100)
-        assert score == 0.5
+        assert score == 0.3  # 기존 0.5 → 0.3
     
     def test_data_volume_medium_postgresql(self):
-        """중간 쿼리 (200-500자) - PostgreSQL"""
+        """중간 쿼리 (< 500자) - PostgreSQL"""
         calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
         score = calc._calculate_data_volume_score(300)
-        assert score == 1.0
+        assert score == 0.3  # 기존 1.0 → 0.3 (500자 미만은 모두 small)
     
     def test_data_volume_medium_mysql(self):
-        """중간 쿼리 (200-500자) - MySQL"""
+        """중간 쿼리 (< 500자) - MySQL"""
         calc = ComplexityCalculator(TargetDatabase.MYSQL)
         score = calc._calculate_data_volume_score(300)
-        assert score == 1.2
+        assert score == 0.3  # 기존 1.2 → 0.3 (500자 미만은 모두 small)
     
     def test_data_volume_large_postgresql(self):
         """큰 쿼리 (500-1000자) - PostgreSQL"""
         calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
         score = calc._calculate_data_volume_score(700)
-        assert score == 1.5
+        assert score == 0.5  # 기존 1.5 → 0.5
     
     def test_data_volume_xlarge_mysql(self):
         """매우 큰 쿼리 (1000자 이상) - MySQL"""
         calc = ComplexityCalculator(TargetDatabase.MYSQL)
         score = calc._calculate_data_volume_score(1500)
-        assert score == 2.5
+        assert score == 1.0  # 기존 2.5 → 1.0
 
 
 class TestConversionDifficulty:
@@ -314,16 +319,16 @@ class TestConversionDifficulty:
         assert score == 0.0
     
     def test_conversion_difficulty_few_hints(self):
-        """힌트가 1-2개인 경우"""
+        """힌트가 1-2개인 경우 (점수 상향: 0.5 → 1.0)"""
         query = "SELECT /*+ INDEX(users idx_users) */ * FROM users"
         parser = SQLParser(query)
         calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
         
         score = calc._calculate_conversion_difficulty(parser)
-        assert score == 0.5
+        assert score == 1.0  # 기존 0.5 → 1.0 (SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 반영)
     
     def test_conversion_difficulty_many_hints(self):
-        """힌트가 6개 이상인 경우"""
+        """힌트가 6개 이상인 경우 (점수 상향: 1.5 → 2.0)"""
         query = """
         SELECT /*+ INDEX(u idx_users) FULL(o) PARALLEL(4) USE_HASH(u o) 
                    LEADING(u) ORDERED */ 
@@ -333,17 +338,17 @@ class TestConversionDifficulty:
         calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
         
         score = calc._calculate_conversion_difficulty(parser)
-        assert score == 1.5
+        assert score == 2.0  # 기존 1.5 → 2.0 (SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 반영)
     
     def test_conversion_difficulty_with_oracle_features(self):
-        """Oracle 특화 기능이 있는 경우"""
+        """Oracle 특화 기능이 있는 경우 (ROWNUM 점수 하향: 0.3 → 0.2)"""
         query = "SELECT * FROM users WHERE ROWNUM <= 10"
         parser = SQLParser(query)
         calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
         
         score = calc._calculate_conversion_difficulty(parser)
-        # ROWNUM = 0.3점
-        assert score == 0.3
+        # ROWNUM = 0.2점 (기존 0.3 → 0.2, 단순 패턴)
+        assert score == 0.2
     
     def test_conversion_difficulty_with_complex_features(self):
         """복잡한 Oracle 특화 기능이 있는 경우"""
@@ -588,13 +593,17 @@ class TestDataVolumeScoreProperty:
     
     Feature: oracle-complexity-analyzer, Property 5: 데이터 볼륨 점수 계산 정확성
     Validates: Requirements 5.1, 5.2, 5.3, 5.4
+    
+    SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 기반 개선:
+    - 쿼리 길이 기준 변경: 200자 → 500자
+    - 점수 대폭 축소
     """
     
     @given(st.integers(min_value=1, max_value=5000))
     @settings(max_examples=100)
     def test_data_volume_score_by_length(self, query_length):
         """
-        Property 5: 데이터 볼륨 점수 계산 정확성
+        Property 5: 데이터 볼륨 점수 계산 정확성 (개선된 기준)
         
         For any SQL 쿼리에 대해, 쿼리 길이에 따라 타겟 DB별로 정의된 점수가 
         부여되어야 합니다.
@@ -603,15 +612,13 @@ class TestDataVolumeScoreProperty:
         calc_pg = ComplexityCalculator(TargetDatabase.POSTGRESQL)
         score_pg = calc_pg._calculate_data_volume_score(query_length)
         
-        # 예상 점수 계산 (PostgreSQL)
-        if query_length < 200:
-            expected_pg = 0.5
-        elif query_length < 500:
-            expected_pg = 1.0
+        # 예상 점수 계산 (PostgreSQL) - 개선된 기준
+        if query_length < 500:
+            expected_pg = 0.3
         elif query_length < 1000:
-            expected_pg = 1.5
+            expected_pg = 0.5
         else:
-            expected_pg = 2.0
+            expected_pg = 0.8
         
         assert score_pg == expected_pg, \
             f"PostgreSQL: Expected {expected_pg} for length {query_length}, got {score_pg}"
@@ -620,29 +627,27 @@ class TestDataVolumeScoreProperty:
         calc_mysql = ComplexityCalculator(TargetDatabase.MYSQL)
         score_mysql = calc_mysql._calculate_data_volume_score(query_length)
         
-        # 예상 점수 계산 (MySQL)
-        if query_length < 200:
-            expected_mysql = 0.5
-        elif query_length < 500:
-            expected_mysql = 1.2
+        # 예상 점수 계산 (MySQL) - 개선된 기준
+        if query_length < 500:
+            expected_mysql = 0.3
         elif query_length < 1000:
-            expected_mysql = 2.0
+            expected_mysql = 0.7
         else:
-            expected_mysql = 2.5
+            expected_mysql = 1.0
         
         assert score_mysql == expected_mysql, \
             f"MySQL: Expected {expected_mysql} for length {query_length}, got {score_mysql}"
     
     @given(st.sampled_from([
-        (50, 0.5, 0.5),      # 작은 쿼리
-        (300, 1.0, 1.2),     # 중간 쿼리
-        (700, 1.5, 2.0),     # 큰 쿼리
-        (1500, 2.0, 2.5),    # 매우 큰 쿼리
+        (50, 0.3, 0.3),      # 작은 쿼리 (< 500자)
+        (300, 0.3, 0.3),     # 중간 쿼리 (< 500자)
+        (700, 0.5, 0.7),     # 큰 쿼리 (500-1000자)
+        (1500, 0.8, 1.0),    # 매우 큰 쿼리 (1000자 이상)
     ]))
     @settings(max_examples=100)
     def test_data_volume_score_boundaries(self, test_case):
         """
-        Property 5: 경계값에서 데이터 볼륨 점수 정확성
+        Property 5: 경계값에서 데이터 볼륨 점수 정확성 (개선된 기준)
         
         For any 경계값 쿼리 길이에 대해, 올바른 점수가 부여되어야 합니다.
         """
@@ -862,16 +867,20 @@ class TestHintScoreProperty:
     
     Feature: oracle-complexity-analyzer, Property 7: 힌트 점수 계산 정확성
     Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5
+    
+    SQL_COMPLEXITY_SCORE_IMPROVEMENT.md 기반 개선:
+    - 힌트 점수 상향 (성능 튜닝 필요성 반영)
+    - 0개=0점, 1-2개=1.0점, 3-5개=1.5점, 6개 이상=2.0점
     """
     
     @given(st.integers(min_value=0, max_value=15))
     @settings(max_examples=100)
     def test_hint_score_by_count(self, hint_count):
         """
-        Property 7: 힌트 점수 계산 정확성
+        Property 7: 힌트 점수 계산 정확성 (개선된 기준)
         
         For any SQL 쿼리에 대해, 힌트 개수에 따라 정의된 점수가 부여되어야 합니다.
-        (0개=0점, 1-2개=0.5점, 3-5개=1.0점, 6개 이상=1.5점)
+        (0개=0점, 1-2개=1.0점, 3-5개=1.5점, 6개 이상=2.0점)
         """
         # 힌트 생성
         hints = ['INDEX', 'FULL', 'PARALLEL', 'USE_HASH', 'USE_NL', 
@@ -887,15 +896,15 @@ class TestHintScoreProperty:
         parser = SQLParser(query)
         calc = ComplexityCalculator(TargetDatabase.POSTGRESQL)
         
-        # 예상 점수 계산
+        # 예상 점수 계산 (개선된 기준)
         if hint_count == 0:
             expected_score = 0.0
         elif hint_count <= 2:
-            expected_score = 0.5
+            expected_score = 1.0   # 기존 0.5 → 1.0
         elif hint_count <= 5:
-            expected_score = 1.0
+            expected_score = 1.5   # 기존 1.0 → 1.5
         else:
-            expected_score = 1.5
+            expected_score = 2.0   # 기존 1.5 → 2.0
         
         # 실제 점수 계산
         actual_score = calc._calculate_conversion_difficulty(parser)
@@ -906,18 +915,18 @@ class TestHintScoreProperty:
     
     @given(st.sampled_from([
         (0, 0.0),
-        (1, 0.5),
-        (2, 0.5),
-        (3, 1.0),
-        (4, 1.0),
-        (5, 1.0),
-        (6, 1.5),
-        (10, 1.5),
+        (1, 1.0),   # 기존 0.5 → 1.0
+        (2, 1.0),   # 기존 0.5 → 1.0
+        (3, 1.5),   # 기존 1.0 → 1.5
+        (4, 1.5),   # 기존 1.0 → 1.5
+        (5, 1.5),   # 기존 1.0 → 1.5
+        (6, 2.0),   # 기존 1.5 → 2.0
+        (10, 2.0),  # 기존 1.5 → 2.0
     ]))
     @settings(max_examples=100)
     def test_hint_score_boundaries(self, test_case):
         """
-        Property 7: 경계값에서 힌트 점수 정확성
+        Property 7: 경계값에서 힌트 점수 정확성 (개선된 기준)
         
         For any 경계값 힌트 개수에 대해, 올바른 점수가 부여되어야 합니다.
         """
@@ -948,9 +957,9 @@ class TestHintScoreProperty:
     @settings(max_examples=100)
     def test_hint_score_max_limit(self, hint_count):
         """
-        Property 7: 힌트 점수 최대값 제한
+        Property 7: 힌트 점수 최대값 제한 (개선된 기준)
         
-        For any 힌트 개수에 대해, 점수는 최대 1.5점을 초과하지 않아야 합니다.
+        For any 힌트 개수에 대해, 점수는 최대 2.0점을 초과하지 않아야 합니다.
         """
         # 힌트 생성
         hints = ['INDEX', 'FULL', 'PARALLEL', 'USE_HASH', 'USE_NL', 
@@ -969,9 +978,9 @@ class TestHintScoreProperty:
         # 실제 점수 계산
         actual_score = calc._calculate_conversion_difficulty(parser)
         
-        # 검증: 최대 1.5점
-        assert actual_score <= 1.5, \
-            f"Hint score should be <= 1.5, got {actual_score} for {hint_count} hints"
+        # 검증: 최대 2.0점 (기존 1.5 → 2.0)
+        assert actual_score <= 2.0, \
+            f"Hint score should be <= 2.0, got {actual_score} for {hint_count} hints"
 
 
 class TestPLSQLComplexityScoreProperty:

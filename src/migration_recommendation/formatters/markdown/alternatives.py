@@ -24,6 +24,8 @@ class AlternativesFormatterMixin:
         """
         if language == "ko":
             content = "# 대안 전략\n\n"
+            content += "> **이 섹션의 목적**: 추천 전략 외에 고려할 수 있는 **다른 옵션**을 제시합니다.\n"
+            content += "> 각 전략의 장단점을 비교하여 조직 상황에 맞는 최적의 선택을 할 수 있습니다.\n\n"
             for i, alt in enumerate(alternatives, 1):
                 content += f"## 대안 {i}: {alt.strategy.value}\n\n"
                 content += "### 장점\n"
@@ -34,6 +36,8 @@ class AlternativesFormatterMixin:
                 content += AlternativesFormatterMixin._format_list(alt.considerations) + "\n\n"
         else:
             content = "# Alternative Strategies\n\n"
+            content += "> **Purpose**: Presents other options to consider besides the recommended strategy.\n"
+            content += "> Compare pros and cons to make the best choice for your organization.\n\n"
             for i, alt in enumerate(alternatives, 1):
                 content += f"## Alternative {i}: {alt.strategy.value}\n\n"
                 content += "### Pros\n"

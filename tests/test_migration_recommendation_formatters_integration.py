@@ -63,13 +63,13 @@ def test_end_to_end_workflow_replatform():
     
     # 검증: Markdown 한국어
     assert "# 요약" in markdown_ko or "# Executive Summary" in markdown_ko
-    assert "# 목차" in markdown_ko or "# Table of Contents" in markdown_ko
+    assert "## 목차" in markdown_ko or "## Table of Contents" in markdown_ko
     assert "# 추천 전략" in markdown_ko or "# Recommended Strategy" in markdown_ko
     assert "RDS for Oracle SE2" in markdown_ko or "replatform" in markdown_ko.lower()
     
     # 검증: Markdown 영어
     assert "# Executive Summary" in markdown_en
-    assert "# Table of Contents" in markdown_en
+    assert "## Table of Contents" in markdown_en
     assert "# Recommended Strategy" in markdown_en
     
     # 검증: JSON
@@ -89,20 +89,27 @@ def test_end_to_end_workflow_replatform():
 
 
 def test_end_to_end_workflow_aurora_mysql():
-    """End-to-End 워크플로우 테스트: Aurora MySQL 시나리오"""
+    """End-to-End 워크플로우 테스트: Aurora MySQL 시나리오
+    
+    v2.2.0 임계값 기준:
+    - PL/SQL 복잡도 <= 3.5
+    - SQL 복잡도 <= 4.0
+    - PL/SQL 개수 < 20
+    - BULK 연산 < 10
+    """
     # 1. 단순한 시스템 메트릭 (Aurora MySQL 추천)
     metrics = AnalysisMetrics(
         avg_cpu_usage=40.0,
         avg_io_load=300.0,
         avg_memory_usage=8.0,
-        avg_sql_complexity=3.5,
-        avg_plsql_complexity=4.2,
+        avg_sql_complexity=3.0,  # 4.0 이하
+        avg_plsql_complexity=3.0,  # 3.5 이하
         high_complexity_sql_count=1,
         high_complexity_plsql_count=0,
         total_sql_count=20,
-        total_plsql_count=10,
+        total_plsql_count=10,  # 20 미만
         high_complexity_ratio=0.03,
-        bulk_operation_count=3,
+        bulk_operation_count=3,  # 10 미만
         rac_detected=False
     )
     
@@ -141,20 +148,25 @@ def test_end_to_end_workflow_aurora_mysql():
 
 
 def test_end_to_end_workflow_aurora_postgresql():
-    """End-to-End 워크플로우 테스트: Aurora PostgreSQL 시나리오"""
+    """End-to-End 워크플로우 테스트: Aurora PostgreSQL 시나리오
+    
+    v2.2.0 임계값 기준:
+    - SQL 복잡도 < 6.0 (Replatform 임계값 미만)
+    - PL/SQL 복잡도 > 3.5 (MySQL 임계값 초과) 또는 BULK >= 10
+    """
     # 1. 중간 복잡도 시스템 메트릭 (Aurora PostgreSQL 추천)
     metrics = AnalysisMetrics(
         avg_cpu_usage=55.0,
         avg_io_load=700.0,
         avg_memory_usage=15.0,
-        avg_sql_complexity=6.0,
-        avg_plsql_complexity=5.8,
+        avg_sql_complexity=5.0,  # 6.0 미만 (Replatform 임계값 미만)
+        avg_plsql_complexity=4.5,  # 3.5 초과 (MySQL 제외), 6.0 미만 (Replatform 미만)
         high_complexity_sql_count=5,
         high_complexity_plsql_count=3,
         total_sql_count=25,
         total_plsql_count=15,
-        high_complexity_ratio=0.2,
-        bulk_operation_count=15,
+        high_complexity_ratio=0.2,  # 0.25 미만 (Replatform 임계값 미만)
+        bulk_operation_count=15,  # 10 이상 (MySQL 제외)
         rac_detected=False
     )
     
@@ -285,10 +297,10 @@ def test_multilingual_support():
     markdown_ko = markdown_formatter.format(recommendation, language="ko")
     markdown_en = markdown_formatter.format(recommendation, language="en")
     
-    # 한국어 검증
+    # 한국어 검증 (목차 헤더는 ## 레벨로 변경됨)
     assert "목차" in markdown_ko or "Table of Contents" in markdown_ko
     assert "추천 전략" in markdown_ko or "Recommended Strategy" in markdown_ko
-    assert "추천 근거" in markdown_ko or "Rationales" in markdown_ko
+    assert "추천 근거" in markdown_ko or "Rationale" in markdown_ko
     assert "대안 전략" in markdown_ko or "Alternative Strategies" in markdown_ko
     assert "위험 요소" in markdown_ko or "Risks and Mitigation" in markdown_ko
     assert "마이그레이션 로드맵" in markdown_ko or "Migration Roadmap" in markdown_ko
@@ -297,7 +309,7 @@ def test_multilingual_support():
     # 영어 검증
     assert "Table of Contents" in markdown_en
     assert "Recommended Strategy" in markdown_en
-    assert "Rationales" in markdown_en
+    assert "Rationale" in markdown_en
     assert "Alternative Strategies" in markdown_en
     assert "Risks and Mitigation" in markdown_en
     assert "Migration Roadmap" in markdown_en

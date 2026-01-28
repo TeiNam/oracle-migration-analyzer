@@ -238,6 +238,17 @@ class StatspackParser(BaseParser):
             count_packages=os_info_dict.get("COUNT_PACKAGE"),
             count_procedures=os_info_dict.get("COUNT_PROCEDURE"),
             count_functions=os_info_dict.get("COUNT_FUNCTION"),
+            # 추가 PL/SQL 오브젝트
+            count_triggers=os_info_dict.get("COUNT_TRIGGER"),
+            count_types=os_info_dict.get("COUNT_TYPE"),
+            count_type_bodies=os_info_dict.get("COUNT_TYPE_BODY"),
+            # 추가 스키마 오브젝트
+            count_views=os_info_dict.get("COUNT_VIEW"),
+            count_indexes=os_info_dict.get("COUNT_INDEX"),
+            count_sequences=os_info_dict.get("COUNT_SEQUENCE"),
+            count_lobs=os_info_dict.get("COUNT_LOB"),
+            count_materialized_views=os_info_dict.get("COUNT_MATERIALIZED_VIEW"),
+            count_db_links=os_info_dict.get("COUNT_DB_LINKS"),
             character_set=None,
             raw_data=os_info_dict
         )
