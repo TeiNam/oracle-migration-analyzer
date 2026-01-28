@@ -120,17 +120,17 @@ Oracle Migration Analyzer는 **3가지 핵심 영역**을 분석합니다:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  복잡도가 매우 높나? (PostgreSQL 5.0 이상 / MySQL 7.0 이상) │
-│  또는 복잡한 코드가 30% 이상인가?                       │
+│  복잡도가 매우 높나? (PostgreSQL 6.0 이상 / MySQL 7.0 이상) │
+│  또는 복잡한 코드가 25% 이상인가?                       │
 └─────────────────────────────────────────────────────────┘
          │                                    │
         YES                                  NO
          │                                    │
          ▼                                    ▼
-   ┌─────────┐                    ┌──────────────────────┐
-   │Replatform│                    │ BULK 연산이 많나?    │
-   │(RDS      │                    │ (10개 이상)          │
-   │Oracle)   │                    └──────────────────────┘
+   ┌─────────┐                    ┌──────────────────────────┐
+   │Replatform│                    │ PostgreSQL 친화적 기능?  │
+   │(RDS      │                    │ (기술적 근거 기반 판단)  │
+   │Oracle)   │                    └──────────────────────────┘
    └─────────┘                              │          │
                                           YES         NO
                                            │          │
@@ -147,6 +147,13 @@ Oracle Migration Analyzer는 **3가지 핵심 영역**을 분석합니다:
                                                   │MySQL │ │PostgreSQL│
                                                   └──────┘ └──────────┘
 ```
+
+**PostgreSQL 친화적 기능 (기술적 근거)**:
+- **CTE (WITH 절)**: PostgreSQL이 더 강력한 지원 (재귀 CTE 포함)
+- **분석 함수(윈도우 함수)**: PostgreSQL이 더 다양한 기능 지원
+- **BULK 연산**: PostgreSQL은 ARRAY로 대체 가능, MySQL은 미지원
+- **외부 패키지**: DBMS_LOB, UTL_FILE, DBMS_CRYPTO 등 PostgreSQL이 더 나은 대안 제공
+- **고급 기능**: PIPELINED, REF CURSOR, OBJECT TYPE 등 PostgreSQL이 더 높은 호환성
 
 
 
