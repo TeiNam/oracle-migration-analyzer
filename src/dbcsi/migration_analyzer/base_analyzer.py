@@ -367,13 +367,17 @@ class MigrationAnalyzer:
         memory_avg_gb = resource_analysis.get("memory_avg_gb", 0.0)
         physical_memory_gb = self.data.os_info.physical_memory_gb or 16.0
         
+        # SGA 권장사항
+        sga_advice = self.data.sga_advice if self.data.sga_advice else None
+        
         return recommend_instance_size(
             target,
             complexity_score,
             cpu_p99_pct,
             num_cpus,
             memory_avg_gb,
-            physical_memory_gb
+            physical_memory_gb,
+            sga_advice
         )
 
     def analyze(self, target: Optional[TargetDatabase] = None) -> Dict[TargetDatabase, MigrationComplexity]:

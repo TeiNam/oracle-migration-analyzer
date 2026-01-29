@@ -515,7 +515,7 @@ class EnhancedMigrationAnalyzer(MigrationAnalyzer):
         Returns:
             Optional[InstanceRecommendation]: 인스턴스 추천 정보 또는 None
         """
-        from .instance_recommender import R6I_INSTANCES, select_instance_type
+        from .instance_recommender import R6I_INSTANCES, select_instance_type, get_recommended_sga_from_advice
         
         # P99 CPU 사용
         p99_cpu = self._get_percentile_cpu("99th_percentile")
@@ -541,7 +541,20 @@ class EnhancedMigrationAnalyzer(MigrationAnalyzer):
             avg_memory = statistics.mean(m.total_gb for m in self.awr_data.memory_metrics)
             current_memory = max(current_memory, avg_memory)
         
-        required_memory_gb = int(current_memory * memory_multiplier)
+        # SGA 권장사항 반영
+        recommended_sga_gb = 0.0
+        if self.awr_data.sga_advice:
+            recommended_sga_gb = get_recommended_sga_from_advice(self.awr_data.sga_advice)
+        
+        # 권장 SGA가 있으면 PGA 추정치를 더해서 비교
+        if recommended_sga_gb > 0:
+            estimated_pga_gb = current_memory * 0.1  # PGA 추정: 현재 메모리의 약 10%
+            recommended_total_gb = recommended_sga_gb + estimated_pga_gb
+            base_memory = max(current_memory, recommended_total_gb)
+        else:
+            base_memory = current_memory
+        
+        required_memory_gb = int(base_memory * memory_multiplier)
         
         # CPU 요구사항 계산 (P99 + 30% 여유분)
         required_vcpu = int(p99_cpu * 1.3)
