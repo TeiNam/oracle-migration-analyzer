@@ -148,12 +148,21 @@ Oracle Migration Analyzer는 **3가지 핵심 영역**을 분석합니다:
                                                   └──────┘ └──────────┘
 ```
 
-**PostgreSQL 친화적 기능 (기술적 근거)**:
-- **CTE (WITH 절)**: PostgreSQL이 더 강력한 지원 (재귀 CTE 포함)
-- **분석 함수(윈도우 함수)**: PostgreSQL이 더 다양한 기능 지원
-- **BULK 연산**: PostgreSQL은 ARRAY로 대체 가능, MySQL은 미지원
-- **외부 패키지**: DBMS_LOB, UTL_FILE, DBMS_CRYPTO 등 PostgreSQL이 더 나은 대안 제공
-- **고급 기능**: PIPELINED, REF CURSOR, OBJECT TYPE 등 PostgreSQL이 더 높은 호환성
+**PostgreSQL 선호도 점수 (기술적 근거 기반)**:
+
+MySQL vs PostgreSQL 선택 시 **PostgreSQL 선호도 점수**를 계산하여 판단합니다. 점수가 **2점 이상**이면 PostgreSQL을 선택합니다.
+
+| 조건 | 점수 | 이유 |
+|------|------|------|
+| BULK 연산 10개 이상 | +3점 | MySQL 미지원, PostgreSQL은 ARRAY로 대체 가능 |
+| 고급 기능 사용 (PIPELINED, REF CURSOR 등) | +2점 | PostgreSQL이 더 높은 호환성 |
+| 외부 패키지 의존성 (DBMS_LOB, UTL_FILE 등) | +2점 | PostgreSQL이 더 나은 대안 제공 |
+| 중간 복잡도 (3.5 이상) | +1점 | PL/pgSQL 변환이 더 용이 |
+| 분석 함수 사용 (복잡도 4.5 이상) | +1점 | PostgreSQL이 더 다양한 기능 지원 |
+
+**예시**:
+- BULK 연산 15개 + 중간 복잡도 → 3 + 1 = **4점** → PostgreSQL 선택
+- 복잡도 낮음 + BULK 연산 없음 → **0점** → MySQL 선택 가능
 
 
 
