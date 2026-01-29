@@ -283,6 +283,13 @@ class RecommendationReportGenerator:
         estimated_peak_io = io_load * performance_buffer
         estimated_peak_memory = memory_usage * performance_buffer
         
+        # 현재 SGA 크기 고려 (SGA가 메모리 사용량보다 클 수 있음)
+        current_sga_gb = getattr(metrics, 'current_sga_gb', None) or 0.0
+        if current_sga_gb > 0:
+            # SGA + PGA 추정(10%) + 20% 여유분
+            sga_based_memory = current_sga_gb * 1.1 * 1.2
+            estimated_peak_memory = max(estimated_peak_memory, sga_based_memory)
+        
         # 워크로드 패턴 분석 (RAC 필요성 평가)
         rac_assessment, ha_recommendation = self._analyze_workload_pattern(metrics, strategy)
         
@@ -290,7 +297,8 @@ class RecommendationReportGenerator:
         if strategy == MigrationStrategy.REPLATFORM:
             instance_type, vcpu, memory_gb, rationale = self._get_rds_oracle_instance(
                 cpu_usage, io_load, memory_usage, 
-                estimated_peak_cpu, estimated_peak_io, estimated_peak_memory
+                estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
+                current_sga_gb
             )
         elif strategy == MigrationStrategy.REFACTOR_MYSQL:
             instance_type, vcpu, memory_gb, rationale = self._get_aurora_mysql_instance(
@@ -330,6 +338,9 @@ class RecommendationReportGenerator:
         """
         SGA 권장사항 기반 인스턴스 추천 계산
         
+        권장 SGA가 현재 SGA보다 큰 경우에만 SGA 기반 인스턴스를 추천합니다.
+        이는 메모리 증설이 필요한 경우에만 별도 추천을 제공하기 위함입니다.
+        
         Args:
             integrated_result: 통합 분석 결과
             metrics: 분석 메트릭
@@ -361,7 +372,12 @@ class RecommendationReportGenerator:
         
         # SGA 권장사항이 없으면 None 반환
         if not recommended_sga_gb or recommended_sga_gb <= 0:
-            return None, None, None, None, None
+            return None, None, None, None, current_sga_gb
+        
+        # 권장 SGA가 현재 SGA보다 작거나 같으면 SGA 기반 추천 불필요
+        # (현재 서버 사양 기반 추천으로 충분)
+        if current_sga_gb and recommended_sga_gb <= current_sga_gb:
+            return None, None, None, recommended_sga_gb, current_sga_gb
         
         # PGA 추정 (현재 메모리의 약 10%)
         estimated_pga_gb = metrics.avg_memory_usage * 0.1 if metrics.avg_memory_usage > 0 else 0.0
@@ -385,79 +401,103 @@ class RecommendationReportGenerator:
         return instance_type, selected_vcpu, selected_memory_gib, recommended_sga_gb, current_sga_gb
     
     def _get_rds_oracle_instance(self, cpu_usage, io_load, memory_usage, 
-                                  estimated_peak_cpu, estimated_peak_io, estimated_peak_memory):
-        """RDS Oracle SE2 인스턴스 추천"""
-        if estimated_peak_memory > 32:
-            return "db.r6i.2xlarge", 8, 64, self._format_rationale(
+                                  estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
+                                  current_sga_gb: float = 0.0):
+        """RDS Oracle SE2 인스턴스 추천
+        
+        Args:
+            cpu_usage: 평균 CPU 사용률
+            io_load: 평균 I/O 부하
+            memory_usage: 평균 메모리 사용량
+            estimated_peak_cpu: 예상 피크 CPU
+            estimated_peak_io: 예상 피크 I/O
+            estimated_peak_memory: 예상 피크 메모리
+            current_sga_gb: 현재 SGA 크기 (GB)
+        """
+        # 필요한 메모리 계산 (GB)
+        required_memory_gb = int(estimated_peak_memory + 0.5)
+        required_memory_gb = max(required_memory_gb, 16)  # 최소 16GB
+        
+        # select_instance_type을 사용하여 적절한 인스턴스 선택
+        instance_type = select_instance_type(2, required_memory_gb)
+        
+        if instance_type and instance_type in R6I_INSTANCES:
+            vcpu, memory_gb = R6I_INSTANCES[instance_type]
+            
+            # SGA 정보가 있으면 rationale에 포함
+            sga_info = ""
+            if current_sga_gb > 0:
+                sga_info = f"\n- 현재 SGA 크기: {current_sga_gb:.1f} GB"
+            
+            rationale = self._format_rationale(
                 cpu_usage, io_load, memory_usage,
                 estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
-                "db.r6i.2xlarge", 8, 64,
-                "예상 피크 메모리가 32GB를 초과하므로 메모리 부족 없이 안정적인 성능을 제공합니다."
+                instance_type, vcpu, memory_gb,
+                f"예상 피크 메모리({estimated_peak_memory:.1f}GB)를 고려하여 메모리 부족 없이 안정적인 성능을 제공합니다.{sga_info}"
             )
-        elif estimated_peak_memory > 16 or cpu_usage >= 50 or io_load >= 500:
-            return "db.r6i.xlarge", 4, 32, self._format_rationale(
-                cpu_usage, io_load, memory_usage,
-                estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
-                "db.r6i.xlarge", 4, 32,
-                "현재 워크로드에 적합하며, 피크 시에도 충분한 여유가 있습니다."
-            )
-        else:
-            return "db.r6i.large", 2, 16, self._format_rationale(
-                cpu_usage, io_load, memory_usage,
-                estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
-                "db.r6i.large", 2, 16,
-                "비용 효율적이며, 필요시 상위 인스턴스로 업그레이드 가능합니다."
-            )
+            return instance_type, vcpu, memory_gb, rationale
+        
+        # 기본값 (fallback)
+        return "db.r6i.2xlarge", 8, 64, self._format_rationale(
+            cpu_usage, io_load, memory_usage,
+            estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
+            "db.r6i.2xlarge", 8, 64,
+            "예상 피크 메모리가 32GB를 초과하므로 메모리 부족 없이 안정적인 성능을 제공합니다."
+        )
     
     def _get_aurora_mysql_instance(self, cpu_usage, io_load, memory_usage,
                                     estimated_peak_cpu, estimated_peak_io, estimated_peak_memory):
         """Aurora MySQL 인스턴스 추천"""
-        if estimated_peak_memory > 32:
-            return "db.r6i.2xlarge", 8, 64, self._format_rationale(
+        # 필요한 메모리 계산 (GB)
+        required_memory_gb = int(estimated_peak_memory + 0.5)
+        required_memory_gb = max(required_memory_gb, 16)  # 최소 16GB
+        
+        # select_instance_type을 사용하여 적절한 인스턴스 선택
+        instance_type = select_instance_type(2, required_memory_gb)
+        
+        if instance_type and instance_type in R6I_INSTANCES:
+            vcpu, memory_gb = R6I_INSTANCES[instance_type]
+            return instance_type, vcpu, memory_gb, self._format_rationale(
                 cpu_usage, io_load, memory_usage,
                 estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
-                "db.r6i.2xlarge", 8, 64,
+                instance_type, vcpu, memory_gb,
                 "Aurora MySQL의 자동 스케일링 기능으로 피크 시 추가 확장이 가능합니다."
             )
-        elif estimated_peak_memory > 16 or cpu_usage >= 50 or io_load >= 500:
-            return "db.r6i.xlarge", 4, 32, self._format_rationale(
-                cpu_usage, io_load, memory_usage,
-                estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
-                "db.r6i.xlarge", 4, 32,
-                "Aurora MySQL의 자동 스케일링으로 필요시 유연하게 확장 가능합니다."
-            )
-        else:
-            return "db.r6i.large", 2, 16, self._format_rationale(
-                cpu_usage, io_load, memory_usage,
-                estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
-                "db.r6i.large", 2, 16,
-                "Aurora MySQL의 자동 스케일링으로 필요시 유연하게 확장 가능합니다."
-            )
+        
+        # 기본값 (fallback)
+        return "db.r6i.2xlarge", 8, 64, self._format_rationale(
+            cpu_usage, io_load, memory_usage,
+            estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
+            "db.r6i.2xlarge", 8, 64,
+            "Aurora MySQL의 자동 스케일링 기능으로 피크 시 추가 확장이 가능합니다."
+        )
     
     def _get_aurora_postgresql_instance(self, cpu_usage, io_load, memory_usage,
                                          estimated_peak_cpu, estimated_peak_io, estimated_peak_memory):
         """Aurora PostgreSQL 인스턴스 추천"""
-        if estimated_peak_memory > 32:
-            return "db.r6i.2xlarge", 8, 64, self._format_rationale(
+        # 필요한 메모리 계산 (GB)
+        required_memory_gb = int(estimated_peak_memory + 0.5)
+        required_memory_gb = max(required_memory_gb, 16)  # 최소 16GB
+        
+        # select_instance_type을 사용하여 적절한 인스턴스 선택
+        instance_type = select_instance_type(2, required_memory_gb)
+        
+        if instance_type and instance_type in R6I_INSTANCES:
+            vcpu, memory_gb = R6I_INSTANCES[instance_type]
+            return instance_type, vcpu, memory_gb, self._format_rationale(
                 cpu_usage, io_load, memory_usage,
                 estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
-                "db.r6i.2xlarge", 8, 64,
+                instance_type, vcpu, memory_gb,
                 "Aurora PostgreSQL의 자동 스케일링 기능으로 피크 시 추가 확장이 가능합니다."
             )
-        elif estimated_peak_memory > 16 or cpu_usage >= 50 or io_load >= 500:
-            return "db.r6i.xlarge", 4, 32, self._format_rationale(
-                cpu_usage, io_load, memory_usage,
-                estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
-                "db.r6i.xlarge", 4, 32,
-                "Aurora PostgreSQL의 자동 스케일링으로 필요시 유연하게 확장 가능합니다."
-            )
-        else:
-            return "db.r6i.large", 2, 16, self._format_rationale(
-                cpu_usage, io_load, memory_usage,
-                estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
-                "db.r6i.large", 2, 16,
-                "Aurora PostgreSQL의 자동 스케일링으로 필요시 유연하게 확장 가능합니다."
-            )
+        
+        # 기본값 (fallback)
+        return "db.r6i.2xlarge", 8, 64, self._format_rationale(
+            cpu_usage, io_load, memory_usage,
+            estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
+            "db.r6i.2xlarge", 8, 64,
+            "Aurora PostgreSQL의 자동 스케일링 기능으로 피크 시 추가 확장이 가능합니다."
+        )
     
     def _format_rationale(self, cpu_usage, io_load, memory_usage,
                           estimated_peak_cpu, estimated_peak_io, estimated_peak_memory,
