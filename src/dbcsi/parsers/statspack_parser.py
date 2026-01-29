@@ -182,7 +182,7 @@ class StatspackParser(BaseParser):
                         sga_size=int(parts[1]),
                         sga_size_factor=float(parts[2]),
                         estd_db_time=int(parts[3]),
-                        estd_db_time_factor=int(parts[4]),
+                        estd_db_time_factor=float(parts[4]),
                         estd_physical_reads=int(parts[5]),
                         sga_target=int(parts[6])
                     ))

@@ -160,7 +160,7 @@ def sga_advice_strategy(draw):
         sga_size=draw(st.integers(min_value=100, max_value=100000)),
         sga_size_factor=draw(st.floats(min_value=0.1, max_value=10.0)),
         estd_db_time=draw(st.integers(min_value=0, max_value=1000000)),
-        estd_db_time_factor=draw(st.integers(min_value=0, max_value=1000)),
+        estd_db_time_factor=draw(st.floats(min_value=0.0, max_value=10.0)),
         estd_physical_reads=draw(st.integers(min_value=0, max_value=10000000)),
         sga_target=draw(st.integers(min_value=100, max_value=100000)),
     )

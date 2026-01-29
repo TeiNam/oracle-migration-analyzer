@@ -131,7 +131,7 @@ class SGAAdvice:
     sga_size: int
     sga_size_factor: float
     estd_db_time: int
-    estd_db_time_factor: int
+    estd_db_time_factor: float  # AWR에서 소수점 값 (예: 0.4188)
     estd_physical_reads: int
     sga_target: int
 
