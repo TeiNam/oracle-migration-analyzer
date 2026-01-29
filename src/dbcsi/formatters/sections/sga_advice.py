@@ -66,8 +66,8 @@ class SGAAdviceFormatter:
                 (a for a in inst_advice_list if abs(a.sga_size_factor - 1.0) < 0.01), None
             )
             
-            # 최적 SGA 찾기 (DB Time이 가장 낮은 것)
-            optimal_sga = min(inst_advice_list, key=lambda x: x.estd_db_time)
+            # 최적 SGA 찾기 (Physical Reads 기준)
+            optimal_sga = SGAAdviceFormatter._find_optimal_sga(inst_advice_list, current_sga)
             
             # 요약 정보
             if not is_rac:
@@ -170,6 +170,84 @@ class SGAAdviceFormatter:
         return instances
     
     @staticmethod
+    def _find_optimal_sga(
+        advice_list: List[SGAAdvice], 
+        current_sga: Optional[SGAAdvice]
+    ) -> Optional[SGAAdvice]:
+        """Physical Reads 기준으로 최적 SGA 크기 찾기
+        
+        알고리즘:
+        1. Size Factor 1.0(현재) 기준으로 Physical Reads 확인
+        2. Size Factor > 1.0에서 Physical Reads가 현재와 동일하면:
+           - 축소 가능: Size Factor < 1.0에서 동일한 Physical Reads를 가진 가장 작은 Size Factor
+        3. Size Factor > 1.0에서 Physical Reads가 감소하면:
+           - 확장 필요: 가장 많이 반복되는 Physical Reads 값의 가장 작은 Size Factor
+        
+        Args:
+            advice_list: SGAAdvice 객체 리스트 (단일 인스턴스)
+            current_sga: 현재 SGA (size_factor=1.0)
+            
+        Returns:
+            최적 SGAAdvice 또는 None
+        """
+        if not advice_list or not current_sga:
+            return None
+        
+        # size_factor 기준으로 정렬
+        sorted_list = sorted(advice_list, key=lambda x: x.sga_size_factor)
+        
+        current_physical_reads = current_sga.estd_physical_reads
+        
+        # Size Factor > 1.0인 항목들 확인
+        larger_factors = [a for a in sorted_list if a.sga_size_factor > 1.0]
+        
+        if not larger_factors:
+            # Size Factor > 1.0인 데이터가 없으면 현재 유지
+            return current_sga
+        
+        # Size Factor > 1.0에서 Physical Reads가 현재와 동일한지 확인
+        all_same_above = all(
+            a.estd_physical_reads == current_physical_reads for a in larger_factors
+        )
+        
+        if all_same_above:
+            # 축소 가능: Size Factor < 1.0에서 동일한 Physical Reads를 가진 가장 작은 값 찾기
+            smaller_factors = [
+                a for a in sorted_list 
+                if a.sga_size_factor < 1.0 and a.estd_physical_reads == current_physical_reads
+            ]
+            if smaller_factors:
+                # 가장 작은 size_factor 반환
+                return min(smaller_factors, key=lambda x: x.sga_size_factor)
+            else:
+                # 축소 불가, 현재 유지
+                return current_sga
+        else:
+            # 확장 필요: 가장 많이 반복되는 Physical Reads 값의 가장 작은 Size Factor 찾기
+            factors_from_current = [a for a in sorted_list if a.sga_size_factor >= 1.0]
+            factors_from_current = sorted(factors_from_current, key=lambda x: x.sga_size_factor)
+            
+            if len(factors_from_current) < 2:
+                return current_sga
+            
+            # Physical Reads 값별 빈도수 계산
+            reads_count: Dict[int, int] = {}
+            for a in factors_from_current:
+                reads = a.estd_physical_reads
+                reads_count[reads] = reads_count.get(reads, 0) + 1
+            
+            # 가장 많이 반복되는 Physical Reads 값 찾기
+            max_count = max(reads_count.values())
+            most_common_reads = [r for r, c in reads_count.items() if c == max_count]
+            
+            # 가장 많이 반복되는 값 중 가장 작은 Physical Reads 선택 (성능이 좋은 것)
+            target_reads = min(most_common_reads)
+            
+            # 해당 Physical Reads를 가진 항목들 중 가장 작은 Size Factor 반환
+            candidates = [a for a in factors_from_current if a.estd_physical_reads == target_reads]
+            return min(candidates, key=lambda x: x.sga_size_factor)
+    
+    @staticmethod
     def _format_en(data: StatspackData) -> str:
         """영어 SGA 조정 권장사항"""
         lines = []
@@ -196,7 +274,7 @@ class SGAAdviceFormatter:
             current_sga = next(
                 (a for a in inst_advice_list if abs(a.sga_size_factor - 1.0) < 0.01), None
             )
-            optimal_sga = min(inst_advice_list, key=lambda x: x.estd_db_time)
+            optimal_sga = SGAAdviceFormatter._find_optimal_sga(inst_advice_list, current_sga)
             
             if not is_rac:
                 lines.append("### Summary\n")
