@@ -82,6 +82,9 @@ cli_results/
 *.swp
 *.swo
 
+# Sample data with sensitive information
+*SAMPLED*
+
 # OS specific
 .DS_Store
 Thumbs.db
