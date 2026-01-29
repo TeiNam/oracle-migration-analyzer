@@ -5,7 +5,7 @@
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from ..data_models import (
     IntegratedAnalysisResult,
     AnalysisMetrics,
@@ -23,6 +23,13 @@ from .alternative_generator import AlternativeGenerator
 from .risk_generator import RiskGenerator
 from .roadmap_generator import RoadmapGenerator
 from .summary_generator import SummaryGenerator
+
+# SGA 기반 인스턴스 추천을 위한 import
+from src.dbcsi.migration_analyzer.instance_recommender import (
+    get_recommended_sga_from_advice,
+    select_instance_type,
+    R6I_INSTANCES,
+)
 
 # 로거 초기화
 logger = logging.getLogger(__name__)
@@ -116,7 +123,9 @@ class RecommendationReportGenerator:
         
         # 8. 인스턴스 추천 생성
         logger.info("인스턴스 추천 생성 중")
-        instance_recommendation = self._generate_instance_recommendation(recommended_strategy, metrics)
+        instance_recommendation = self._generate_instance_recommendation(
+            recommended_strategy, metrics, integrated_result
+        )
         logger.info("인스턴스 추천 생성 완료")
         
         # 9. MigrationRecommendation 객체 생성 (Executive Summary 제외)
@@ -247,7 +256,8 @@ class RecommendationReportGenerator:
     def _generate_instance_recommendation(
         self,
         strategy: MigrationStrategy,
-        metrics: AnalysisMetrics
+        metrics: AnalysisMetrics,
+        integrated_result: Optional[IntegratedAnalysisResult] = None
     ) -> InstanceRecommendation:
         """
         인스턴스 추천 생성
@@ -257,6 +267,7 @@ class RecommendationReportGenerator:
         Args:
             strategy: 추천 전략
             metrics: 분석 메트릭
+            integrated_result: 통합 분석 결과 (SGA advice 추출용)
             
         Returns:
             InstanceRecommendation: 인스턴스 추천
@@ -274,6 +285,7 @@ class RecommendationReportGenerator:
         
         # 워크로드 패턴 분석 (RAC 필요성 평가)
         rac_assessment, ha_recommendation = self._analyze_workload_pattern(metrics, strategy)
+        
         # 인스턴스 타입 결정 (메모리 기준)
         if strategy == MigrationStrategy.REPLATFORM:
             instance_type, vcpu, memory_gb, rationale = self._get_rds_oracle_instance(
@@ -291,14 +303,86 @@ class RecommendationReportGenerator:
                 estimated_peak_cpu, estimated_peak_io, estimated_peak_memory
             )
         
+        # SGA 기반 인스턴스 추천 계산
+        sga_based_instance, sga_based_vcpu, sga_based_memory, recommended_sga_gb, current_sga_gb = \
+            self._calculate_sga_based_instance(integrated_result, metrics)
+        
         return InstanceRecommendation(
             instance_type=instance_type,
             vcpu=vcpu,
             memory_gb=memory_gb,
             rationale=rationale,
             rac_assessment=rac_assessment,
-            ha_recommendation=ha_recommendation
+            ha_recommendation=ha_recommendation,
+            # SGA 기반 인스턴스 추천
+            sga_based_instance_type=sga_based_instance,
+            sga_based_vcpu=sga_based_vcpu,
+            sga_based_memory_gb=sga_based_memory,
+            recommended_sga_gb=recommended_sga_gb,
+            current_sga_gb=current_sga_gb
         )
+    
+    def _calculate_sga_based_instance(
+        self,
+        integrated_result: Optional[IntegratedAnalysisResult],
+        metrics: AnalysisMetrics
+    ) -> Tuple[Optional[str], Optional[int], Optional[int], Optional[float], Optional[float]]:
+        """
+        SGA 권장사항 기반 인스턴스 추천 계산
+        
+        Args:
+            integrated_result: 통합 분석 결과
+            metrics: 분석 메트릭
+            
+        Returns:
+            Tuple: (인스턴스 타입, vCPU, 메모리 GB, 권장 SGA GB, 현재 SGA GB)
+        """
+        recommended_sga_gb: Optional[float] = None
+        current_sga_gb: Optional[float] = None
+        
+        # 1. 먼저 metrics에서 SGA 정보 확인 (리포트 파싱 결과)
+        if hasattr(metrics, 'recommended_sga_gb') and getattr(metrics, 'recommended_sga_gb', None):
+            recommended_sga_gb = getattr(metrics, 'recommended_sga_gb')
+            current_sga_gb = getattr(metrics, 'current_sga_gb', None)
+        
+        # 2. dbcsi_result에서 sga_advice 확인 (원본 파일 파싱 결과)
+        if recommended_sga_gb is None and integrated_result and integrated_result.dbcsi_result:
+            dbcsi_result = integrated_result.dbcsi_result
+            sga_advice = getattr(dbcsi_result, 'sga_advice', None)
+            
+            if sga_advice:
+                recommended_sga_gb = get_recommended_sga_from_advice(sga_advice)
+                
+                # 현재 SGA 크기 계산 (size_factor가 1.0인 항목에서)
+                for advice in sga_advice:
+                    if abs(advice.sga_size_factor - 1.0) < 0.01:
+                        current_sga_gb = advice.sga_size / 1024.0  # MB to GB
+                        break
+        
+        # SGA 권장사항이 없으면 None 반환
+        if not recommended_sga_gb or recommended_sga_gb <= 0:
+            return None, None, None, None, None
+        
+        # PGA 추정 (현재 메모리의 약 10%)
+        estimated_pga_gb = metrics.avg_memory_usage * 0.1 if metrics.avg_memory_usage > 0 else 0.0
+        
+        # 권장 SGA + PGA + 20% 여유분
+        required_memory_gb = int((recommended_sga_gb + estimated_pga_gb) * 1.2 + 0.5)
+        required_memory_gb = max(required_memory_gb, 16)  # 최소 16GB
+        
+        # CPU 요구사항 (현재 CPU 기준)
+        num_cpus = metrics.num_cpus or 8
+        required_vcpu = max(num_cpus, 2)
+        
+        # 인스턴스 타입 선택
+        instance_type = select_instance_type(required_vcpu, required_memory_gb)
+        if not instance_type:
+            return None, None, None, recommended_sga_gb, current_sga_gb
+        
+        # 선택된 인스턴스 스펙
+        selected_vcpu, selected_memory_gib = R6I_INSTANCES[instance_type]
+        
+        return instance_type, selected_vcpu, selected_memory_gib, recommended_sga_gb, current_sga_gb
     
     def _get_rds_oracle_instance(self, cpu_usage, io_load, memory_usage, 
                                   estimated_peak_cpu, estimated_peak_io, estimated_peak_memory):

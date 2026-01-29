@@ -103,6 +103,32 @@ class InstanceFormatterMixin:
 > **여유율 산정 기준**: {buffer_desc}
 """
         
+        # SGA 기반 인스턴스 비교 테이블 추가
+        if instance.sga_based_instance_type:
+            result += f"""
+## 인스턴스 추천 비교
+
+SGA 권장사항을 반영한 인스턴스와 현재 서버 사양 기반 인스턴스를 비교합니다.
+
+| 구분 | 현재 서버 사양 기반 | SGA 권장사항 기반 |
+|------|---------------------|-------------------|
+| **인스턴스 타입** | {instance.instance_type} | {instance.sga_based_instance_type} |
+| **vCPU** | {instance.vcpu} | {instance.sga_based_vcpu} |
+| **메모리** | {instance.memory_gb} GB | {instance.sga_based_memory_gb} GB |
+
+### SGA 분석 결과
+
+| 항목 | 값 |
+|------|-----|
+| **현재 SGA 크기** | {instance.current_sga_gb:.1f} GB |
+| **권장 SGA 크기** | {instance.recommended_sga_gb:.1f} GB |
+| **SGA 증가율** | {((instance.recommended_sga_gb / instance.current_sga_gb - 1) * 100):.1f}% |
+
+> **참고**: SGA 권장사항은 AWR 리포트의 Buffer Pool Advisory 데이터를 기반으로 
+> Physical Reads가 더 이상 감소하지 않는 최적 지점을 분석한 결과입니다.
+> 권장 SGA가 현재 SGA보다 큰 경우, 메모리 증설을 통해 I/O 성능을 개선할 수 있습니다.
+"""
+        
         # RAC 평가 추가 (있는 경우)
         if instance.rac_assessment:
             result += f"""
@@ -166,6 +192,32 @@ class InstanceFormatterMixin:
 {instance.rationale}
 
 > **Buffer Rate Basis**: {buffer_desc}
+"""
+        
+        # SGA 기반 인스턴스 비교 테이블 추가
+        if instance.sga_based_instance_type:
+            result += f"""
+## Instance Recommendation Comparison
+
+Comparison between current server specs based instance and SGA recommendation based instance.
+
+| Category | Current Server Specs | SGA Recommendation |
+|----------|---------------------|-------------------|
+| **Instance Type** | {instance.instance_type} | {instance.sga_based_instance_type} |
+| **vCPU** | {instance.vcpu} | {instance.sga_based_vcpu} |
+| **Memory** | {instance.memory_gb} GB | {instance.sga_based_memory_gb} GB |
+
+### SGA Analysis Results
+
+| Item | Value |
+|------|-------|
+| **Current SGA Size** | {instance.current_sga_gb:.1f} GB |
+| **Recommended SGA Size** | {instance.recommended_sga_gb:.1f} GB |
+| **SGA Increase Rate** | {((instance.recommended_sga_gb / instance.current_sga_gb - 1) * 100):.1f}% |
+
+> **Note**: SGA recommendation is based on Buffer Pool Advisory data from AWR report,
+> analyzing the optimal point where Physical Reads no longer decrease.
+> If recommended SGA is larger than current SGA, memory expansion can improve I/O performance.
 """
         
         # RAC 평가 추가 (있는 경우)

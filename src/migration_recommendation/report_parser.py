@@ -107,6 +107,11 @@ class MarkdownReportParser:
             metrics['peak_io_load'] = self._extract_peak_io(content)
             metrics['peak_memory_usage'] = self._extract_peak_memory(content)
             
+            # SGA 권장사항 파싱
+            sga_advice = self._extract_sga_advice(content)
+            metrics['current_sga_gb'] = sga_advice.get('current_sga_gb')
+            metrics['recommended_sga_gb'] = sga_advice.get('recommended_sga_gb')
+            
             logger.info(f"DBCSI MD 파싱 완료: {metrics.get('db_name')} ({metrics.get('report_type')})")
             return metrics
             
@@ -247,6 +252,88 @@ class MarkdownReportParser:
             if match:
                 return float(match.group(1))
         return 0.0
+    
+    def _extract_sga_advice(self, content: str) -> Dict[str, Any]:
+        """SGA 권장사항 추출
+        
+        AWR 리포트의 SGA 조정 권장사항 섹션에서 현재 SGA와 권장 SGA를 추출합니다.
+        
+        형식:
+        | 현재 SGA 크기 | 88,064 MB | 현재 설정된 SGA 메모리 크기 |
+        | **권장 SGA 크기** | **154,112 MB** | **최적 성능을 위한 권장 크기** |
+        
+        Returns:
+            Dict with 'current_sga_mb', 'recommended_sga_mb', 'current_sga_gb', 'recommended_sga_gb'
+        """
+        result: Dict[str, Any] = {
+            'current_sga_mb': None,
+            'recommended_sga_mb': None,
+            'current_sga_gb': None,
+            'recommended_sga_gb': None
+        }
+        
+        # 현재 SGA 크기 추출
+        current_patterns = [
+            r'\|\s*현재 SGA 크기\s*\|\s*([\d,]+)\s*MB',
+            r'현재 SGA 크기[^|]*\|\s*([\d,]+)\s*MB',
+        ]
+        for pattern in current_patterns:
+            match = re.search(pattern, content)
+            if match:
+                current_mb = int(match.group(1).replace(',', ''))
+                result['current_sga_mb'] = current_mb
+                result['current_sga_gb'] = current_mb / 1024.0
+                break
+        
+        # 권장 SGA 크기 추출 (볼드 처리된 경우도 처리)
+        recommended_patterns = [
+            r'\|\s*\*?\*?권장 SGA 크기\*?\*?\s*\|\s*\*?\*?([\d,]+)\s*MB\*?\*?',
+            r'권장 SGA 크기[^|]*\|\s*\*?\*?([\d,]+)\s*MB',
+        ]
+        for pattern in recommended_patterns:
+            match = re.search(pattern, content)
+            if match:
+                recommended_mb = int(match.group(1).replace(',', ''))
+                result['recommended_sga_mb'] = recommended_mb
+                result['recommended_sga_gb'] = recommended_mb / 1024.0
+                break
+        
+        # RAC 환경에서 여러 인스턴스의 권장 SGA 중 최대값 찾기
+        # 인스턴스 N 섹션에서 권장 SGA 추출
+        instance_pattern = r'###\s*인스턴스\s*\d+.*?(?=###\s*인스턴스|\Z)'
+        instance_matches = re.findall(instance_pattern, content, re.DOTALL)
+        
+        if len(instance_matches) > 1:
+            max_recommended_mb = 0
+            max_current_mb = 0
+            
+            for instance_content in instance_matches:
+                # 각 인스턴스의 권장 SGA 추출
+                for pattern in recommended_patterns:
+                    match = re.search(pattern, instance_content)
+                    if match:
+                        rec_mb = int(match.group(1).replace(',', ''))
+                        if rec_mb > max_recommended_mb:
+                            max_recommended_mb = rec_mb
+                        break
+                
+                # 각 인스턴스의 현재 SGA 추출
+                for pattern in current_patterns:
+                    match = re.search(pattern, instance_content)
+                    if match:
+                        cur_mb = int(match.group(1).replace(',', ''))
+                        if cur_mb > max_current_mb:
+                            max_current_mb = cur_mb
+                        break
+            
+            if max_recommended_mb > 0:
+                result['recommended_sga_mb'] = max_recommended_mb
+                result['recommended_sga_gb'] = max_recommended_mb / 1024.0
+            if max_current_mb > 0:
+                result['current_sga_mb'] = max_current_mb
+                result['current_sga_gb'] = max_current_mb / 1024.0
+        
+        return result
     
     def extract_oracle_features_summary(self, content: str) -> List[str]:
         """전체 리포트에서 감지된 Oracle 특화 기능 목록 추출

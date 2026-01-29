@@ -469,6 +469,9 @@ class AnalysisResultIntegrator:
             top_workload_profiles=dbcsi_metrics.get('top_workload_profiles', []) if dbcsi_metrics else [],
             # 신규 필드: 리포트 타입
             report_type=dbcsi_metrics.get('report_type') if dbcsi_metrics else None,
+            # 신규 필드: SGA 권장사항
+            current_sga_gb=dbcsi_metrics.get('current_sga_gb') if dbcsi_metrics else None,
+            recommended_sga_gb=dbcsi_metrics.get('recommended_sga_gb') if dbcsi_metrics else None,
             # 신규 필드: Oracle 특화 기능 및 외부 의존성 (복잡도 리포트에서 추출)
             detected_oracle_features_summary=self._aggregate_oracle_features(plsql_analysis),
             detected_external_dependencies_summary=self._merge_external_dependencies(

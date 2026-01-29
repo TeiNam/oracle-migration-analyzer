@@ -198,6 +198,10 @@ class AnalysisMetrics:
     # === 신규 필드: 리포트 타입 ===
     report_type: Optional[str] = None  # "awr" 또는 "statspack"
     
+    # === 신규 필드: SGA 권장사항 (리포트 파싱에서 추출) ===
+    current_sga_gb: Optional[float] = None  # 현재 SGA 크기 (GB)
+    recommended_sga_gb: Optional[float] = None  # 권장 SGA 크기 (GB)
+    
     # === 신규 필드: Oracle 특화 기능 및 외부 의존성 (복잡도 리포트에서 추출) ===
     detected_oracle_features_summary: Dict[str, int] = field(default_factory=dict)  # 기능명: 개수
     detected_external_dependencies_summary: Dict[str, int] = field(default_factory=dict)  # 의존성명: 개수
@@ -298,6 +302,13 @@ class InstanceRecommendation:
     rationale: str  # 추천 근거
     ha_recommendation: Optional[str] = None  # 고가용성 구성 권장사항
     rac_assessment: Optional[str] = None  # RAC 필요성 평가
+    
+    # SGA 권장사항 기반 인스턴스 추천 (신규)
+    sga_based_instance_type: Optional[str] = None
+    sga_based_vcpu: Optional[int] = None
+    sga_based_memory_gb: Optional[int] = None
+    recommended_sga_gb: Optional[float] = None  # 권장 SGA 크기 (GB)
+    current_sga_gb: Optional[float] = None  # 현재 SGA 크기 (GB)
 
 
 @dataclass
