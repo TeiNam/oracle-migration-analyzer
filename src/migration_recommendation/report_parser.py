@@ -19,6 +19,32 @@ from ..oracle_complexity_analyzer.enums import TargetDatabase, ComplexityLevel, 
 logger = logging.getLogger(__name__)
 
 
+def _parse_number_with_comma(value_str: str) -> Optional[float]:
+    """쉼표가 포함된 숫자 문자열을 float로 변환
+    
+    예: "2,667.0" -> 2667.0, "1,234,567" -> 1234567.0
+    
+    Args:
+        value_str: 숫자 문자열 (쉼표 포함 가능)
+        
+    Returns:
+        float 값 또는 None
+    """
+    if not value_str:
+        return None
+    
+    # 쉼표를 포함한 숫자 패턴 매칭 (예: 2,667.0 또는 1,234,567)
+    match = re.search(r'([\d,]+\.?\d*)', value_str)
+    if match:
+        # 쉼표 제거 후 float 변환
+        num_str = match.group(1).replace(',', '')
+        try:
+            return float(num_str)
+        except ValueError:
+            return None
+    return None
+
+
 class MarkdownReportParser:
     """Markdown 리포트 파서
     
@@ -67,23 +93,21 @@ class MarkdownReportParser:
             # 크기 및 리소스 정보 추출
             db_size_str = self._extract_table_value(content, '전체 DB 크기')
             if db_size_str:
-                match = re.search(r'([\d.]+)', db_size_str)
-                metrics['total_db_size_gb'] = float(match.group(1)) if match else None
+                metrics['total_db_size_gb'] = _parse_number_with_comma(db_size_str)
             
             memory_str = self._extract_table_value(content, '물리 메모리')
             if memory_str:
-                match = re.search(r'([\d.]+)', memory_str)
-                metrics['physical_memory_gb'] = float(match.group(1)) if match else None
+                metrics['physical_memory_gb'] = _parse_number_with_comma(memory_str)
             
             cpu_cores_str = self._extract_table_value(content, 'CPU 코어 수')
             if cpu_cores_str:
-                match = re.search(r'(\d+)', cpu_cores_str)
-                metrics['cpu_cores'] = int(match.group(1)) if match else None
+                parsed = _parse_number_with_comma(cpu_cores_str)
+                metrics['cpu_cores'] = int(parsed) if parsed else None
             
             cpu_str = self._extract_table_value(content, 'CPU 수')
             if cpu_str:
-                match = re.search(r'(\d+)', cpu_str)
-                metrics['num_cpus'] = int(match.group(1)) if match else None
+                parsed = _parse_number_with_comma(cpu_str)
+                metrics['num_cpus'] = int(parsed) if parsed else None
             
             # PL/SQL 통계 추출
             metrics['awr_plsql_lines'] = self._extract_plsql_lines(content)
@@ -166,14 +190,14 @@ class MarkdownReportParser:
         형식: | 평균 CPU/s | 53.07 | 일반적인 부하 상태 |
         """
         patterns = [
-            r'\|\s*평균 CPU/s\s*\|\s*([\d.]+)\s*\|',
-            r'\|\s*Average CPU/s\s*\|\s*([\d.]+)\s*\|',
-            r'평균 CPU 사용률[^:]*:\s*([\d.]+)',
+            r'\|\s*평균 CPU/s\s*\|\s*([\d,]+\.?\d*)\s*\|',
+            r'\|\s*Average CPU/s\s*\|\s*([\d,]+\.?\d*)\s*\|',
+            r'평균 CPU 사용률[^:]*:\s*([\d,]+\.?\d*)',
         ]
         for pattern in patterns:
             match = re.search(pattern, content, re.IGNORECASE)
             if match:
-                return float(match.group(1))
+                return float(match.group(1).replace(',', ''))
         return 0.0
     
     def _extract_peak_cpu(self, content: str) -> float:
@@ -182,13 +206,13 @@ class MarkdownReportParser:
         형식: | 최대 CPU/s | 58.20 | 가장 바쁜 시점 (피크) |
         """
         patterns = [
-            r'\|\s*최대 CPU/s\s*\|\s*([\d.]+)\s*\|',
-            r'\|\s*Max(?:imum)? CPU/s\s*\|\s*([\d.]+)\s*\|',
+            r'\|\s*최대 CPU/s\s*\|\s*([\d,]+\.?\d*)\s*\|',
+            r'\|\s*Max(?:imum)? CPU/s\s*\|\s*([\d,]+\.?\d*)\s*\|',
         ]
         for pattern in patterns:
             match = re.search(pattern, content, re.IGNORECASE)
             if match:
-                return float(match.group(1))
+                return float(match.group(1).replace(',', ''))
         return 0.0
     
     def _extract_io_load(self, content: str) -> float:
@@ -198,13 +222,13 @@ class MarkdownReportParser:
         """
         patterns = [
             # 합계 IOPS 추출 (읽기 + 쓰기)
-            r'\|\s*평균 IOPS\s*\|\s*[\d.]+\s*\|\s*[\d.]+\s*\|\s*([\d.]+)\s*\|',
-            r'\|\s*Average IOPS\s*\|\s*[\d.]+\s*\|\s*[\d.]+\s*\|\s*([\d.]+)\s*\|',
+            r'\|\s*평균 IOPS\s*\|\s*[\d,]+\.?\d*\s*\|\s*[\d,]+\.?\d*\s*\|\s*([\d,]+\.?\d*)\s*\|',
+            r'\|\s*Average IOPS\s*\|\s*[\d,]+\.?\d*\s*\|\s*[\d,]+\.?\d*\s*\|\s*([\d,]+\.?\d*)\s*\|',
         ]
         for pattern in patterns:
             match = re.search(pattern, content, re.IGNORECASE)
             if match:
-                return float(match.group(1))
+                return float(match.group(1).replace(',', ''))
         return 0.0
     
     def _extract_peak_io(self, content: str) -> float:
@@ -213,13 +237,13 @@ class MarkdownReportParser:
         형식: | 최대 IOPS | 82 | 18 | 101 | 피크 시 디스크 사용량 |
         """
         patterns = [
-            r'\|\s*최대 IOPS\s*\|\s*[\d.]+\s*\|\s*[\d.]+\s*\|\s*([\d.]+)\s*\|',
-            r'\|\s*Max(?:imum)? IOPS\s*\|\s*[\d.]+\s*\|\s*[\d.]+\s*\|\s*([\d.]+)\s*\|',
+            r'\|\s*최대 IOPS\s*\|\s*[\d,]+\.?\d*\s*\|\s*[\d,]+\.?\d*\s*\|\s*([\d,]+\.?\d*)\s*\|',
+            r'\|\s*Max(?:imum)? IOPS\s*\|\s*[\d,]+\.?\d*\s*\|\s*[\d,]+\.?\d*\s*\|\s*([\d,]+\.?\d*)\s*\|',
         ]
         for pattern in patterns:
             match = re.search(pattern, content, re.IGNORECASE)
             if match:
-                return float(match.group(1))
+                return float(match.group(1).replace(',', ''))
         return 0.0
     
     def _extract_memory_usage(self, content: str) -> float:
@@ -228,14 +252,14 @@ class MarkdownReportParser:
         형식: - **평균 메모리 사용량**: 48.06 GB (SGA: 45.20 GB, PGA: 2.86 GB)
         """
         patterns = [
-            r'\*\*평균 메모리 사용량\*\*:\s*([\d.]+)\s*GB',
-            r'\*\*Average Memory Usage\*\*:\s*([\d.]+)\s*GB',
-            r'평균 메모리 사용량[^:]*:\s*([\d.]+)',
+            r'\*\*평균 메모리 사용량\*\*:\s*([\d,]+\.?\d*)\s*GB',
+            r'\*\*Average Memory Usage\*\*:\s*([\d,]+\.?\d*)\s*GB',
+            r'평균 메모리 사용량[^:]*:\s*([\d,]+\.?\d*)',
         ]
         for pattern in patterns:
             match = re.search(pattern, content, re.IGNORECASE)
             if match:
-                return float(match.group(1))
+                return float(match.group(1).replace(',', ''))
         return 0.0
     
     def _extract_peak_memory(self, content: str) -> float:
@@ -244,13 +268,13 @@ class MarkdownReportParser:
         형식: - **최소/최대**: 48.00 GB / 48.10 GB
         """
         patterns = [
-            r'\*\*최소/최대\*\*:\s*[\d.]+\s*GB\s*/\s*([\d.]+)\s*GB',
-            r'\*\*Min/Max\*\*:\s*[\d.]+\s*GB\s*/\s*([\d.]+)\s*GB',
+            r'\*\*최소/최대\*\*:\s*[\d,]+\.?\d*\s*GB\s*/\s*([\d,]+\.?\d*)\s*GB',
+            r'\*\*Min/Max\*\*:\s*[\d,]+\.?\d*\s*GB\s*/\s*([\d,]+\.?\d*)\s*GB',
         ]
         for pattern in patterns:
             match = re.search(pattern, content, re.IGNORECASE)
             if match:
-                return float(match.group(1))
+                return float(match.group(1).replace(',', ''))
         return 0.0
     
     def _extract_sga_advice(self, content: str) -> Dict[str, Any]:
