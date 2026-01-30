@@ -29,26 +29,26 @@ class ReplatformReason:
     HIGH_PLSQL_COMPLEXITY = "high_plsql_complexity"
     HIGH_COMPLEXITY_RATIO = "high_complexity_ratio"
     HIGH_COMPLEXITY_COUNT = "high_complexity_count"
-    VERY_HIGH_DIFFICULTY = "very_high_difficulty"
+    LARGE_CODEBASE_HIGH_COMPLEXITY = "large_codebase_high_complexity"
     LARGE_PLSQL_COUNT = "large_plsql_count"
     
     # 이유별 설명 (한국어)
     DESCRIPTIONS_KO = {
-        HIGH_SQL_COMPLEXITY: "SQL 평균 복잡도가 매우 높음 (6.0 이상)",
-        HIGH_PLSQL_COMPLEXITY: "PL/SQL 평균 복잡도가 매우 높음 (6.0 이상)",
-        HIGH_COMPLEXITY_RATIO: "고난이도 오브젝트 비율이 높음 (25% 이상)",
-        HIGH_COMPLEXITY_COUNT: "고난이도 오브젝트 절대 개수가 많음 (20개 이상)",
-        VERY_HIGH_DIFFICULTY: "코드량이 매우 많고 복잡도가 높음 (10만줄 이상)",
+        HIGH_SQL_COMPLEXITY: "SQL 평균 복잡도가 매우 높음 (7.5 이상)",
+        HIGH_PLSQL_COMPLEXITY: "PL/SQL 평균 복잡도가 매우 높음 (7.0 이상)",
+        HIGH_COMPLEXITY_RATIO: "고난이도 오브젝트 비율이 높음 (25% 이상, 모수 70개 이상)",
+        HIGH_COMPLEXITY_COUNT: "고난이도 오브젝트 절대 개수가 많음 (50개 이상)",
+        LARGE_CODEBASE_HIGH_COMPLEXITY: "코드량이 매우 많고 복잡도가 높음 (20만줄 이상 + 복잡도 7.5 이상)",
         LARGE_PLSQL_COUNT: "PL/SQL 오브젝트 개수가 매우 많음 (500개 이상)",
     }
     
     # 이유별 설명 (영어)
     DESCRIPTIONS_EN = {
-        HIGH_SQL_COMPLEXITY: "Very high SQL average complexity (≥6.0)",
-        HIGH_PLSQL_COMPLEXITY: "Very high PL/SQL average complexity (≥6.0)",
-        HIGH_COMPLEXITY_RATIO: "High ratio of complex objects (≥25%)",
-        HIGH_COMPLEXITY_COUNT: "Large number of complex objects (≥20)",
-        VERY_HIGH_DIFFICULTY: "Very large codebase with high complexity (≥100K lines)",
+        HIGH_SQL_COMPLEXITY: "Very high SQL average complexity (≥7.5)",
+        HIGH_PLSQL_COMPLEXITY: "Very high PL/SQL average complexity (≥7.0)",
+        HIGH_COMPLEXITY_RATIO: "High ratio of complex objects (≥25%, min 70 objects)",
+        HIGH_COMPLEXITY_COUNT: "Large number of complex objects (≥50)",
+        LARGE_CODEBASE_HIGH_COMPLEXITY: "Very large codebase with high complexity (≥200K lines + complexity ≥7.5)",
         LARGE_PLSQL_COUNT: "Very large number of PL/SQL objects (≥500)",
     }
 
@@ -118,14 +118,16 @@ class MigrationDecisionEngine:
     - 고급 기능 (PIPELINED, REF CURSOR 등) → PostgreSQL (더 높은 호환성)
     """
 
-    # 임계값 상수 (THRESHOLD_IMPROVEMENT_PROPOSAL.md 기반)
+    # 임계값 상수 (AI 시대 기준 상향 조정)
     # Replatform 조건
-    REPLATFORM_SQL_COMPLEXITY = 6.0  # 기존 7.0 → 6.0
-    REPLATFORM_PLSQL_COMPLEXITY = 6.0  # 기존 7.0 → 6.0
-    REPLATFORM_HIGH_COMPLEXITY_RATIO = 0.25  # 기존 0.30 → 0.25
-    REPLATFORM_HIGH_COMPLEXITY_COUNT = 20  # 신규: 절대 개수 조건
-    REPLATFORM_LARGE_PLSQL_COUNT = 500  # 신규: PL/SQL 오브젝트 개수 조건
-    REPLATFORM_HIGH_DIFFICULTY_SCORE = 6  # 신규: 난이도 점수 조건
+    REPLATFORM_SQL_COMPLEXITY = 7.5  # AI 도움으로 복잡한 SQL도 변환 용이
+    REPLATFORM_PLSQL_COMPLEXITY = 7.0  # 애플리케이션 레벨 이관 공수 감소
+    REPLATFORM_HIGH_COMPLEXITY_RATIO = 0.25  # 고난이도 비율 25% 이상
+    REPLATFORM_HIGH_COMPLEXITY_RATIO_MIN_COUNT = 70  # 비율 조건 적용 최소 모수
+    REPLATFORM_HIGH_COMPLEXITY_COUNT = 50  # 고난이도 오브젝트 절대 개수
+    REPLATFORM_LARGE_PLSQL_COUNT = 500  # PL/SQL 오브젝트 개수 조건
+    REPLATFORM_LARGE_CODEBASE_LINES = 200000  # 대규모 코드베이스 기준 (20만줄)
+    REPLATFORM_LARGE_CODEBASE_COMPLEXITY = 7.5  # 대규모 코드베이스 복잡도 기준
 
     # MySQL 조건
     MYSQL_PLSQL_COMPLEXITY = 3.5  # 기존 5.0 → 3.5
@@ -404,19 +406,15 @@ class MigrationDecisionEngine:
         self, metrics: AnalysisMetrics, plsql_count: int, plsql_complexity: float
     ) -> bool:
         """
-        Replatform 조건 확인 (개선된 임계값 적용)
+        Replatform 조건 확인 (AI 시대 기준 상향 조정)
 
         조건 (OR 관계):
-        1. SQL 복잡도 매우 높음 (평균 6.0 이상) - 기존 7.0에서 하향
-        2. PL/SQL 복잡도 매우 높음 (평균 6.0 이상) - 기존 7.0에서 하향
-        3. 복잡 오브젝트 비율 25% 이상 - 기존 30%에서 하향
-        4. 복잡 오브젝트 절대 개수 20개 이상 - 신규 추가
-        5. 난이도 매우 높음 (100,000줄 이상) + 복잡도 높음 (6.0 이상)
-        6. PL/SQL 오브젝트 개수 500개 이상 - 신규 추가
-        7. 리팩토링 난이도 점수 6점 이상 - 신규 추가
-
-        참고: THRESHOLD_IMPROVEMENT_PROPOSAL.md
-        - 코드 라인 수 기반 조건 제거 (의사결정 자율성 보장)
+        1. SQL 복잡도 매우 높음 (평균 7.5 이상)
+        2. PL/SQL 복잡도 매우 높음 (평균 7.0 이상)
+        3. 복잡 오브젝트 비율 25% 이상 (모수 70개 이상일 때만)
+        4. 복잡 오브젝트 절대 개수 50개 이상
+        5. 대규모 코드베이스 + 높은 복잡도 (20만줄 이상 + 복잡도 7.5 이상)
+        6. PL/SQL 오브젝트 개수 500개 이상
 
         Args:
             metrics: 분석 메트릭
@@ -438,101 +436,35 @@ class MigrationDecisionEngine:
             self._replatform_reasons.append(ReplatformReason.HIGH_PLSQL_COMPLEXITY)
             should_replatform = True
 
-        # 3. 복잡 오브젝트 비율 매우 높음
-        if metrics.high_complexity_ratio >= self.REPLATFORM_HIGH_COMPLEXITY_RATIO:
+        # 3. 복잡 오브젝트 비율 매우 높음 (모수 70개 이상일 때만 의미 있음)
+        total_objects = metrics.total_sql_count + metrics.total_plsql_count
+        if (total_objects >= self.REPLATFORM_HIGH_COMPLEXITY_RATIO_MIN_COUNT and
+            metrics.high_complexity_ratio >= self.REPLATFORM_HIGH_COMPLEXITY_RATIO):
             self._replatform_reasons.append(ReplatformReason.HIGH_COMPLEXITY_RATIO)
             should_replatform = True
 
-        # 4. 복잡 오브젝트 절대 개수 (신규 조건)
-        # 대규모 시스템에서 비율만으로는 위험 과소평가 방지
-        high_count = metrics.high_complexity_sql_count + metrics.high_complexity_plsql_count
+        # 4. 복잡 오브젝트 절대 개수 50개 이상
+        high_count = (metrics.high_complexity_sql_count or 0) + (metrics.high_complexity_plsql_count or 0)
         if high_count >= self.REPLATFORM_HIGH_COMPLEXITY_COUNT:
             self._replatform_reasons.append(ReplatformReason.HIGH_COMPLEXITY_COUNT)
             should_replatform = True
 
-        # 5. 난이도 매우 높음 + 복잡도 높음
-        difficulty = self._assess_migration_difficulty(metrics)
-        if difficulty == "very_high" and plsql_complexity >= self.REPLATFORM_PLSQL_COMPLEXITY:
-            self._replatform_reasons.append(ReplatformReason.VERY_HIGH_DIFFICULTY)
-            should_replatform = True
-        
-        # 6. PL/SQL 오브젝트 개수 매우 많음 (신규 조건)
-        # 500개 이상이면 리팩토링 작업량이 너무 많음
-        if plsql_count >= self.REPLATFORM_LARGE_PLSQL_COUNT:
-            self._replatform_reasons.append(ReplatformReason.LARGE_PLSQL_COUNT)
-            should_replatform = True
-        
-        # 7. 리팩토링 난이도 점수 기반 (신규 조건)
-        # 난이도 점수가 높으면 리팩토링보다 Replatform이 적합
-        difficulty_score = self._calculate_difficulty_score(metrics)
-        if difficulty_score >= self.REPLATFORM_HIGH_DIFFICULTY_SCORE:
-            # 이미 다른 이유가 없는 경우에만 추가 (중복 방지)
-            if not should_replatform:
-                self._replatform_reasons.append(ReplatformReason.HIGH_COMPLEXITY_COUNT)
-                should_replatform = True
-
-        return should_replatform
-    
-    def _calculate_difficulty_score(self, metrics: AnalysisMetrics) -> int:
-        """
-        리팩토링 난이도 점수 계산
-        
-        rationale.py의 _calculate_final_difficulty와 동일한 로직
-        
-        Args:
-            metrics: 분석 메트릭
-            
-        Returns:
-            int: 난이도 점수 (0~13)
-        """
-        score = 0
-        
-        # PL/SQL 복잡도 기반 (0~3점)
-        if metrics.avg_plsql_complexity:
-            if metrics.avg_plsql_complexity >= 7.0:
-                score += 3
-            elif metrics.avg_plsql_complexity >= 5.0:
-                score += 2
-            elif metrics.avg_plsql_complexity >= 3.0:
-                score += 1
-        
-        # PL/SQL 코드량 기반 (0~3점)
+        # 5. 대규모 코드베이스 + 높은 복잡도 (20만줄 이상 + 복잡도 7.5 이상)
         plsql_lines = metrics.awr_plsql_lines or 0
         if isinstance(plsql_lines, str):
             plsql_lines = self._extract_number(plsql_lines)
-        if plsql_lines >= 100000:
-            score += 3
-        elif plsql_lines >= 50000:
-            score += 2
-        elif plsql_lines >= 10000:
-            score += 1
+        if (plsql_lines >= self.REPLATFORM_LARGE_CODEBASE_LINES and 
+            plsql_complexity >= self.REPLATFORM_LARGE_CODEBASE_COMPLEXITY):
+            self._replatform_reasons.append(ReplatformReason.LARGE_CODEBASE_HIGH_COMPLEXITY)
+            should_replatform = True
         
-        # 고난이도 오브젝트 비율 기반 (0~2점)
-        if metrics.high_complexity_plsql_count is not None and metrics.total_plsql_count:
-            ratio = metrics.high_complexity_plsql_count / metrics.total_plsql_count
-            if ratio >= 0.3:
-                score += 2
-            elif ratio >= 0.1:
-                score += 1
-        
-        # 고난이도 오브젝트 절대 개수 기반 (0~3점)
-        high_count = (metrics.high_complexity_plsql_count or 0) + (metrics.high_complexity_sql_count or 0)
-        if high_count >= 100:
-            score += 3
-        elif high_count >= 50:
-            score += 2
-        elif high_count >= 20:
-            score += 1
-        
-        # 패키지 개수 기반 (0~2점)
-        if metrics.awr_package_count:
-            if metrics.awr_package_count >= 100:
-                score += 2
-            elif metrics.awr_package_count >= 50:
-                score += 1
-        
-        return score
+        # 6. PL/SQL 오브젝트 개수 500개 이상
+        if plsql_count >= self.REPLATFORM_LARGE_PLSQL_COUNT:
+            self._replatform_reasons.append(ReplatformReason.LARGE_PLSQL_COUNT)
+            should_replatform = True
 
+        return should_replatform
+    
     def _should_refactor_mysql(
         self, metrics: AnalysisMetrics, plsql_count: int, plsql_complexity: float,
         postgresql_score: int
