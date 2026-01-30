@@ -787,71 +787,104 @@ class RationaleFormatterMixin:
     
     @staticmethod
     def _calculate_final_difficulty(metrics: AnalysisMetrics) -> str:
-        """최종 난이도 계산
+        """최종 난이도 계산 (AI 시대 기준 조정)
         
         난이도 점수 산정 기준:
+        - SQL 평균 복잡도: 0~3점 (신규)
         - PL/SQL 평균 복잡도: 0~3점
         - PL/SQL 코드량: 0~3점
-        - 고난이도 오브젝트 비율: 0~2점
-        - 고난이도 오브젝트 절대 개수: 0~3점 (신규 추가)
-        - 패키지 개수: 0~2점 (패키지는 변환이 가장 복잡)
+        - 고난이도 오브젝트 비율: 0~2점 (모수 70개 이상)
+        - 고난이도 오브젝트 절대 개수: 0~3점
+        - 고위험 Oracle 패키지: 0~3점 (신규)
+        - 중위험 Oracle 패키지: 0~2점 (신규)
         
         총점 기준:
-        - 0~2점: low
-        - 3~5점: medium
-        - 6~8점: high
-        - 9점 이상: very_high
+        - 0~3점: low
+        - 4~7점: medium
+        - 8~11점: high
+        - 12점 이상: very_high
         """
         score = 0
         
-        # PL/SQL 복잡도 기반 (0~3점)
+        # SQL 복잡도 기반 (0~3점) - 신규
+        if metrics.avg_sql_complexity:
+            if metrics.avg_sql_complexity >= 7.5:
+                score += 3
+            elif metrics.avg_sql_complexity >= 6.0:
+                score += 2
+            elif metrics.avg_sql_complexity >= 4.5:
+                score += 1
+        
+        # PL/SQL 복잡도 기반 (0~3점) - 임계값 상향
         if metrics.avg_plsql_complexity:
-            if metrics.avg_plsql_complexity >= 7.0:
+            if metrics.avg_plsql_complexity >= 7.5:
                 score += 3
-            elif metrics.avg_plsql_complexity >= 5.0:
+            elif metrics.avg_plsql_complexity >= 6.0:
                 score += 2
-            elif metrics.avg_plsql_complexity >= 3.0:
+            elif metrics.avg_plsql_complexity >= 4.5:
                 score += 1
         
-        # PL/SQL 코드량 기반 (0~3점)
-        if metrics.awr_plsql_lines:
-            if metrics.awr_plsql_lines >= 100000:
-                score += 3
-            elif metrics.awr_plsql_lines >= 50000:
-                score += 2
-            elif metrics.awr_plsql_lines >= 10000:
-                score += 1
+        # PL/SQL 코드량 기반 (0~3점) - 임계값 상향
+        plsql_lines = metrics.awr_plsql_lines or 0
+        if isinstance(plsql_lines, str):
+            import re
+            numbers = re.findall(r"\d+", str(plsql_lines))
+            plsql_lines = int(numbers[-1]) if numbers else 0
+        if plsql_lines >= 200000:
+            score += 3
+        elif plsql_lines >= 100000:
+            score += 2
+        elif plsql_lines >= 50000:
+            score += 1
         
-        # 고난이도 오브젝트 비율 기반 (0~2점)
-        if metrics.high_complexity_plsql_count is not None and metrics.total_plsql_count:
-            ratio = metrics.high_complexity_plsql_count / metrics.total_plsql_count
-            if ratio >= 0.3:
-                score += 2
-            elif ratio >= 0.1:
-                score += 1
+        # 고난이도 오브젝트 비율 기반 (0~2점) - 모수 조건 추가
+        total_objects = (metrics.total_plsql_count or 0) + (metrics.total_sql_count or 0)
+        if total_objects >= 70:  # 모수 70개 이상일 때만 비율 의미 있음
+            high_count = (metrics.high_complexity_plsql_count or 0) + (metrics.high_complexity_sql_count or 0)
+            if total_objects > 0:
+                ratio = high_count / total_objects
+                if ratio >= 0.30:
+                    score += 2
+                elif ratio >= 0.20:
+                    score += 1
         
-        # 고난이도 오브젝트 절대 개수 기반 (0~3점) - 신규 추가
-        # 비율이 낮아도 절대 개수가 많으면 리팩토링 난이도가 높음
+        # 고난이도 오브젝트 절대 개수 기반 (0~3점) - 임계값 상향
         high_count = (metrics.high_complexity_plsql_count or 0) + (metrics.high_complexity_sql_count or 0)
         if high_count >= 100:
             score += 3
         elif high_count >= 50:
             score += 2
-        elif high_count >= 20:
+        elif high_count >= 30:
             score += 1
         
-        # 패키지 개수 기반 (0~2점) - 패키지는 변환이 가장 복잡
-        if metrics.awr_package_count:
-            if metrics.awr_package_count >= 100:
-                score += 2
-            elif metrics.awr_package_count >= 50:
-                score += 1
+        # 고위험 Oracle 패키지 기반 (0~3점) - 신규
+        # UTL_FILE, UTL_HTTP, UTL_SMTP, UTL_TCP, DBMS_AQ, DBMS_PIPE, DBMS_ALERT
+        high_risk_packages = {'UTL_FILE', 'UTL_HTTP', 'UTL_SMTP', 'UTL_TCP', 
+                              'DBMS_AQ', 'DBMS_PIPE', 'DBMS_ALERT'}
+        external_deps = metrics.detected_external_dependencies_summary or {}
+        high_risk_count = sum(external_deps.get(pkg, 0) for pkg in high_risk_packages)
+        if high_risk_count >= 50:
+            score += 3
+        elif high_risk_count >= 20:
+            score += 2
+        elif high_risk_count >= 5:
+            score += 1
         
-        if score >= 9:
+        # 중위험 Oracle 패키지 기반 (0~2점) - 신규
+        # DBMS_LOB, DBMS_SCHEDULER, DBMS_JOB, DBMS_CRYPTO, DBMS_SQL, DBMS_XMLGEN
+        medium_risk_packages = {'DBMS_LOB', 'DBMS_SCHEDULER', 'DBMS_JOB', 
+                                'DBMS_CRYPTO', 'DBMS_SQL', 'DBMS_XMLGEN'}
+        medium_risk_count = sum(external_deps.get(pkg, 0) for pkg in medium_risk_packages)
+        if medium_risk_count >= 30:
+            score += 2
+        elif medium_risk_count >= 10:
+            score += 1
+        
+        if score >= 12:
             return "very_high"
-        elif score >= 6:
+        elif score >= 8:
             return "high"
-        elif score >= 3:
+        elif score >= 4:
             return "medium"
         else:
             return "low"

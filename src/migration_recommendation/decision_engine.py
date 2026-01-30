@@ -31,6 +31,7 @@ class ReplatformReason:
     HIGH_COMPLEXITY_COUNT = "high_complexity_count"
     LARGE_CODEBASE_HIGH_COMPLEXITY = "large_codebase_high_complexity"
     LARGE_PLSQL_COUNT = "large_plsql_count"
+    HIGH_RISK_ORACLE_PACKAGES = "high_risk_oracle_packages"
     
     # 이유별 설명 (한국어)
     DESCRIPTIONS_KO = {
@@ -40,6 +41,7 @@ class ReplatformReason:
         HIGH_COMPLEXITY_COUNT: "고난이도 오브젝트 절대 개수가 많음 (50개 이상)",
         LARGE_CODEBASE_HIGH_COMPLEXITY: "코드량이 매우 많고 복잡도가 높음 (20만줄 이상 + 복잡도 7.5 이상)",
         LARGE_PLSQL_COUNT: "PL/SQL 오브젝트 개수가 매우 많음 (500개 이상)",
+        HIGH_RISK_ORACLE_PACKAGES: "고위험 Oracle 패키지 사용량이 많음 (50회 이상)",
     }
     
     # 이유별 설명 (영어)
@@ -50,6 +52,7 @@ class ReplatformReason:
         HIGH_COMPLEXITY_COUNT: "Large number of complex objects (≥50)",
         LARGE_CODEBASE_HIGH_COMPLEXITY: "Very large codebase with high complexity (≥200K lines + complexity ≥7.5)",
         LARGE_PLSQL_COUNT: "Very large number of PL/SQL objects (≥500)",
+        HIGH_RISK_ORACLE_PACKAGES: "Heavy usage of high-risk Oracle packages (≥50 occurrences)",
     }
 
 
@@ -128,6 +131,18 @@ class MigrationDecisionEngine:
     REPLATFORM_LARGE_PLSQL_COUNT = 500  # PL/SQL 오브젝트 개수 조건
     REPLATFORM_LARGE_CODEBASE_LINES = 200000  # 대규모 코드베이스 기준 (20만줄)
     REPLATFORM_LARGE_CODEBASE_COMPLEXITY = 7.5  # 대규모 코드베이스 복잡도 기준
+    REPLATFORM_HIGH_RISK_PACKAGE_COUNT = 50  # 고위험 Oracle 패키지 사용 횟수
+    
+    # 고위험 Oracle 패키지 (애플리케이션 레벨 재작성 필요)
+    HIGH_RISK_ORACLE_PACKAGES = {
+        'UTL_FILE',      # 파일 I/O - 애플리케이션 레벨 이관 필요
+        'UTL_HTTP',      # HTTP 클라이언트 - 애플리케이션 레벨 이관 필요
+        'UTL_SMTP',      # 메일 발송 - Amazon SES 또는 애플리케이션 이관
+        'UTL_TCP',       # TCP 소켓 - 애플리케이션 레벨 이관 필요
+        'DBMS_AQ',       # Advanced Queuing - Amazon SQS 또는 애플리케이션 이관
+        'DBMS_PIPE',     # 프로세스 간 통신 - 애플리케이션 레벨 이관 필요
+        'DBMS_ALERT',    # 비동기 알림 - 애플리케이션 레벨 이관 필요
+    }
 
     # MySQL 조건
     MYSQL_PLSQL_COMPLEXITY = 3.5  # 기존 5.0 → 3.5
@@ -415,6 +430,7 @@ class MigrationDecisionEngine:
         4. 복잡 오브젝트 절대 개수 50개 이상
         5. 대규모 코드베이스 + 높은 복잡도 (20만줄 이상 + 복잡도 7.5 이상)
         6. PL/SQL 오브젝트 개수 500개 이상
+        7. 고위험 Oracle 패키지 사용량 50회 이상
 
         Args:
             metrics: 분석 메트릭
@@ -462,8 +478,30 @@ class MigrationDecisionEngine:
         if plsql_count >= self.REPLATFORM_LARGE_PLSQL_COUNT:
             self._replatform_reasons.append(ReplatformReason.LARGE_PLSQL_COUNT)
             should_replatform = True
+        
+        # 7. 고위험 Oracle 패키지 사용량 50회 이상
+        high_risk_package_count = self._count_high_risk_packages(metrics)
+        if high_risk_package_count >= self.REPLATFORM_HIGH_RISK_PACKAGE_COUNT:
+            self._replatform_reasons.append(ReplatformReason.HIGH_RISK_ORACLE_PACKAGES)
+            should_replatform = True
 
         return should_replatform
+    
+    def _count_high_risk_packages(self, metrics: AnalysisMetrics) -> int:
+        """
+        고위험 Oracle 패키지 사용 횟수 계산
+        
+        Args:
+            metrics: 분석 메트릭
+            
+        Returns:
+            int: 고위험 패키지 총 사용 횟수
+        """
+        external_deps = metrics.detected_external_dependencies_summary or {}
+        count = 0
+        for pkg in self.HIGH_RISK_ORACLE_PACKAGES:
+            count += external_deps.get(pkg, 0)
+        return count
     
     def _should_refactor_mysql(
         self, metrics: AnalysisMetrics, plsql_count: int, plsql_complexity: float,

@@ -10,6 +10,7 @@ Property-based 테스트를 통해 의사결정 로직의 일관성을 검증합
 - 고난이도 개수: 50개 이상 → Replatform
 - PL/SQL 개수: 500개 이상 → Replatform
 - 코드량 + 복잡도: 20만줄 + 7.5 → Replatform
+- 고위험 Oracle 패키지: 50회 이상 → Replatform
 """
 
 import pytest
@@ -583,3 +584,127 @@ def test_aurora_postgresql_condition_complex_plsql(
     assert (
         strategy == MigrationStrategy.REFACTOR_POSTGRESQL
     ), f"평균 PL/SQL 복잡도 {avg_plsql_complexity:.2f}일 때 Aurora PostgreSQL을 추천해야 합니다"
+
+
+# Property 6: Replatform 조건 일관성 - 고위험 Oracle 패키지
+@given(
+    high_risk_package_count=st.integers(min_value=50, max_value=200),
+    avg_sql_complexity=st.floats(
+        min_value=0.0, max_value=7.4, allow_nan=False, allow_infinity=False
+    ),
+    avg_plsql_complexity=st.floats(
+        min_value=0.0, max_value=6.9, allow_nan=False, allow_infinity=False
+    ),
+)
+def test_replatform_condition_high_risk_oracle_packages(
+    high_risk_package_count,
+    avg_sql_complexity,
+    avg_plsql_complexity,
+):
+    """
+    Property 6: Replatform 조건 일관성 - 고위험 Oracle 패키지
+
+    고위험 Oracle 패키지(UTL_FILE, UTL_HTTP 등) 사용 횟수가 50회 이상이면
+    Replatform을 추천해야 합니다.
+    """
+    engine = MigrationDecisionEngine()
+
+    # 고위험 패키지 사용량 분배 (UTL_FILE, UTL_HTTP에 분배)
+    utl_file_count = high_risk_package_count // 2
+    utl_http_count = high_risk_package_count - utl_file_count
+
+    metrics = AnalysisMetrics(
+        avg_cpu_usage=50.0,
+        avg_io_load=500.0,
+        avg_memory_usage=10.0,
+        avg_sql_complexity=avg_sql_complexity,
+        avg_plsql_complexity=avg_plsql_complexity,
+        high_complexity_sql_count=0,
+        high_complexity_plsql_count=0,
+        total_sql_count=10,
+        total_plsql_count=10,
+        high_complexity_ratio=0.0,
+        bulk_operation_count=0,
+        rac_detected=False,
+        detected_external_dependencies_summary={
+            'UTL_FILE': utl_file_count,
+            'UTL_HTTP': utl_http_count,
+        },
+    )
+
+    integrated_result = create_integrated_result(metrics)
+    strategy = engine.decide_strategy(integrated_result)
+
+    assert (
+        strategy == MigrationStrategy.REPLATFORM
+    ), f"고위험 패키지 {high_risk_package_count}회 사용 시 Replatform을 추천해야 합니다"
+    
+    # 이유 확인
+    reasons = engine.get_replatform_reasons()
+    from src.migration_recommendation.decision_engine import ReplatformReason
+    assert ReplatformReason.HIGH_RISK_ORACLE_PACKAGES in reasons
+
+
+# 단위 테스트: 고위험 패키지 개수 계산
+def test_count_high_risk_packages():
+    """고위험 Oracle 패키지 개수 계산 테스트"""
+    engine = MigrationDecisionEngine()
+    
+    metrics = AnalysisMetrics(
+        avg_cpu_usage=50.0,
+        avg_io_load=500.0,
+        avg_memory_usage=10.0,
+        avg_sql_complexity=3.0,
+        avg_plsql_complexity=3.0,
+        high_complexity_sql_count=0,
+        high_complexity_plsql_count=0,
+        total_sql_count=10,
+        total_plsql_count=10,
+        high_complexity_ratio=0.0,
+        bulk_operation_count=0,
+        rac_detected=False,
+        detected_external_dependencies_summary={
+            'UTL_FILE': 10,
+            'UTL_HTTP': 15,
+            'UTL_SMTP': 5,
+            'DBMS_AQ': 20,
+            'DBMS_OUTPUT': 100,  # 저위험 - 카운트 안됨
+            'DBMS_LOB': 50,  # 중위험 - 카운트 안됨
+        },
+    )
+    
+    count = engine._count_high_risk_packages(metrics)
+    # UTL_FILE(10) + UTL_HTTP(15) + UTL_SMTP(5) + DBMS_AQ(20) = 50
+    assert count == 50
+
+
+# 단위 테스트: 고위험 패키지 임계값 미만
+def test_high_risk_packages_below_threshold():
+    """고위험 패키지가 임계값 미만이면 Replatform 트리거 안됨"""
+    engine = MigrationDecisionEngine()
+    
+    metrics = AnalysisMetrics(
+        avg_cpu_usage=50.0,
+        avg_io_load=500.0,
+        avg_memory_usage=10.0,
+        avg_sql_complexity=3.0,
+        avg_plsql_complexity=3.0,
+        high_complexity_sql_count=0,
+        high_complexity_plsql_count=0,
+        total_sql_count=10,
+        total_plsql_count=10,
+        high_complexity_ratio=0.0,
+        bulk_operation_count=0,
+        rac_detected=False,
+        detected_external_dependencies_summary={
+            'UTL_FILE': 20,
+            'UTL_HTTP': 20,
+            # 총 40회 - 임계값 50 미만
+        },
+    )
+    
+    integrated_result = create_integrated_result(metrics)
+    strategy = engine.decide_strategy(integrated_result)
+    
+    # 다른 Replatform 조건도 없으므로 PostgreSQL 또는 MySQL
+    assert strategy != MigrationStrategy.REPLATFORM
