@@ -1,0 +1,125 @@
+{
+  "total_objects": 4,
+  "analyzed_objects": 4,
+  "failed_objects": 0,
+  "statistics": {
+    "PROCEDURE": 3,
+    "FUNCTION": 1
+  },
+  "summary": {
+    "average_score": 1.4625,
+    "max_score": 1.65,
+    "min_score": 1.15,
+    "complexity_distribution": {
+      "very_simple": 0,
+      "simple": 4,
+      "moderate": 0,
+      "complex": 0,
+      "very_complex": 0,
+      "extremely_complex": 0
+    }
+  },
+  "results": [
+    {
+      "owner": "CRM",
+      "object_type": "PROCEDURE",
+      "object_name": "SP_GET_CUSTOMER",
+      "line_range": "13-29",
+      "analysis": {
+        "total_score": 2.8,
+        "normalized_score": 1.4,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "postgresql",
+        "base_score": 2.5,
+        "code_complexity": 0.3,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 10,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "CRM",
+      "object_type": "PROCEDURE",
+      "object_name": "SP_UPDATE_CUSTOMER",
+      "line_range": "30-47",
+      "analysis": {
+        "total_score": 3.3,
+        "normalized_score": 1.65,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "postgresql",
+        "base_score": 2.5,
+        "code_complexity": 0.3,
+        "oracle_features": 0.0,
+        "business_logic": 0.5,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 11,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "CRM",
+      "object_type": "PROCEDURE",
+      "object_name": "SP_INSERT_ORDER",
+      "line_range": "48-65",
+      "analysis": {
+        "total_score": 3.3,
+        "normalized_score": 1.65,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "procedure",
+        "target_database": "postgresql",
+        "base_score": 2.5,
+        "code_complexity": 0.3,
+        "oracle_features": 0.0,
+        "business_logic": 0.5,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 11,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "CRM",
+      "object_type": "FUNCTION",
+      "object_name": "FN_GET_ORDER_COUNT",
+      "line_range": "66-83",
+      "analysis": {
+        "total_score": 2.3,
+        "normalized_score": 1.15,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "function",
+        "target_database": "postgresql",
+        "base_score": 2.0,
+        "code_complexity": 0.3,
+        "oracle_features": 0.0,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 11,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    }
+  ],
+  "failed": []
+}

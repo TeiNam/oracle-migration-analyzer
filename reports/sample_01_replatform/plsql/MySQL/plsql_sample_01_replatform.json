@@ -1,0 +1,249 @@
+{
+  "total_objects": 8,
+  "analyzed_objects": 8,
+  "failed_objects": 0,
+  "statistics": {
+    "PACKAGE": 4,
+    "TYPE": 2,
+    "FUNCTION": 1,
+    "TRIGGER": 1
+  },
+  "summary": {
+    "average_score": 5.191489361702128,
+    "max_score": 8.127659574468085,
+    "min_score": 2.8085106382978724,
+    "complexity_distribution": {
+      "very_simple": 0,
+      "simple": 1,
+      "moderate": 3,
+      "complex": 2,
+      "very_complex": 2,
+      "extremely_complex": 0
+    }
+  },
+  "results": [
+    {
+      "owner": "ENTERPRISE",
+      "object_type": "PACKAGE",
+      "object_name": "PKG_FINANCIAL_CORE",
+      "line_range": "13-250",
+      "analysis": {
+        "total_score": 19.1,
+        "normalized_score": 8.127659574468085,
+        "complexity_level": "매우 복잡",
+        "recommendation": "대부분 재작성",
+        "object_type": "package",
+        "target_database": "mysql",
+        "base_score": 5.0,
+        "code_complexity": 4.0,
+        "oracle_features": 5.0,
+        "business_logic": 1.8,
+        "conversion_difficulty": 0.2,
+        "detected_oracle_features": [
+          "REF CURSOR",
+          "NESTED TABLE"
+        ],
+        "detected_external_dependencies": [
+          "DBMS_OUTPUT"
+        ],
+        "line_count": 183,
+        "cursor_count": 4,
+        "exception_blocks": 4,
+        "nesting_depth": 6
+      }
+    },
+    {
+      "owner": "ENTERPRISE",
+      "object_type": "PACKAGE",
+      "object_name": "PKG_DATA_PIPELINE",
+      "line_range": "251-370",
+      "analysis": {
+        "total_score": 16.2,
+        "normalized_score": 6.8936170212765955,
+        "complexity_level": "복잡",
+        "recommendation": "상당한 재작성",
+        "object_type": "package",
+        "target_database": "mysql",
+        "base_score": 5.0,
+        "code_complexity": 2.4,
+        "oracle_features": 5.0,
+        "business_logic": 0.7,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "PIPELINED",
+          "NESTED TABLE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 90,
+        "cursor_count": 2,
+        "exception_blocks": 1,
+        "nesting_depth": 4
+      }
+    },
+    {
+      "owner": "ENTERPRISE",
+      "object_type": "PACKAGE",
+      "object_name": "PKG_AUDIT_TRAIL",
+      "line_range": "371-465",
+      "analysis": {
+        "total_score": 15.2,
+        "normalized_score": 6.468085106382978,
+        "complexity_level": "복잡",
+        "recommendation": "상당한 재작성",
+        "object_type": "package",
+        "target_database": "mysql",
+        "base_score": 5.0,
+        "code_complexity": 0.9,
+        "oracle_features": 5.0,
+        "business_logic": 1.0,
+        "conversion_difficulty": 0.2,
+        "detected_oracle_features": [
+          "AUTONOMOUS_TRANSACTION",
+          "PRAGMA",
+          "NESTED TABLE"
+        ],
+        "detected_external_dependencies": [
+          "DBMS_OUTPUT"
+        ],
+        "line_count": 75,
+        "cursor_count": 0,
+        "exception_blocks": 1,
+        "nesting_depth": 2
+      }
+    },
+    {
+      "owner": "ENTERPRISE",
+      "object_type": "PACKAGE",
+      "object_name": "PKG_NOTIFICATION",
+      "line_range": "466-593",
+      "analysis": {
+        "total_score": 17.5,
+        "normalized_score": 7.446808510638298,
+        "complexity_level": "매우 복잡",
+        "recommendation": "대부분 재작성",
+        "object_type": "package",
+        "target_database": "mysql",
+        "base_score": 5.0,
+        "code_complexity": 2.5,
+        "oracle_features": 3.0,
+        "business_logic": 0.9,
+        "conversion_difficulty": 3.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [
+          "UTL_HTTP",
+          "UTL_SMTP",
+          "DBMS_AQ"
+        ],
+        "line_count": 106,
+        "cursor_count": 0,
+        "exception_blocks": 3,
+        "nesting_depth": 3
+      }
+    },
+    {
+      "owner": "ENTERPRISE",
+      "object_type": "TYPE",
+      "object_name": "T_ACCOUNT_OBJ",
+      "line_range": "594-621",
+      "analysis": {
+        "total_score": 7.1,
+        "normalized_score": 3.021276595744681,
+        "complexity_level": "중간",
+        "recommendation": "부분 재작성",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 3.5,
+        "code_complexity": 0.3,
+        "oracle_features": 0.5,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "OBJECT TYPE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 19,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "ENTERPRISE",
+      "object_type": "TYPE",
+      "object_name": "T_ACCOUNT_TAB",
+      "line_range": "622-630",
+      "analysis": {
+        "total_score": 7.5,
+        "normalized_score": 3.1914893617021276,
+        "complexity_level": "중간",
+        "recommendation": "부분 재작성",
+        "object_type": "procedure",
+        "target_database": "mysql",
+        "base_score": 3.5,
+        "code_complexity": 0.3,
+        "oracle_features": 1.7,
+        "business_logic": 0.0,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [
+          "NESTED TABLE"
+        ],
+        "detected_external_dependencies": [],
+        "line_count": 2,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 0
+      }
+    },
+    {
+      "owner": "ENTERPRISE",
+      "object_type": "FUNCTION",
+      "object_name": "FN_GET_EXCHANGE_RATE",
+      "line_range": "631-656",
+      "analysis": {
+        "total_score": 6.6000000000000005,
+        "normalized_score": 2.8085106382978724,
+        "complexity_level": "간단",
+        "recommendation": "함수 대체",
+        "object_type": "function",
+        "target_database": "mysql",
+        "base_score": 3.0,
+        "code_complexity": 0.7,
+        "oracle_features": 0.0,
+        "business_logic": 0.1,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 18,
+        "cursor_count": 0,
+        "exception_blocks": 1,
+        "nesting_depth": 1
+      }
+    },
+    {
+      "owner": "ENTERPRISE",
+      "object_type": "TRIGGER",
+      "object_name": "TRG_ACCOUNT_AUDIT",
+      "line_range": "657-685",
+      "analysis": {
+        "total_score": 8.399999999999999,
+        "normalized_score": 3.5744680851063824,
+        "complexity_level": "중간",
+        "recommendation": "부분 재작성",
+        "object_type": "trigger",
+        "target_database": "mysql",
+        "base_score": 4.5,
+        "code_complexity": 0.8,
+        "oracle_features": 0.5,
+        "business_logic": 0.5,
+        "conversion_difficulty": 0.0,
+        "detected_oracle_features": [],
+        "detected_external_dependencies": [],
+        "line_count": 22,
+        "cursor_count": 0,
+        "exception_blocks": 0,
+        "nesting_depth": 3
+      }
+    }
+  ],
+  "failed": []
+}
