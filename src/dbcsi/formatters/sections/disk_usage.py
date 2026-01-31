@@ -48,12 +48,6 @@ class DiskUsageFormatter:
         lines.append(f"- **최소/최대**: {min(sizes):.2f} GB / {max(sizes):.2f} GB")
         lines.append("")
         
-        # 차트 생성
-        if output_path and len(data.disk_sizes) >= 1:
-            chart_md = DiskUsageFormatter._generate_chart(data, output_path)
-            if chart_md:
-                lines.append(chart_md)
-        
         lines.append("")
         return "\n".join(lines)
     
@@ -72,28 +66,3 @@ class DiskUsageFormatter:
         lines.append("")
         
         return "\n".join(lines)
-    
-    @staticmethod
-    def _generate_chart(data: StatspackData, output_path: str) -> str:
-        """디스크 사용량 차트 생성"""
-        try:
-            from ..chart_generator import ChartGenerator
-            
-            display_count = min(20, len(data.disk_sizes))
-            snap_ids = [d.snap_id for d in data.disk_sizes[:display_count]]
-            disk_data = [d.size_gb for d in data.disk_sizes[:display_count]]
-            
-            chart_filename = ChartGenerator.generate_disk_usage_chart(
-                snap_ids=snap_ids,
-                disk_data=disk_data,
-                output_path=output_path,
-                title="Disk Usage Trend",
-                xlabel="Snap ID",
-                ylabel="Disk Size (GB)"
-            )
-            
-            if chart_filename:
-                return f"**디스크 사용량 추이:**\n\n![Disk Usage]({chart_filename})\n"
-        except Exception:
-            pass
-        return ""

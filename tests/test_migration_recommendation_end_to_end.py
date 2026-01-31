@@ -33,7 +33,10 @@ from src.migration_recommendation.data_models import MigrationStrategy
 
 
 def _analyze_sql_files(sql_files):
-    """SQL/PL-SQL 파일 분석 헬퍼 함수"""
+    """SQL/PL-SQL 파일 분석 헬퍼 함수
+    
+    배치 PL/SQL 파일(.out)과 단일 SQL/PL-SQL 파일을 모두 처리합니다.
+    """
     analyzer = OracleComplexityAnalyzer()
     sql_analysis = []
     plsql_analysis = []
@@ -41,10 +44,27 @@ def _analyze_sql_files(sql_files):
     for sql_file in sql_files:
         if os.path.exists(sql_file):
             result = analyzer.analyze_file(sql_file)
+            
+            # 배치 PL/SQL 파일 결과 (dict)
+            if isinstance(result, dict):
+                # 배치 결과에서 개별 분석 결과 추출
+                if 'results' in result:
+                    for obj_result in result['results']:
+                        # 배치 결과 구조: {'owner', 'object_type', 'object_name', 'analysis'}
+                        if isinstance(obj_result, dict) and 'analysis' in obj_result:
+                            analysis = obj_result['analysis']
+                            if isinstance(analysis, PLSQLAnalysisResult):
+                                plsql_analysis.append(analysis)
+                            elif isinstance(analysis, SQLAnalysisResult):
+                                sql_analysis.append(analysis)
+                        elif isinstance(obj_result, PLSQLAnalysisResult):
+                            plsql_analysis.append(obj_result)
+                        elif isinstance(obj_result, SQLAnalysisResult):
+                            sql_analysis.append(obj_result)
             # PLSQLAnalysisResult는 object_type이 PLSQLObjectType enum
-            if isinstance(result, PLSQLAnalysisResult):
+            elif isinstance(result, PLSQLAnalysisResult):
                 plsql_analysis.append(result)
-            else:
+            elif isinstance(result, SQLAnalysisResult):
                 sql_analysis.append(result)
     
     return sql_analysis, plsql_analysis
@@ -56,21 +76,21 @@ class TestMigrationRecommendationEndToEnd:
     @pytest.fixture
     def sample_statspack_file(self):
         """실제 샘플 Statspack 파일 경로"""
-        return "sample_code/dbcsi_statspack_sample01.out"
+        return "sample_code/dbcsi_awr/dbcsi_statspack_sample01.out"
     
     @pytest.fixture
     def sample_awr_file(self):
         """실제 샘플 AWR 파일 경로"""
-        return "sample_code/dbcsi_awr_sample01.out"
+        return "sample_code/dbcsi_awr/dbcsi_awr_sample01.out"
     
     @pytest.fixture
     def sample_sql_files(self):
         """실제 샘플 SQL/PL-SQL 파일 경로"""
         return [
-            "sample_code/sample_plsql01.sql",
-            "sample_code/sample_plsql02.sql",
-            "sample_code/sample_plsql03.sql",
-            "sample_code/sample_plsql04.sql"
+            "sample_code/plsql/plsql_sample_01_replatform.out",
+            "sample_code/plsql/plsql_sample_02_mysql.out",
+            "sample_code/plsql/plsql_sample_03_postgresql.out",
+            "sample_code/plsql/plsql_sample_04_supply_chain.out"
         ]
     
     @pytest.fixture
@@ -419,11 +439,12 @@ class TestMigrationRecommendationScenarios:
         """
         시나리오 1: 단순 시스템 (Aurora MySQL 추천)
         
-        특징 (v2.2.0 임계값 기준):
-        - 평균 SQL 복잡도 <= 4.0
-        - 평균 PL/SQL 복잡도 <= 3.5
-        - PL/SQL 오브젝트 < 20개
+        특징 (현재 임계값 기준):
+        - 평균 SQL 복잡도 <= 4.5
+        - 평균 PL/SQL 복잡도 <= 4.0
+        - PL/SQL 오브젝트 < 50개
         - BULK 연산 < 10개
+        - PostgreSQL 선호 점수 < 2
         
         예상 결과: Aurora MySQL 추천
         """
@@ -448,7 +469,7 @@ class TestMigrationRecommendationScenarios:
         )
         dbcsi_result = StatspackData(os_info=os_info)
         
-        # 단순 SQL 분석 결과 (복잡도 2.5-3.5, 평균 <= 4.0)
+        # 단순 SQL 분석 결과 (복잡도 2.5-3.5, 평균 <= 4.5)
         sql_analysis = [
             SQLAnalysisResult(
                 query=f"SELECT * FROM table_{i}",
@@ -467,7 +488,7 @@ class TestMigrationRecommendationScenarios:
             for i in range(15)
         ]
         
-        # 단순 PL/SQL 분석 결과 (복잡도 2.5-3.5, 평균 <= 3.5)
+        # 단순 PL/SQL 분석 결과 (복잡도 2.5-3.5, 평균 <= 4.0)
         plsql_analysis = [
             PLSQLAnalysisResult(
                 code=f"CREATE PROCEDURE proc_{i} AS BEGIN NULL; END;",
@@ -484,7 +505,7 @@ class TestMigrationRecommendationScenarios:
                 conversion_difficulty=0.0,
                 bulk_operations_count=0  # BULK 연산 없음
             )
-            for i in range(10)  # 20개 미만
+            for i in range(15)  # 50개 미만
         ]
         
         # 분석 결과 통합
@@ -495,11 +516,11 @@ class TestMigrationRecommendationScenarios:
             plsql_analysis=plsql_analysis
         )
         
-        # 메트릭 검증 (v2.2.0 임계값 기준)
+        # 메트릭 검증 (현재 임계값 기준)
         metrics = integrated_result.metrics
-        assert metrics.avg_sql_complexity <= 4.0
-        assert metrics.avg_plsql_complexity <= 3.5
-        assert metrics.total_plsql_count < 20
+        assert metrics.avg_sql_complexity <= 4.5
+        assert metrics.avg_plsql_complexity <= 4.0
+        assert metrics.total_plsql_count < 50
         assert metrics.bulk_operation_count < 10
         
         # 의사결정 엔진 실행
@@ -518,7 +539,7 @@ class TestMigrationRecommendationScenarios:
         
         # 근거에 "단순" 또는 "낮은 복잡도" 언급 확인
         rationale_texts = [r.reason for r in recommendation.rationales]
-        assert any("단순" in text or "낮" in text or "3.5" in text or "4.0" in text for text in rationale_texts)
+        assert any("단순" in text or "낮" in text or "4.0" in text or "4.5" in text for text in rationale_texts)
         
         # 대안 전략에 PostgreSQL 또는 Replatform 포함 확인
         alternative_strategies = [alt.strategy for alt in recommendation.alternative_strategies]
@@ -529,12 +550,15 @@ class TestMigrationRecommendationScenarios:
         """
         시나리오 2: 중간 복잡도 시스템 (Aurora PostgreSQL 추천)
         
-        특징 (v2.2.0 임계값 기준):
-        - 평균 SQL 복잡도 4.0-5.5 (Replatform 임계값 6.0 미만)
-        - 평균 PL/SQL 복잡도 3.5-5.5 (MySQL 임계값 3.5 초과, Replatform 6.0 미만)
+        특징 (현재 임계값 기준):
+        - 평균 SQL 복잡도 4.5-7.5 (Replatform 임계값 7.5 미만)
+        - 평균 PL/SQL 복잡도 4.0-7.0 (MySQL 임계값 4.0 초과, Replatform 7.0 미만)
         - BULK 연산 >= 10개 (MySQL 제외 조건)
         - 고난이도 오브젝트 비율 < 25% (Replatform 임계값 미만)
-        - 고난이도 오브젝트 개수 < 20개 (Replatform 임계값 미만)
+        - 고난이도 오브젝트 개수 < 50개 (Replatform 임계값 미만)
+        
+        참고: HIGH_COMPLEXITY_THRESHOLD[PostgreSQL] = 5.0
+        따라서 복잡도 5.0 미만은 일반, 5.0 이상은 고난이도로 분류됨
         
         예상 결과: Aurora PostgreSQL 추천
         """
@@ -558,14 +582,19 @@ class TestMigrationRecommendationScenarios:
         )
         dbcsi_result = StatspackData(os_info=os_info)
         
-        # 중간 복잡도 SQL 분석 결과 (복잡도 4.0-5.0, Replatform 6.0 미만)
-        # 고난이도(7.0+) 오브젝트가 없도록 조정
-        sql_analysis = [
-            SQLAnalysisResult(
+        # 중간 복잡도 SQL 분석 결과 (복잡도 4.2-4.8, 고난이도 임계값 5.0 미만)
+        # 일부만 고난이도(5.0+)로 설정하여 비율 < 25% 유지
+        sql_analysis = []
+        for i in range(30):
+            if i < 5:  # 5개만 고난이도 (5.0+)
+                complexity = 5.2 + (i % 2) * 0.3
+            else:  # 나머지 25개는 일반 (5.0 미만)
+                complexity = 4.2 + (i % 3) * 0.2
+            sql_analysis.append(SQLAnalysisResult(
                 query=f"SELECT * FROM table_{i}",
                 target_database=TargetDatabase.POSTGRESQL,
-                total_score=4.0 + (i % 3) * 0.3,  # 4.0-4.6 범위
-                normalized_score=4.0 + (i % 3) * 0.3,
+                total_score=complexity,
+                normalized_score=complexity,
                 complexity_level=None,
                 recommendation="",
                 structural_complexity=2.0,
@@ -574,19 +603,22 @@ class TestMigrationRecommendationScenarios:
                 data_volume=0.5,
                 execution_complexity=0.5,
                 conversion_difficulty=0.5
-            )
-            for i in range(30)
-        ]
+            ))
         
-        # 중간 복잡도 PL/SQL 분석 결과 (복잡도 4.0-5.0, BULK 연산 포함)
-        # 고난이도(7.0+) 오브젝트가 없도록 조정
-        plsql_analysis = [
-            PLSQLAnalysisResult(
+        # 중간 복잡도 PL/SQL 분석 결과 (복잡도 4.2-4.8, BULK 연산 포함)
+        # 일부만 고난이도(5.0+)로 설정하여 비율 < 25% 유지
+        plsql_analysis = []
+        for i in range(40):
+            if i < 8:  # 8개만 고난이도 (5.0+)
+                complexity = 5.2 + (i % 2) * 0.3
+            else:  # 나머지 32개는 일반 (5.0 미만)
+                complexity = 4.2 + (i % 3) * 0.2
+            plsql_analysis.append(PLSQLAnalysisResult(
                 code=f"CREATE PROCEDURE proc_{i} AS BEGIN NULL; END;",
                 object_type=PLSQLObjectType.PROCEDURE,
                 target_database=TargetDatabase.POSTGRESQL,
-                total_score=4.0 + (i % 3) * 0.3,  # 4.0-4.6 범위
-                normalized_score=4.0 + (i % 3) * 0.3,
+                total_score=complexity,
+                normalized_score=complexity,
                 complexity_level=None,
                 recommendation="",
                 base_score=2.5,
@@ -595,9 +627,7 @@ class TestMigrationRecommendationScenarios:
                 business_logic=0.5,
                 conversion_difficulty=0.0,
                 bulk_operations_count=1 if i < 12 else 0  # 12개 BULK 연산
-            )
-            for i in range(40)
-        ]
+            ))
         
         # 분석 결과 통합
         integrator = AnalysisResultIntegrator()
@@ -607,17 +637,21 @@ class TestMigrationRecommendationScenarios:
             plsql_analysis=plsql_analysis
         )
         
-        # 메트릭 검증 (v2.2.0 임계값 기준)
+        # 메트릭 검증 (현재 임계값 기준)
         metrics = integrated_result.metrics
-        assert metrics.avg_sql_complexity < 6.0  # Replatform 임계값 미만
-        assert metrics.avg_plsql_complexity > 3.5  # MySQL 임계값 초과
-        assert metrics.avg_plsql_complexity < 6.0  # Replatform 임계값 미만
+        assert metrics.avg_sql_complexity < 7.5  # Replatform 임계값 미만
+        assert metrics.avg_plsql_complexity > 4.0  # MySQL 임계값 초과
+        assert metrics.avg_plsql_complexity < 7.0  # Replatform 임계값 미만
         assert metrics.bulk_operation_count >= 10  # BULK 연산으로 MySQL 제외
+        
+        # 고난이도 오브젝트 비율 확인 (25% 미만이어야 함)
+        # HIGH_COMPLEXITY_THRESHOLD[PostgreSQL] = 5.0 기준
+        # 5개(SQL) + 8개(PL/SQL) = 13개 고난이도 / 70개 전체 = 18.6%
         assert metrics.high_complexity_ratio < 0.25  # Replatform 비율 임계값 미만
         
-        # 고난이도 오브젝트 개수 확인 (20개 미만이어야 함)
+        # 고난이도 오브젝트 개수 확인 (50개 미만이어야 함)
         high_count = metrics.high_complexity_sql_count + metrics.high_complexity_plsql_count
-        assert high_count < 20  # Replatform 절대 개수 임계값 미만
+        assert high_count < 50  # Replatform 절대 개수 임계값 미만
         
         # 의사결정 엔진 실행
         decision_engine = MigrationDecisionEngine()
@@ -644,11 +678,11 @@ class TestMigrationRecommendationScenarios:
         """
         시나리오 3: 복잡한 시스템 (Replatform 추천)
         
-        특징 (v2.2.0 임계값 기준):
-        - 평균 SQL 복잡도 >= 6.0 또는
-        - 평균 PL/SQL 복잡도 >= 6.0 또는
+        특징 (현재 임계값 기준):
+        - 평균 SQL 복잡도 >= 7.5 또는
+        - 평균 PL/SQL 복잡도 >= 7.0 또는
         - 복잡도 7.0 이상 오브젝트 >= 25% 또는
-        - 복잡 오브젝트 절대 개수 >= 20개
+        - 복잡 오브젝트 절대 개수 >= 50개
         
         예상 결과: Replatform (RDS Oracle SE2) 추천
         """
@@ -672,13 +706,13 @@ class TestMigrationRecommendationScenarios:
         )
         dbcsi_result = StatspackData(os_info=os_info)
         
-        # 복잡한 SQL 분석 결과 (복잡도 6.5-8.0, Replatform 임계값 6.0 이상)
+        # 복잡한 SQL 분석 결과 (복잡도 7.5-8.5, Replatform 임계값 7.5 이상)
         sql_analysis = [
             SQLAnalysisResult(
                 query=f"SELECT * FROM table_{i}",
                 target_database=TargetDatabase.POSTGRESQL,
-                total_score=6.5 + (i % 3) * 0.5,
-                normalized_score=6.5 + (i % 3) * 0.5,
+                total_score=7.5 + (i % 3) * 0.5,
+                normalized_score=7.5 + (i % 3) * 0.5,
                 complexity_level=None,
                 recommendation="",
                 structural_complexity=3.0,
@@ -691,14 +725,14 @@ class TestMigrationRecommendationScenarios:
             for i in range(50)
         ]
         
-        # 복잡한 PL/SQL 분석 결과 (복잡도 6.5-7.5, Replatform 임계값 6.0 이상)
+        # 복잡한 PL/SQL 분석 결과 (복잡도 7.0-8.0, Replatform 임계값 7.0 이상)
         plsql_analysis = [
             PLSQLAnalysisResult(
                 code=f"CREATE PROCEDURE proc_{i} AS BEGIN NULL; END;",
                 object_type=PLSQLObjectType.PROCEDURE,
                 target_database=TargetDatabase.POSTGRESQL,
-                total_score=6.5 + (i % 3) * 0.5,
-                normalized_score=6.5 + (i % 3) * 0.5,
+                total_score=7.0 + (i % 3) * 0.5,
+                normalized_score=7.0 + (i % 3) * 0.5,
                 complexity_level=None,
                 recommendation="",
                 base_score=4.0,
@@ -719,10 +753,10 @@ class TestMigrationRecommendationScenarios:
             plsql_analysis=plsql_analysis
         )
         
-        # 메트릭 검증 (v2.2.0 임계값 기준)
+        # 메트릭 검증 (현재 임계값 기준)
         metrics = integrated_result.metrics
-        assert metrics.avg_sql_complexity >= 6.0 or \
-               metrics.avg_plsql_complexity >= 6.0 or \
+        assert metrics.avg_sql_complexity >= 7.5 or \
+               metrics.avg_plsql_complexity >= 7.0 or \
                metrics.high_complexity_ratio >= 0.25
         
         # 의사결정 엔진 실행
@@ -738,9 +772,9 @@ class TestMigrationRecommendationScenarios:
         
         assert recommendation.recommended_strategy == MigrationStrategy.REPLATFORM
         
-        # 근거에 "복잡" 또는 "6.0" 언급 확인
+        # 근거에 "복잡" 또는 "7.0" 또는 "7.5" 언급 확인
         rationale_texts = [r.reason for r in recommendation.rationales]
-        assert any("복잡" in text or "6.0" in text or "높" in text for text in rationale_texts)
+        assert any("복잡" in text or "7.0" in text or "7.5" in text or "높" in text for text in rationale_texts)
         
         # 위험 요소에 "Single 인스턴스" 또는 "RAC" 언급 확인
         risk_descriptions = [r.description for r in recommendation.risks]

@@ -81,7 +81,7 @@ def generate_charset_warnings(
     Returns:
         List[str]: 경고 메시지 목록
     """
-    warnings = []
+    warnings: List[str] = []
     
     if not requires_conversion:
         return warnings

@@ -1,0 +1,309 @@
+============================================================================
+=                                                                          =
+=     AWS ProServe Migration ORACLE to RDS                                 =
+=     Oracle PLSQL Full CHECK SCRIPT Ver.1.0                               =
+=                                                                          =
+=     Made by - Tei Nam                                                    =
+=     Create date. 2026/01/31                                              =
+=     Modify date. 2026/01/31                                              =
+=                                                                          =
+============================================================================
+
+-- ============================================================
+-- Owner: ANALYTICS
+-- Type: PACKAGE
+-- Name: PKG_REPORT_ENGINE
+-- ============================================================
+
+CREATE OR REPLACE PACKAGE "ANALYTICS"."PKG_REPORT_ENGINE" AS
+    -- 리포트 타입 정의
+    TYPE t_report_rec IS RECORD (
+        report_id NUMBER,
+        report_name VARCHAR2(200),
+        generated_date DATE,
+        row_count NUMBER
+    );
+    TYPE t_report_tab IS TABLE OF t_report_rec INDEX BY PLS_INTEGER;
+    
+    PROCEDURE generate_daily_summary(
+        p_report_date IN DATE DEFAULT SYSDATE,
+        p_status OUT VARCHAR2
+    );
+    
+    FUNCTION get_metric_trend(
+        p_metric_name IN VARCHAR2,
+        p_start_date IN DATE,
+        p_end_date IN DATE
+    ) RETURN SYS_REFCURSOR;
+    
+    PROCEDURE export_to_csv(
+        p_query IN VARCHAR2,
+        p_filename IN VARCHAR2
+    );
+END PKG_REPORT_ENGINE;
+/
+
+CREATE OR REPLACE PACKAGE BODY "ANALYTICS"."PKG_REPORT_ENGINE" AS
+    
+    PROCEDURE generate_daily_summary(
+        p_report_date IN DATE DEFAULT SYSDATE,
+        p_status OUT VARCHAR2
+    ) IS
+        v_count NUMBER := 0;
+    BEGIN
+        -- 일일 요약 데이터 생성
+        INSERT INTO daily_summary (
+            summary_date, total_transactions, total_amount,
+            avg_response_time, error_count
+        )
+        SELECT 
+            TRUNC(p_report_date),
+            COUNT(*),
+            SUM(amount),
+            AVG(response_time_ms),
+            SUM(CASE WHEN status = 'ERROR' THEN 1 ELSE 0 END)
+        FROM transactions
+        WHERE transaction_date >= TRUNC(p_report_date)
+        AND transaction_date < TRUNC(p_report_date) + 1;
+        
+        v_count := SQL%ROWCOUNT;
+        COMMIT;
+        
+        p_status := 'Generated ' || v_count || ' summary records';
+    EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            p_status := 'Summary already exists for ' || TO_CHAR(p_report_date, 'YYYY-MM-DD');
+        WHEN OTHERS THEN
+            p_status := 'ERROR: ' || SQLERRM;
+            ROLLBACK;
+    END generate_daily_summary;
+    
+    FUNCTION get_metric_trend(
+        p_metric_name IN VARCHAR2,
+        p_start_date IN DATE,
+        p_end_date IN DATE
+    ) RETURN SYS_REFCURSOR IS
+        v_cursor SYS_REFCURSOR;
+    BEGIN
+        OPEN v_cursor FOR
+            SELECT metric_date, metric_value,
+                   AVG(metric_value) OVER (ORDER BY metric_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as moving_avg,
+                   LAG(metric_value, 1) OVER (ORDER BY metric_date) as prev_value,
+                   ROUND((metric_value - LAG(metric_value, 1) OVER (ORDER BY metric_date)) / 
+                         NULLIF(LAG(metric_value, 1) OVER (ORDER BY metric_date), 0) * 100, 2) as pct_change
+            FROM metrics
+            WHERE metric_name = p_metric_name
+            AND metric_date BETWEEN p_start_date AND p_end_date
+            ORDER BY metric_date;
+        
+        RETURN v_cursor;
+    END get_metric_trend;
+    
+    PROCEDURE export_to_csv(
+        p_query IN VARCHAR2,
+        p_filename IN VARCHAR2
+    ) IS
+        v_file UTL_FILE.FILE_TYPE;
+        v_cursor INTEGER;
+        v_col_cnt NUMBER;
+        v_desc_tab DBMS_SQL.DESC_TAB;
+        v_col_value VARCHAR2(4000);
+        v_status INTEGER;
+        v_separator VARCHAR2(1);
+    BEGIN
+        v_file := UTL_FILE.FOPEN('EXPORT_DIR', p_filename, 'w', 32767);
+        
+        v_cursor := DBMS_SQL.OPEN_CURSOR;
+        DBMS_SQL.PARSE(v_cursor, p_query, DBMS_SQL.NATIVE);
+        DBMS_SQL.DESCRIBE_COLUMNS(v_cursor, v_col_cnt, v_desc_tab);
+        
+        -- 헤더 출력
+        v_separator := '';
+        FOR i IN 1..v_col_cnt LOOP
+            UTL_FILE.PUT(v_file, v_separator || v_desc_tab(i).col_name);
+            DBMS_SQL.DEFINE_COLUMN(v_cursor, i, v_col_value, 4000);
+            v_separator := ',';
+        END LOOP;
+        UTL_FILE.NEW_LINE(v_file);
+        
+        -- 데이터 출력
+        v_status := DBMS_SQL.EXECUTE(v_cursor);
+        WHILE DBMS_SQL.FETCH_ROWS(v_cursor) > 0 LOOP
+            v_separator := '';
+            FOR i IN 1..v_col_cnt LOOP
+                DBMS_SQL.COLUMN_VALUE(v_cursor, i, v_col_value);
+                UTL_FILE.PUT(v_file, v_separator || '"' || REPLACE(v_col_value, '"', '""') || '"');
+                v_separator := ',';
+            END LOOP;
+            UTL_FILE.NEW_LINE(v_file);
+        END LOOP;
+        
+        DBMS_SQL.CLOSE_CURSOR(v_cursor);
+        UTL_FILE.FCLOSE(v_file);
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF DBMS_SQL.IS_OPEN(v_cursor) THEN
+                DBMS_SQL.CLOSE_CURSOR(v_cursor);
+            END IF;
+            IF UTL_FILE.IS_OPEN(v_file) THEN
+                UTL_FILE.FCLOSE(v_file);
+            END IF;
+            RAISE;
+    END export_to_csv;
+    
+END PKG_REPORT_ENGINE;
+/
+
+-- ============================================================
+-- Owner: ANALYTICS
+-- Type: FUNCTION
+-- Name: FN_CALCULATE_PERCENTILE
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION "ANALYTICS"."FN_CALCULATE_PERCENTILE" (
+    p_table_name IN VARCHAR2,
+    p_column_name IN VARCHAR2,
+    p_percentile IN NUMBER
+) RETURN NUMBER IS
+    v_result NUMBER;
+    v_sql VARCHAR2(4000);
+BEGIN
+    v_sql := 'SELECT PERCENTILE_CONT(' || p_percentile || ') ' ||
+             'WITHIN GROUP (ORDER BY ' || p_column_name || ') ' ||
+             'FROM ' || p_table_name;
+    
+    EXECUTE IMMEDIATE v_sql INTO v_result;
+    RETURN v_result;
+END FN_CALCULATE_PERCENTILE;
+/
+
+-- ============================================================
+-- Owner: ANALYTICS
+-- Type: PROCEDURE
+-- Name: SP_AGGREGATE_HOURLY
+-- ============================================================
+
+CREATE OR REPLACE PROCEDURE "ANALYTICS"."SP_AGGREGATE_HOURLY" (
+    p_date IN DATE DEFAULT SYSDATE
+) IS
+    TYPE t_hour_data IS TABLE OF NUMBER INDEX BY PLS_INTEGER;
+    v_counts t_hour_data;
+    v_amounts t_hour_data;
+BEGIN
+    -- BULK COLLECT로 시간별 데이터 수집
+    SELECT EXTRACT(HOUR FROM transaction_time), COUNT(*), SUM(amount)
+    BULK COLLECT INTO v_counts, v_amounts
+    FROM transactions
+    WHERE TRUNC(transaction_date) = TRUNC(p_date)
+    GROUP BY EXTRACT(HOUR FROM transaction_time);
+    
+    -- 집계 테이블에 저장
+    FORALL i IN 1..v_counts.COUNT
+        MERGE INTO hourly_aggregates t
+        USING (SELECT TRUNC(p_date) as agg_date, i as hour_num FROM dual) s
+        ON (t.agg_date = s.agg_date AND t.hour_num = s.hour_num)
+        WHEN MATCHED THEN
+            UPDATE SET t.transaction_count = v_counts(i), t.total_amount = v_amounts(i)
+        WHEN NOT MATCHED THEN
+            INSERT (agg_date, hour_num, transaction_count, total_amount)
+            VALUES (s.agg_date, s.hour_num, v_counts(i), v_amounts(i));
+    
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE;
+END SP_AGGREGATE_HOURLY;
+/
+
+
+-- ============================================================
+-- Owner: ANALYTICS
+-- Type: FUNCTION
+-- Name: FN_GET_HIERARCHY_PATH
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION "ANALYTICS"."FN_GET_HIERARCHY_PATH" (
+    p_node_id IN NUMBER
+) RETURN VARCHAR2 IS
+    v_path VARCHAR2(4000);
+BEGIN
+    SELECT SYS_CONNECT_BY_PATH(node_name, ' > ')
+    INTO v_path
+    FROM hierarchy_nodes
+    WHERE node_id = p_node_id
+    START WITH parent_id IS NULL
+    CONNECT BY PRIOR node_id = parent_id;
+    
+    RETURN LTRIM(v_path, ' > ');
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RETURN NULL;
+END FN_GET_HIERARCHY_PATH;
+/
+
+-- ============================================================
+-- Owner: ANALYTICS
+-- Type: PROCEDURE
+-- Name: SP_REFRESH_MATERIALIZED_VIEW
+-- ============================================================
+
+CREATE OR REPLACE PROCEDURE "ANALYTICS"."SP_REFRESH_MATERIALIZED_VIEW" (
+    p_mv_name IN VARCHAR2,
+    p_method IN VARCHAR2 DEFAULT 'COMPLETE'
+) IS
+BEGIN
+    IF p_method = 'FAST' THEN
+        DBMS_MVIEW.REFRESH(p_mv_name, 'F');
+    ELSE
+        DBMS_MVIEW.REFRESH(p_mv_name, 'C');
+    END IF;
+    
+    -- 리프레시 로그 기록
+    INSERT INTO mv_refresh_log (mv_name, refresh_method, refresh_time, status)
+    VALUES (p_mv_name, p_method, SYSDATE, 'SUCCESS');
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        INSERT INTO mv_refresh_log (mv_name, refresh_method, refresh_time, status, error_message)
+        VALUES (p_mv_name, p_method, SYSDATE, 'FAILED', SQLERRM);
+        COMMIT;
+        RAISE;
+END SP_REFRESH_MATERIALIZED_VIEW;
+/
+
+-- ============================================================
+-- Owner: ANALYTICS
+-- Type: TRIGGER
+-- Name: TRG_METRIC_ALERT
+-- ============================================================
+
+CREATE OR REPLACE TRIGGER "ANALYTICS"."TRG_METRIC_ALERT"
+AFTER INSERT ON metrics
+FOR EACH ROW
+DECLARE
+    v_threshold NUMBER;
+    v_alert_type VARCHAR2(20);
+BEGIN
+    -- 임계값 조회
+    SELECT threshold_value, alert_type
+    INTO v_threshold, v_alert_type
+    FROM metric_thresholds
+    WHERE metric_name = :NEW.metric_name
+    AND is_active = 'Y';
+    
+    -- 임계값 초과 시 알림 생성
+    IF :NEW.metric_value > v_threshold THEN
+        INSERT INTO metric_alerts (
+            metric_name, metric_value, threshold_value,
+            alert_type, alert_time, status
+        ) VALUES (
+            :NEW.metric_name, :NEW.metric_value, v_threshold,
+            v_alert_type, SYSDATE, 'NEW'
+        );
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        NULL; -- 임계값 설정 없으면 무시
+END TRG_METRIC_ALERT;
+/

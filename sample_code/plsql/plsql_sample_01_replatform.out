@@ -1,0 +1,684 @@
+============================================================================
+=                                                                          =
+=     AWS ProServe Migration ORACLE to RDS                                 =
+=     Oracle PLSQL Full CHECK SCRIPT Ver.1.0                               =
+=                                                                          =
+=     Made by - Tei Nam                                                    =
+=     Create date. 2026/01/31                                              =
+=     Modify date. 2026/01/31                                              =
+=                                                                          =
+============================================================================
+
+-- ============================================================
+-- Owner: ENTERPRISE
+-- Type: PACKAGE
+-- Name: PKG_FINANCIAL_CORE
+-- ============================================================
+
+CREATE OR REPLACE PACKAGE "ENTERPRISE"."PKG_FINANCIAL_CORE" AS
+    -- 글로벌 타입 정의
+    TYPE t_account_rec IS RECORD (
+        account_id NUMBER,
+        account_name VARCHAR2(100),
+        balance NUMBER(18,2),
+        currency_code VARCHAR2(3)
+    );
+    TYPE t_account_tab IS TABLE OF t_account_rec INDEX BY PLS_INTEGER;
+    TYPE t_transaction_cur IS REF CURSOR;
+    
+    -- 패키지 변수
+    g_fiscal_year NUMBER := TO_NUMBER(TO_CHAR(SYSDATE, 'YYYY'));
+    g_base_currency VARCHAR2(3) := 'USD';
+    
+    -- 프로시저/함수 선언
+    PROCEDURE process_batch_transactions(
+        p_batch_id IN NUMBER,
+        p_process_date IN DATE DEFAULT SYSDATE,
+        p_result OUT VARCHAR2
+    );
+    
+    FUNCTION calculate_compound_interest(
+        p_principal IN NUMBER,
+        p_rate IN NUMBER,
+        p_periods IN NUMBER,
+        p_compound_freq IN NUMBER DEFAULT 12
+    ) RETURN NUMBER;
+    
+    FUNCTION get_account_hierarchy(p_account_id IN NUMBER) RETURN SYS_REFCURSOR;
+    
+    PROCEDURE reconcile_accounts(
+        p_start_date IN DATE,
+        p_end_date IN DATE,
+        p_status OUT VARCHAR2
+    );
+END PKG_FINANCIAL_CORE;
+/
+
+
+CREATE OR REPLACE PACKAGE BODY "ENTERPRISE"."PKG_FINANCIAL_CORE" AS
+    -- 내부 변수
+    v_error_log CLOB;
+    
+    -- 내부 프로시저: 트랜잭션 검증
+    PROCEDURE validate_transaction(
+        p_trans_id IN NUMBER,
+        p_valid OUT BOOLEAN
+    ) IS
+        v_count NUMBER;
+        v_status VARCHAR2(20);
+    BEGIN
+        SELECT COUNT(*), MAX(status)
+        INTO v_count, v_status
+        FROM fin_transactions
+        WHERE transaction_id = p_trans_id
+        AND status IN ('PENDING', 'APPROVED');
+        
+        p_valid := (v_count > 0 AND v_status = 'APPROVED');
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            p_valid := FALSE;
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Error in validate_transaction: ' || SQLERRM);
+            p_valid := FALSE;
+    END validate_transaction;
+    
+    -- 배치 트랜잭션 처리
+    PROCEDURE process_batch_transactions(
+        p_batch_id IN NUMBER,
+        p_process_date IN DATE DEFAULT SYSDATE,
+        p_result OUT VARCHAR2
+    ) IS
+        TYPE t_trans_ids IS TABLE OF NUMBER INDEX BY PLS_INTEGER;
+        v_trans_ids t_trans_ids;
+        v_success_count NUMBER := 0;
+        v_fail_count NUMBER := 0;
+        v_is_valid BOOLEAN;
+        
+        CURSOR c_batch_trans IS
+            SELECT transaction_id, amount, account_from, account_to
+            FROM fin_transactions
+            WHERE batch_id = p_batch_id
+            AND process_date = p_process_date
+            ORDER BY priority DESC, created_date;
+    BEGIN
+        -- 배치 시작 로깅
+        INSERT INTO batch_log (batch_id, start_time, status)
+        VALUES (p_batch_id, SYSTIMESTAMP, 'PROCESSING');
+        COMMIT;
+        
+        -- BULK COLLECT로 트랜잭션 ID 수집
+        SELECT transaction_id
+        BULK COLLECT INTO v_trans_ids
+        FROM fin_transactions
+        WHERE batch_id = p_batch_id;
+        
+        -- 각 트랜잭션 처리
+        FOR rec IN c_batch_trans LOOP
+            BEGIN
+                SAVEPOINT trans_start;
+                
+                validate_transaction(rec.transaction_id, v_is_valid);
+                
+                IF v_is_valid THEN
+                    -- 출금 계좌 업데이트
+                    UPDATE accounts
+                    SET balance = balance - rec.amount,
+                        last_transaction_date = SYSDATE
+                    WHERE account_id = rec.account_from;
+                    
+                    -- 입금 계좌 업데이트
+                    UPDATE accounts
+                    SET balance = balance + rec.amount,
+                        last_transaction_date = SYSDATE
+                    WHERE account_id = rec.account_to;
+                    
+                    -- 트랜잭션 상태 업데이트
+                    UPDATE fin_transactions
+                    SET status = 'COMPLETED',
+                        completed_date = SYSDATE
+                    WHERE transaction_id = rec.transaction_id;
+                    
+                    v_success_count := v_success_count + 1;
+                ELSE
+                    UPDATE fin_transactions
+                    SET status = 'REJECTED',
+                        reject_reason = 'Validation failed'
+                    WHERE transaction_id = rec.transaction_id;
+                    
+                    v_fail_count := v_fail_count + 1;
+                END IF;
+                
+                COMMIT;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    ROLLBACK TO trans_start;
+                    v_fail_count := v_fail_count + 1;
+                    
+                    -- 에러 로깅
+                    INSERT INTO error_log (error_date, error_message, transaction_id)
+                    VALUES (SYSDATE, SQLERRM, rec.transaction_id);
+                    COMMIT;
+            END;
+        END LOOP;
+        
+        -- 배치 완료 업데이트
+        UPDATE batch_log
+        SET end_time = SYSTIMESTAMP,
+            status = 'COMPLETED',
+            success_count = v_success_count,
+            fail_count = v_fail_count
+        WHERE batch_id = p_batch_id;
+        COMMIT;
+        
+        p_result := 'Success: ' || v_success_count || ', Failed: ' || v_fail_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_result := 'BATCH ERROR: ' || SQLERRM;
+            ROLLBACK;
+    END process_batch_transactions;
+    
+    -- 복리 이자 계산
+    FUNCTION calculate_compound_interest(
+        p_principal IN NUMBER,
+        p_rate IN NUMBER,
+        p_periods IN NUMBER,
+        p_compound_freq IN NUMBER DEFAULT 12
+    ) RETURN NUMBER IS
+        v_result NUMBER;
+    BEGIN
+        v_result := p_principal * POWER(1 + (p_rate / p_compound_freq), p_periods * p_compound_freq);
+        RETURN ROUND(v_result, 2);
+    END calculate_compound_interest;
+    
+    -- 계좌 계층 구조 조회 (CONNECT BY 사용)
+    FUNCTION get_account_hierarchy(p_account_id IN NUMBER) RETURN SYS_REFCURSOR IS
+        v_cursor SYS_REFCURSOR;
+    BEGIN
+        OPEN v_cursor FOR
+            SELECT account_id, account_name, parent_account_id, LEVEL as depth,
+                   SYS_CONNECT_BY_PATH(account_name, '/') as path
+            FROM accounts
+            START WITH account_id = p_account_id
+            CONNECT BY PRIOR account_id = parent_account_id
+            ORDER SIBLINGS BY account_name;
+        
+        RETURN v_cursor;
+    END get_account_hierarchy;
+    
+    -- 계좌 조정
+    PROCEDURE reconcile_accounts(
+        p_start_date IN DATE,
+        p_end_date IN DATE,
+        p_status OUT VARCHAR2
+    ) IS
+        v_discrepancy_count NUMBER := 0;
+        
+        CURSOR c_accounts IS
+            SELECT a.account_id, a.balance as current_balance,
+                   NVL(SUM(CASE WHEN t.transaction_type = 'CREDIT' THEN t.amount ELSE -t.amount END), 0) as calc_balance
+            FROM accounts a
+            LEFT JOIN fin_transactions t ON (a.account_id = t.account_to OR a.account_id = t.account_from)
+                AND t.completed_date BETWEEN p_start_date AND p_end_date
+                AND t.status = 'COMPLETED'
+            GROUP BY a.account_id, a.balance;
+    BEGIN
+        FOR rec IN c_accounts LOOP
+            IF ABS(rec.current_balance - rec.calc_balance) > 0.01 THEN
+                INSERT INTO reconciliation_discrepancies (
+                    account_id, expected_balance, actual_balance, 
+                    discrepancy_amount, check_date
+                ) VALUES (
+                    rec.account_id, rec.calc_balance, rec.current_balance,
+                    rec.current_balance - rec.calc_balance, SYSDATE
+                );
+                v_discrepancy_count := v_discrepancy_count + 1;
+            END IF;
+        END LOOP;
+        
+        COMMIT;
+        p_status := 'Reconciliation complete. Discrepancies found: ' || v_discrepancy_count;
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_status := 'ERROR: ' || SQLERRM;
+            ROLLBACK;
+    END reconcile_accounts;
+    
+END PKG_FINANCIAL_CORE;
+/
+
+
+-- ============================================================
+-- Owner: ENTERPRISE
+-- Type: PACKAGE
+-- Name: PKG_DATA_PIPELINE
+-- ============================================================
+
+CREATE OR REPLACE PACKAGE "ENTERPRISE"."PKG_DATA_PIPELINE" AS
+    -- 파이프라인 타입 정의
+    TYPE t_pipeline_rec IS RECORD (
+        pipeline_id NUMBER,
+        source_table VARCHAR2(100),
+        target_table VARCHAR2(100),
+        transform_rule CLOB
+    );
+    TYPE t_pipeline_tab IS TABLE OF t_pipeline_rec;
+    
+    -- 파이프라인 함수 (PIPELINED)
+    FUNCTION get_transformed_data(p_source_id IN NUMBER) 
+        RETURN t_pipeline_tab PIPELINED;
+    
+    PROCEDURE execute_etl_job(
+        p_job_id IN NUMBER,
+        p_parallel_degree IN NUMBER DEFAULT 4
+    );
+    
+    PROCEDURE sync_external_data(
+        p_external_table IN VARCHAR2,
+        p_target_table IN VARCHAR2
+    );
+END PKG_DATA_PIPELINE;
+/
+
+CREATE OR REPLACE PACKAGE BODY "ENTERPRISE"."PKG_DATA_PIPELINE" AS
+    
+    FUNCTION get_transformed_data(p_source_id IN NUMBER) 
+        RETURN t_pipeline_tab PIPELINED IS
+        v_rec t_pipeline_rec;
+    BEGIN
+        FOR r IN (
+            SELECT pipeline_id, source_table, target_table, transform_rule
+            FROM etl_pipelines
+            WHERE source_id = p_source_id
+            AND is_active = 'Y'
+        ) LOOP
+            v_rec.pipeline_id := r.pipeline_id;
+            v_rec.source_table := r.source_table;
+            v_rec.target_table := r.target_table;
+            v_rec.transform_rule := r.transform_rule;
+            PIPE ROW(v_rec);
+        END LOOP;
+        RETURN;
+    END get_transformed_data;
+    
+    PROCEDURE execute_etl_job(
+        p_job_id IN NUMBER,
+        p_parallel_degree IN NUMBER DEFAULT 4
+    ) IS
+        v_sql CLOB;
+        v_start_time TIMESTAMP := SYSTIMESTAMP;
+    BEGIN
+        -- 병렬 처리 힌트 설정
+        EXECUTE IMMEDIATE 'ALTER SESSION ENABLE PARALLEL DML';
+        
+        FOR rec IN (
+            SELECT step_id, source_query, target_table, transform_sql
+            FROM etl_job_steps
+            WHERE job_id = p_job_id
+            ORDER BY step_order
+        ) LOOP
+            -- 동적 SQL 실행
+            v_sql := 'INSERT /*+ PARALLEL(' || p_parallel_degree || ') */ INTO ' || 
+                     rec.target_table || ' ' || rec.transform_sql;
+            
+            EXECUTE IMMEDIATE v_sql;
+            
+            -- 단계별 로깅
+            INSERT INTO etl_step_log (job_id, step_id, rows_processed, execution_time)
+            VALUES (p_job_id, rec.step_id, SQL%ROWCOUNT, SYSTIMESTAMP - v_start_time);
+            
+            COMMIT;
+            v_start_time := SYSTIMESTAMP;
+        END LOOP;
+        
+        -- 작업 완료 업데이트
+        UPDATE etl_jobs
+        SET status = 'COMPLETED',
+            end_time = SYSTIMESTAMP
+        WHERE job_id = p_job_id;
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            UPDATE etl_jobs
+            SET status = 'FAILED',
+                error_message = SQLERRM
+            WHERE job_id = p_job_id;
+            COMMIT;
+            RAISE;
+    END execute_etl_job;
+    
+    PROCEDURE sync_external_data(
+        p_external_table IN VARCHAR2,
+        p_target_table IN VARCHAR2
+    ) IS
+        v_sql VARCHAR2(4000);
+    BEGIN
+        -- 외부 테이블에서 데이터 동기화
+        v_sql := 'MERGE INTO ' || p_target_table || ' t ' ||
+                 'USING ' || p_external_table || ' s ' ||
+                 'ON (t.id = s.id) ' ||
+                 'WHEN MATCHED THEN UPDATE SET t.data = s.data, t.updated_date = SYSDATE ' ||
+                 'WHEN NOT MATCHED THEN INSERT (id, data, created_date) VALUES (s.id, s.data, SYSDATE)';
+        
+        EXECUTE IMMEDIATE v_sql;
+        COMMIT;
+    END sync_external_data;
+    
+END PKG_DATA_PIPELINE;
+/
+
+
+-- ============================================================
+-- Owner: ENTERPRISE
+-- Type: PACKAGE
+-- Name: PKG_AUDIT_TRAIL
+-- ============================================================
+
+CREATE OR REPLACE PACKAGE "ENTERPRISE"."PKG_AUDIT_TRAIL" AS
+    -- 감사 로그 타입
+    TYPE t_audit_rec IS RECORD (
+        audit_id NUMBER,
+        table_name VARCHAR2(100),
+        operation VARCHAR2(10),
+        old_values CLOB,
+        new_values CLOB,
+        changed_by VARCHAR2(100),
+        changed_date TIMESTAMP
+    );
+    TYPE t_audit_tab IS TABLE OF t_audit_rec INDEX BY PLS_INTEGER;
+    
+    PROCEDURE log_change(
+        p_table_name IN VARCHAR2,
+        p_operation IN VARCHAR2,
+        p_old_values IN CLOB,
+        p_new_values IN CLOB
+    );
+    
+    FUNCTION get_audit_history(
+        p_table_name IN VARCHAR2,
+        p_start_date IN DATE,
+        p_end_date IN DATE
+    ) RETURN SYS_REFCURSOR;
+    
+    PROCEDURE purge_old_audits(p_retention_days IN NUMBER DEFAULT 365);
+END PKG_AUDIT_TRAIL;
+/
+
+CREATE OR REPLACE PACKAGE BODY "ENTERPRISE"."PKG_AUDIT_TRAIL" AS
+    
+    PROCEDURE log_change(
+        p_table_name IN VARCHAR2,
+        p_operation IN VARCHAR2,
+        p_old_values IN CLOB,
+        p_new_values IN CLOB
+    ) IS
+        PRAGMA AUTONOMOUS_TRANSACTION;
+    BEGIN
+        INSERT INTO audit_trail (
+            audit_id, table_name, operation, old_values, new_values,
+            changed_by, changed_date, session_id, ip_address
+        ) VALUES (
+            audit_seq.NEXTVAL, p_table_name, p_operation, p_old_values, p_new_values,
+            SYS_CONTEXT('USERENV', 'SESSION_USER'), SYSTIMESTAMP,
+            SYS_CONTEXT('USERENV', 'SESSIONID'),
+            SYS_CONTEXT('USERENV', 'IP_ADDRESS')
+        );
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            -- 감사 로깅 실패해도 메인 트랜잭션에 영향 없음
+            ROLLBACK;
+    END log_change;
+    
+    FUNCTION get_audit_history(
+        p_table_name IN VARCHAR2,
+        p_start_date IN DATE,
+        p_end_date IN DATE
+    ) RETURN SYS_REFCURSOR IS
+        v_cursor SYS_REFCURSOR;
+    BEGIN
+        OPEN v_cursor FOR
+            SELECT audit_id, table_name, operation, 
+                   old_values, new_values, changed_by, changed_date
+            FROM audit_trail
+            WHERE table_name = p_table_name
+            AND changed_date BETWEEN p_start_date AND p_end_date
+            ORDER BY changed_date DESC;
+        
+        RETURN v_cursor;
+    END get_audit_history;
+    
+    PROCEDURE purge_old_audits(p_retention_days IN NUMBER DEFAULT 365) IS
+        v_deleted_count NUMBER;
+    BEGIN
+        DELETE FROM audit_trail
+        WHERE changed_date < SYSDATE - p_retention_days;
+        
+        v_deleted_count := SQL%ROWCOUNT;
+        COMMIT;
+        
+        DBMS_OUTPUT.PUT_LINE('Purged ' || v_deleted_count || ' old audit records');
+    END purge_old_audits;
+    
+END PKG_AUDIT_TRAIL;
+/
+
+-- ============================================================
+-- Owner: ENTERPRISE
+-- Type: PACKAGE
+-- Name: PKG_NOTIFICATION
+-- ============================================================
+
+CREATE OR REPLACE PACKAGE "ENTERPRISE"."PKG_NOTIFICATION" AS
+    PROCEDURE send_email(
+        p_to IN VARCHAR2,
+        p_subject IN VARCHAR2,
+        p_body IN CLOB
+    );
+    
+    PROCEDURE send_sms(
+        p_phone IN VARCHAR2,
+        p_message IN VARCHAR2
+    );
+    
+    PROCEDURE queue_notification(
+        p_type IN VARCHAR2,
+        p_recipient IN VARCHAR2,
+        p_content IN CLOB,
+        p_priority IN NUMBER DEFAULT 5
+    );
+    
+    PROCEDURE process_notification_queue;
+END PKG_NOTIFICATION;
+/
+
+CREATE OR REPLACE PACKAGE BODY "ENTERPRISE"."PKG_NOTIFICATION" AS
+    
+    PROCEDURE send_email(
+        p_to IN VARCHAR2,
+        p_subject IN VARCHAR2,
+        p_body IN CLOB
+    ) IS
+        v_conn UTL_SMTP.CONNECTION;
+        v_reply UTL_SMTP.REPLY;
+    BEGIN
+        v_conn := UTL_SMTP.OPEN_CONNECTION('smtp.company.com', 25);
+        UTL_SMTP.HELO(v_conn, 'company.com');
+        UTL_SMTP.MAIL(v_conn, 'noreply@company.com');
+        UTL_SMTP.RCPT(v_conn, p_to);
+        UTL_SMTP.OPEN_DATA(v_conn);
+        UTL_SMTP.WRITE_DATA(v_conn, 'Subject: ' || p_subject || UTL_TCP.CRLF);
+        UTL_SMTP.WRITE_DATA(v_conn, 'To: ' || p_to || UTL_TCP.CRLF);
+        UTL_SMTP.WRITE_DATA(v_conn, UTL_TCP.CRLF || p_body);
+        UTL_SMTP.CLOSE_DATA(v_conn);
+        UTL_SMTP.QUIT(v_conn);
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF v_conn.host IS NOT NULL THEN
+                UTL_SMTP.QUIT(v_conn);
+            END IF;
+            RAISE;
+    END send_email;
+    
+    PROCEDURE send_sms(
+        p_phone IN VARCHAR2,
+        p_message IN VARCHAR2
+    ) IS
+        v_request UTL_HTTP.REQ;
+        v_response UTL_HTTP.RESP;
+        v_url VARCHAR2(4000);
+    BEGIN
+        v_url := 'https://sms-gateway.company.com/send?phone=' || 
+                 UTL_URL.ESCAPE(p_phone) || '&message=' || UTL_URL.ESCAPE(p_message);
+        
+        v_request := UTL_HTTP.BEGIN_REQUEST(v_url, 'POST');
+        UTL_HTTP.SET_HEADER(v_request, 'Content-Type', 'application/json');
+        v_response := UTL_HTTP.GET_RESPONSE(v_request);
+        UTL_HTTP.END_RESPONSE(v_response);
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF v_response.status_code IS NOT NULL THEN
+                UTL_HTTP.END_RESPONSE(v_response);
+            END IF;
+            RAISE;
+    END send_sms;
+    
+    PROCEDURE queue_notification(
+        p_type IN VARCHAR2,
+        p_recipient IN VARCHAR2,
+        p_content IN CLOB,
+        p_priority IN NUMBER DEFAULT 5
+    ) IS
+    BEGIN
+        -- Advanced Queuing 사용
+        DBMS_AQ.ENQUEUE(
+            queue_name => 'notification_queue',
+            enqueue_options => DBMS_AQ.ENQUEUE_OPTIONS_T(),
+            message_properties => DBMS_AQ.MESSAGE_PROPERTIES_T(priority => p_priority),
+            payload => SYS.AQ$_JMS_TEXT_MESSAGE.CONSTRUCT()
+        );
+        COMMIT;
+    END queue_notification;
+    
+    PROCEDURE process_notification_queue IS
+        v_dequeue_options DBMS_AQ.DEQUEUE_OPTIONS_T;
+        v_message_properties DBMS_AQ.MESSAGE_PROPERTIES_T;
+        v_message SYS.AQ$_JMS_TEXT_MESSAGE;
+        v_msgid RAW(16);
+    BEGIN
+        v_dequeue_options.wait := DBMS_AQ.NO_WAIT;
+        
+        LOOP
+            BEGIN
+                DBMS_AQ.DEQUEUE(
+                    queue_name => 'notification_queue',
+                    dequeue_options => v_dequeue_options,
+                    message_properties => v_message_properties,
+                    payload => v_message,
+                    msgid => v_msgid
+                );
+                
+                -- 메시지 처리 로직
+                COMMIT;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    EXIT;
+            END;
+        END LOOP;
+    END process_notification_queue;
+    
+END PKG_NOTIFICATION;
+/
+
+
+-- ============================================================
+-- Owner: ENTERPRISE
+-- Type: TYPE
+-- Name: T_ACCOUNT_OBJ
+-- ============================================================
+
+CREATE OR REPLACE TYPE "ENTERPRISE"."T_ACCOUNT_OBJ" AS OBJECT (
+    account_id NUMBER,
+    account_name VARCHAR2(100),
+    balance NUMBER(18,2),
+    MEMBER FUNCTION get_formatted_balance RETURN VARCHAR2,
+    MEMBER PROCEDURE update_balance(p_amount IN NUMBER)
+);
+/
+
+CREATE OR REPLACE TYPE BODY "ENTERPRISE"."T_ACCOUNT_OBJ" AS
+    MEMBER FUNCTION get_formatted_balance RETURN VARCHAR2 IS
+    BEGIN
+        RETURN TO_CHAR(balance, 'FM$999,999,999.00');
+    END get_formatted_balance;
+    
+    MEMBER PROCEDURE update_balance(p_amount IN NUMBER) IS
+    BEGIN
+        balance := balance + p_amount;
+    END update_balance;
+END;
+/
+
+-- ============================================================
+-- Owner: ENTERPRISE
+-- Type: TYPE
+-- Name: T_ACCOUNT_TAB
+-- ============================================================
+
+CREATE OR REPLACE TYPE "ENTERPRISE"."T_ACCOUNT_TAB" AS TABLE OF T_ACCOUNT_OBJ;
+/
+
+-- ============================================================
+-- Owner: ENTERPRISE
+-- Type: FUNCTION
+-- Name: FN_GET_EXCHANGE_RATE
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION "ENTERPRISE"."FN_GET_EXCHANGE_RATE" (
+    p_from_currency IN VARCHAR2,
+    p_to_currency IN VARCHAR2,
+    p_date IN DATE DEFAULT SYSDATE
+) RETURN NUMBER IS
+    v_rate NUMBER;
+BEGIN
+    SELECT rate INTO v_rate
+    FROM exchange_rates
+    WHERE from_currency = p_from_currency
+    AND to_currency = p_to_currency
+    AND rate_date = TRUNC(p_date);
+    
+    RETURN v_rate;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RETURN NULL;
+END FN_GET_EXCHANGE_RATE;
+/
+
+-- ============================================================
+-- Owner: ENTERPRISE
+-- Type: TRIGGER
+-- Name: TRG_ACCOUNT_AUDIT
+-- ============================================================
+
+CREATE OR REPLACE TRIGGER "ENTERPRISE"."TRG_ACCOUNT_AUDIT"
+AFTER INSERT OR UPDATE OR DELETE ON accounts
+FOR EACH ROW
+DECLARE
+    v_operation VARCHAR2(10);
+    v_old_values CLOB;
+    v_new_values CLOB;
+BEGIN
+    IF INSERTING THEN
+        v_operation := 'INSERT';
+        v_new_values := '{"account_id":' || :NEW.account_id || ',"balance":' || :NEW.balance || '}';
+    ELSIF UPDATING THEN
+        v_operation := 'UPDATE';
+        v_old_values := '{"account_id":' || :OLD.account_id || ',"balance":' || :OLD.balance || '}';
+        v_new_values := '{"account_id":' || :NEW.account_id || ',"balance":' || :NEW.balance || '}';
+    ELSIF DELETING THEN
+        v_operation := 'DELETE';
+        v_old_values := '{"account_id":' || :OLD.account_id || ',"balance":' || :OLD.balance || '}';
+    END IF;
+    
+    PKG_AUDIT_TRAIL.log_change('ACCOUNTS', v_operation, v_old_values, v_new_values);
+END TRG_ACCOUNT_AUDIT;
+/

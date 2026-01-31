@@ -1,0 +1,341 @@
+============================================================================
+=                                                                          =
+=     AWS ProServe Migration ORACLE to RDS                                 =
+=     Oracle PLSQL Full CHECK SCRIPT Ver.1.0                               =
+=                                                                          =
+=     Made by - Tei Nam                                                    =
+=     Create date. 2026/01/31                                              =
+=     Modify date. 2026/01/31                                              =
+=                                                                          =
+============================================================================
+
+-- ============================================================
+-- Owner: SCM
+-- Type: PACKAGE
+-- Name: PKG_INVENTORY_MGMT
+-- ============================================================
+
+CREATE OR REPLACE PACKAGE "SCM"."PKG_INVENTORY_MGMT" AS
+    -- 재고 타입 정의
+    TYPE t_inventory_rec IS RECORD (
+        item_id NUMBER,
+        warehouse_id NUMBER,
+        quantity NUMBER,
+        reorder_point NUMBER
+    );
+    TYPE t_inventory_tab IS TABLE OF t_inventory_rec INDEX BY PLS_INTEGER;
+    
+    PROCEDURE check_reorder_levels(p_warehouse_id IN NUMBER DEFAULT NULL);
+    
+    PROCEDURE process_stock_movement(
+        p_item_id IN NUMBER,
+        p_from_warehouse IN NUMBER,
+        p_to_warehouse IN NUMBER,
+        p_quantity IN NUMBER
+    );
+    
+    FUNCTION get_available_stock(
+        p_item_id IN NUMBER,
+        p_warehouse_id IN NUMBER DEFAULT NULL
+    ) RETURN NUMBER;
+    
+    PROCEDURE generate_purchase_orders;
+END PKG_INVENTORY_MGMT;
+/
+
+CREATE OR REPLACE PACKAGE BODY "SCM"."PKG_INVENTORY_MGMT" AS
+    
+    PROCEDURE check_reorder_levels(p_warehouse_id IN NUMBER DEFAULT NULL) IS
+        CURSOR c_low_stock IS
+            SELECT i.item_id, i.warehouse_id, i.quantity, i.reorder_point,
+                   p.item_name, w.warehouse_name
+            FROM inventory i
+            JOIN products p ON i.item_id = p.product_id
+            JOIN warehouses w ON i.warehouse_id = w.warehouse_id
+            WHERE i.quantity <= i.reorder_point
+            AND (p_warehouse_id IS NULL OR i.warehouse_id = p_warehouse_id);
+    BEGIN
+        FOR rec IN c_low_stock LOOP
+            INSERT INTO reorder_alerts (
+                item_id, warehouse_id, current_qty, reorder_point,
+                alert_date, status
+            ) VALUES (
+                rec.item_id, rec.warehouse_id, rec.quantity, rec.reorder_point,
+                SYSDATE, 'PENDING'
+            );
+        END LOOP;
+        COMMIT;
+    END check_reorder_levels;
+    
+    PROCEDURE process_stock_movement(
+        p_item_id IN NUMBER,
+        p_from_warehouse IN NUMBER,
+        p_to_warehouse IN NUMBER,
+        p_quantity IN NUMBER
+    ) IS
+        v_available NUMBER;
+        v_movement_id NUMBER;
+    BEGIN
+        -- 가용 재고 확인
+        SELECT quantity INTO v_available
+        FROM inventory
+        WHERE item_id = p_item_id
+        AND warehouse_id = p_from_warehouse
+        FOR UPDATE;
+        
+        IF v_available < p_quantity THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Insufficient stock');
+        END IF;
+        
+        -- 이동 ID 생성
+        SELECT movement_seq.NEXTVAL INTO v_movement_id FROM dual;
+        
+        -- 출고 처리
+        UPDATE inventory
+        SET quantity = quantity - p_quantity,
+            last_movement_date = SYSDATE
+        WHERE item_id = p_item_id
+        AND warehouse_id = p_from_warehouse;
+        
+        -- 입고 처리
+        MERGE INTO inventory t
+        USING (SELECT p_item_id as item_id, p_to_warehouse as warehouse_id FROM dual) s
+        ON (t.item_id = s.item_id AND t.warehouse_id = s.warehouse_id)
+        WHEN MATCHED THEN
+            UPDATE SET t.quantity = t.quantity + p_quantity, t.last_movement_date = SYSDATE
+        WHEN NOT MATCHED THEN
+            INSERT (item_id, warehouse_id, quantity, reorder_point, last_movement_date)
+            VALUES (s.item_id, s.warehouse_id, p_quantity, 10, SYSDATE);
+        
+        -- 이동 이력 기록
+        INSERT INTO stock_movements (
+            movement_id, item_id, from_warehouse, to_warehouse,
+            quantity, movement_date, status
+        ) VALUES (
+            v_movement_id, p_item_id, p_from_warehouse, p_to_warehouse,
+            p_quantity, SYSDATE, 'COMPLETED'
+        );
+        
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE;
+    END process_stock_movement;
+    
+    FUNCTION get_available_stock(
+        p_item_id IN NUMBER,
+        p_warehouse_id IN NUMBER DEFAULT NULL
+    ) RETURN NUMBER IS
+        v_total NUMBER;
+    BEGIN
+        SELECT NVL(SUM(quantity), 0)
+        INTO v_total
+        FROM inventory
+        WHERE item_id = p_item_id
+        AND (p_warehouse_id IS NULL OR warehouse_id = p_warehouse_id);
+        
+        RETURN v_total;
+    END get_available_stock;
+    
+    PROCEDURE generate_purchase_orders IS
+        TYPE t_po_items IS TABLE OF reorder_alerts%ROWTYPE;
+        v_items t_po_items;
+        v_po_id NUMBER;
+    BEGIN
+        -- BULK COLLECT로 재주문 필요 항목 수집
+        SELECT * BULK COLLECT INTO v_items
+        FROM reorder_alerts
+        WHERE status = 'PENDING';
+        
+        IF v_items.COUNT = 0 THEN
+            RETURN;
+        END IF;
+        
+        -- 발주서 생성
+        SELECT po_seq.NEXTVAL INTO v_po_id FROM dual;
+        
+        INSERT INTO purchase_orders (po_id, po_date, status, total_items)
+        VALUES (v_po_id, SYSDATE, 'DRAFT', v_items.COUNT);
+        
+        -- 발주 항목 일괄 삽입
+        FORALL i IN 1..v_items.COUNT
+            INSERT INTO po_items (po_id, item_id, quantity, warehouse_id)
+            VALUES (v_po_id, v_items(i).item_id, 
+                    v_items(i).reorder_point * 2 - v_items(i).current_qty,
+                    v_items(i).warehouse_id);
+        
+        -- 알림 상태 업데이트
+        FORALL i IN 1..v_items.COUNT
+            UPDATE reorder_alerts
+            SET status = 'ORDERED', po_id = v_po_id
+            WHERE item_id = v_items(i).item_id
+            AND warehouse_id = v_items(i).warehouse_id
+            AND status = 'PENDING';
+        
+        COMMIT;
+    END generate_purchase_orders;
+    
+END PKG_INVENTORY_MGMT;
+/
+
+
+-- ============================================================
+-- Owner: SCM
+-- Type: PACKAGE
+-- Name: PKG_ORDER_PROCESSING
+-- ============================================================
+
+CREATE OR REPLACE PACKAGE "SCM"."PKG_ORDER_PROCESSING" AS
+    PROCEDURE create_sales_order(
+        p_customer_id IN NUMBER,
+        p_items IN SYS.ODCINUMBERLIST,
+        p_quantities IN SYS.ODCINUMBERLIST,
+        p_order_id OUT NUMBER
+    );
+    
+    PROCEDURE fulfill_order(p_order_id IN NUMBER);
+    
+    FUNCTION calculate_delivery_date(
+        p_warehouse_id IN NUMBER,
+        p_destination IN VARCHAR2
+    ) RETURN DATE;
+END PKG_ORDER_PROCESSING;
+/
+
+CREATE OR REPLACE PACKAGE BODY "SCM"."PKG_ORDER_PROCESSING" AS
+    
+    PROCEDURE create_sales_order(
+        p_customer_id IN NUMBER,
+        p_items IN SYS.ODCINUMBERLIST,
+        p_quantities IN SYS.ODCINUMBERLIST,
+        p_order_id OUT NUMBER
+    ) IS
+    BEGIN
+        SELECT so_seq.NEXTVAL INTO p_order_id FROM dual;
+        
+        INSERT INTO sales_orders (order_id, customer_id, order_date, status)
+        VALUES (p_order_id, p_customer_id, SYSDATE, 'NEW');
+        
+        FOR i IN 1..p_items.COUNT LOOP
+            INSERT INTO so_items (order_id, item_id, quantity, line_num)
+            VALUES (p_order_id, p_items(i), p_quantities(i), i);
+        END LOOP;
+        
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE;
+    END create_sales_order;
+    
+    PROCEDURE fulfill_order(p_order_id IN NUMBER) IS
+        v_warehouse_id NUMBER;
+        
+        CURSOR c_items IS
+            SELECT item_id, quantity
+            FROM so_items
+            WHERE order_id = p_order_id;
+    BEGIN
+        -- 최적 창고 선택
+        SELECT warehouse_id INTO v_warehouse_id
+        FROM (
+            SELECT i.warehouse_id, SUM(i.quantity) as total_stock
+            FROM inventory i
+            JOIN so_items s ON i.item_id = s.item_id
+            WHERE s.order_id = p_order_id
+            GROUP BY i.warehouse_id
+            HAVING COUNT(DISTINCT s.item_id) = (SELECT COUNT(*) FROM so_items WHERE order_id = p_order_id)
+            ORDER BY total_stock DESC
+        )
+        WHERE ROWNUM = 1;
+        
+        -- 재고 차감
+        FOR rec IN c_items LOOP
+            UPDATE inventory
+            SET quantity = quantity - rec.quantity
+            WHERE item_id = rec.item_id
+            AND warehouse_id = v_warehouse_id;
+        END LOOP;
+        
+        -- 주문 상태 업데이트
+        UPDATE sales_orders
+        SET status = 'FULFILLED',
+            fulfilled_date = SYSDATE,
+            ship_from_warehouse = v_warehouse_id
+        WHERE order_id = p_order_id;
+        
+        COMMIT;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            UPDATE sales_orders
+            SET status = 'BACKORDER'
+            WHERE order_id = p_order_id;
+            COMMIT;
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE;
+    END fulfill_order;
+    
+    FUNCTION calculate_delivery_date(
+        p_warehouse_id IN NUMBER,
+        p_destination IN VARCHAR2
+    ) RETURN DATE IS
+        v_transit_days NUMBER;
+    BEGIN
+        SELECT transit_days INTO v_transit_days
+        FROM shipping_routes
+        WHERE origin_warehouse = p_warehouse_id
+        AND destination_region = p_destination;
+        
+        RETURN SYSDATE + v_transit_days;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN SYSDATE + 7; -- 기본 7일
+    END calculate_delivery_date;
+    
+END PKG_ORDER_PROCESSING;
+/
+
+-- ============================================================
+-- Owner: SCM
+-- Type: FUNCTION
+-- Name: FN_GET_SUPPLIER_HIERARCHY
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION "SCM"."FN_GET_SUPPLIER_HIERARCHY" (
+    p_supplier_id IN NUMBER
+) RETURN SYS_REFCURSOR IS
+    v_cursor SYS_REFCURSOR;
+BEGIN
+    OPEN v_cursor FOR
+        SELECT supplier_id, supplier_name, parent_supplier_id, LEVEL as depth,
+               SYS_CONNECT_BY_PATH(supplier_name, ' -> ') as path
+        FROM suppliers
+        START WITH supplier_id = p_supplier_id
+        CONNECT BY PRIOR supplier_id = parent_supplier_id
+        ORDER SIBLINGS BY supplier_name;
+    
+    RETURN v_cursor;
+END FN_GET_SUPPLIER_HIERARCHY;
+/
+
+-- ============================================================
+-- Owner: SCM
+-- Type: TRIGGER
+-- Name: TRG_INVENTORY_AUDIT
+-- ============================================================
+
+CREATE OR REPLACE TRIGGER "SCM"."TRG_INVENTORY_AUDIT"
+AFTER UPDATE OF quantity ON inventory
+FOR EACH ROW
+BEGIN
+    INSERT INTO inventory_audit (
+        item_id, warehouse_id, old_quantity, new_quantity,
+        change_date, changed_by
+    ) VALUES (
+        :OLD.item_id, :OLD.warehouse_id, :OLD.quantity, :NEW.quantity,
+        SYSDATE, SYS_CONTEXT('USERENV', 'SESSION_USER')
+    );
+END TRG_INVENTORY_AUDIT;
+/

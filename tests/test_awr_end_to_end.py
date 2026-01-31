@@ -28,7 +28,7 @@ class TestAWREndToEnd:
     @pytest.fixture
     def sample_awr_file(self):
         """실제 샘플 AWR 파일 경로"""
-        return "sample_code/dbcsi_awr_sample01.out"
+        return "sample_code/dbcsi_awr/dbcsi_awr_sample01.out"
     
     @pytest.fixture
     def temp_output_dir(self):

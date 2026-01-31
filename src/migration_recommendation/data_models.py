@@ -16,6 +16,17 @@ class MigrationStrategy(Enum):
     REFACTOR_POSTGRESQL = "refactor_postgresql"  # Aurora PostgreSQL
 
 
+class ReplatformSubStrategy(Enum):
+    """Replatform 세부 전략
+    
+    Replatform 선택 시 세부 옵션을 구분합니다.
+    난이도와 요구사항에 따라 적절한 옵션을 선택합니다.
+    """
+    RDS_ORACLE = "rds_oracle"  # Amazon RDS for Oracle (관리형, 제약 있음)
+    RDS_CUSTOM_ORACLE = "rds_custom_oracle"  # RDS Custom for Oracle (OS 접근 가능)
+    EC2_REHOST = "ec2_rehost"  # EC2 Rehost (완전한 제어권, Lift & Shift)
+
+
 class AnalysisMode(Enum):
     """분석 모드
     
@@ -353,7 +364,7 @@ class MigrationRecommendation:
     instance_recommendation: Optional[InstanceRecommendation] = None
     
     # 분석 메트릭 (참조용)
-    metrics: AnalysisMetrics = field(default=None)
+    metrics: Optional[AnalysisMetrics] = field(default=None)
     
     # 신뢰도 평가 (신규)
     confidence_assessment: Optional[ConfidenceAssessment] = None
@@ -363,3 +374,7 @@ class MigrationRecommendation:
     
     # Replatform 선택 이유 (신규)
     replatform_reasons: List[str] = field(default_factory=list)
+    
+    # Replatform 세부 전략 (신규)
+    replatform_sub_strategy: Optional[ReplatformSubStrategy] = None
+    replatform_sub_strategy_reasons: List[str] = field(default_factory=list)

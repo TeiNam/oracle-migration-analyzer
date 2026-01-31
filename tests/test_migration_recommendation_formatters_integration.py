@@ -254,7 +254,15 @@ def test_markdown_and_json_consistency():
     assert len(recommendation.roadmap.phases) == len(parsed_json["roadmap"]["phases"])
     
     # Markdown에 주요 정보 포함 확인
-    assert recommendation.recommended_strategy.value in markdown_output.lower()
+    # 전략 값은 사람이 읽기 쉬운 형태로 변환됨 (refactor_postgresql -> Aurora PostgreSQL)
+    strategy_display_names = {
+        "refactor_postgresql": "aurora postgresql",
+        "refactor_mysql": "aurora mysql",
+        "replatform": "rds for oracle",
+    }
+    strategy_value = recommendation.recommended_strategy.value
+    expected_name = strategy_display_names.get(strategy_value, strategy_value)
+    assert expected_name in markdown_output.lower(), f"Expected '{expected_name}' in markdown output"
     assert recommendation.confidence_level in markdown_output
     
     print(f"\n✓ Markdown과 JSON 일관성 테스트 성공")

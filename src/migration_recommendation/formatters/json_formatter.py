@@ -45,6 +45,11 @@ class JSONReportFormatter:
         Returns:
             str: JSON 형식 리포트
         """
+        # metrics가 None인 경우 빈 딕셔너리 반환
+        metrics_data: Dict[str, Any] = {}
+        if recommendation.metrics is not None:
+            metrics_data = self._serialize_metrics(recommendation.metrics)
+        
         data = {
             "recommended_strategy": recommendation.recommended_strategy.value,
             "confidence_level": recommendation.confidence_level,
@@ -53,7 +58,7 @@ class JSONReportFormatter:
             "alternative_strategies": [self._serialize_alternative(a) for a in recommendation.alternative_strategies],
             "risks": [self._serialize_risk(r) for r in recommendation.risks],
             "roadmap": self._serialize_roadmap(recommendation.roadmap),
-            "metrics": self._serialize_metrics(recommendation.metrics)
+            "metrics": metrics_data
         }
         
         return json.dumps(data, ensure_ascii=False, indent=2)
@@ -176,14 +181,15 @@ class JSONReportFormatter:
         # AWR/Statspack 통계 추가 (있는 경우)
         if any([metrics.awr_plsql_lines, metrics.awr_procedure_count, 
                 metrics.awr_function_count, metrics.awr_package_count]):
-            result["awr_statistics"] = {}
+            awr_stats: Dict[str, Any] = {}
             if metrics.awr_plsql_lines is not None:
-                result["awr_statistics"]["plsql_lines"] = metrics.awr_plsql_lines
+                awr_stats["plsql_lines"] = metrics.awr_plsql_lines
             if metrics.awr_procedure_count is not None:
-                result["awr_statistics"]["procedure_count"] = metrics.awr_procedure_count
+                awr_stats["procedure_count"] = metrics.awr_procedure_count
             if metrics.awr_function_count is not None:
-                result["awr_statistics"]["function_count"] = metrics.awr_function_count
+                awr_stats["function_count"] = metrics.awr_function_count
             if metrics.awr_package_count is not None:
-                result["awr_statistics"]["package_count"] = metrics.awr_package_count
+                awr_stats["package_count"] = metrics.awr_package_count
+            result["awr_statistics"] = awr_stats
         
         return result

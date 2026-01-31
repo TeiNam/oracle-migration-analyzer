@@ -57,8 +57,8 @@ class ExecutiveSummaryMixin:
                 for target, complexity in sorted_targets:
                     md.append(f"- **{target.value}**: {complexity.level} ({complexity.score:.1f}/10.0)")
                     if complexity.instance_recommendation:
-                        rec = complexity.instance_recommendation
-                        md.append(f"  - 권장 인스턴스: {rec.instance_type} ({rec.vcpu} vCPU, {rec.memory_gib} GiB)")
+                        inst_rec = complexity.instance_recommendation
+                        md.append(f"  - 권장 인스턴스: {inst_rec.instance_type} ({inst_rec.vcpu} vCPU, {inst_rec.memory_gib} GiB)")
                 md.append("")
             
             md.append("### 주요 발견사항\n")

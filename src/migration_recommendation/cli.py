@@ -339,7 +339,7 @@ def main() -> int:
                 # 요약 정보도 함께 파싱
                 for report_path in reports_by_target['postgresql']:
                     if report_path.endswith('.md'):
-                        sql, plsql, summary = report_parser.md_parser.parse_plsql_complexity_markdown_with_summary(
+                        sql, plsql, summary = report_parser.complexity_parser.parse_plsql_complexity_markdown_with_summary(
                             report_path, "postgresql"
                         )
                         sql_results.extend(sql)
@@ -370,9 +370,20 @@ def main() -> int:
                     "mysql"
                 )
             
-            if not sql_results and not plsql_results:
+            # PostgreSQL 또는 MySQL 리포트 중 하나라도 있어야 함
+            has_postgresql = sql_results or plsql_results
+            has_mysql = sql_results_mysql or plsql_results_mysql
+            
+            if not has_postgresql and not has_mysql:
                 logger.error("분석할 SQL/PL-SQL 리포트가 없습니다")
                 return 1
+            
+            # MySQL만 있는 경우 PostgreSQL 결과로 복사 (통합 분석용)
+            # 단, MySQL 분석 결과도 유지하여 decision_engine에서 MySQL 조건 평가 가능
+            if not has_postgresql and has_mysql:
+                logger.info("MySQL 리포트만 발견됨 - PostgreSQL 분석 결과로도 사용")
+                sql_results = sql_results_mysql.copy()
+                plsql_results = plsql_results_mysql.copy()
             
             log_progress(logger, 2, 5, "리포트 파싱 완료")
             

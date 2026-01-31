@@ -9,6 +9,7 @@ from typing import List
 from ..data_models import (
     AnalysisMetrics,
     MigrationStrategy,
+    ReplatformSubStrategy,
     AlternativeStrategy
 )
 
@@ -47,8 +48,8 @@ class AlternativeGenerator:
         alternatives = []
         
         if recommended_strategy == MigrationStrategy.REPLATFORM:
-            # Replatform 추천 시: 1안은 타 오픈소스 DB
-            # 기본적으로 PostgreSQL 추천 (Oracle 호환성 높음)
+            # Replatform 추천 시: 세부 옵션 설명 + 오픈소스 대안
+            # 1안: PostgreSQL (Oracle 호환성 높음)
             alternatives.append(self._create_postgresql_alternative_from_replatform())
             
             # 2안: MySQL (비용 최적화 관점)

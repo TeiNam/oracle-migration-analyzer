@@ -1,0 +1,274 @@
+~~BEGIN-OS-INFORMATION~~
+STAT_NAME                                                    STAT_VALUE
+------------------------------------------------------------ ------------------------------------------------------------
+AWR_MINER_VER                                                4.0.11.aws.62
+DB_NAME                                                      SUPPLY_CHAIN_MGMT
+DB_UNIQUE_NAME                                               SUPPLY_CHAIN_MGMT
+DBID                                                         4567890123
+PLATFORM_NAME                                                Linux x86 64-bit
+VERSION                                                      19.0.0.0.0
+BANNER                                                       Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+DATABASE_ROLE                                                PRIMARY
+INSTANCES                                                    1
+INSTANCES_CURRENT                                            1
+HOST_CONNECTED                                               SCMSERVER1
+INSTANCE#_CONNECTED                                          1
+HOSTS                                                        SCMSERVER1
+HOSTS_CURRENT                                                SCMSERVER1
+NUM_CPUS                                                     8
+NUM_CPU_CORES                                                4
+NUM_CPU_SOCKETS                                              1
+PHYSICAL_MEMORY_GB                                           64.00
+GLOBAL_CPU_COUNT                                             8
+GLOBAL_CPU_CORE_COUNT                                        4
+GLOBAL_CPU_SOCKET_COUNT                                      1
+TOTAL_DB_SIZE_GB                                             380
+TOTAL_DATAFILE_SIZE_GB                                       360
+TOTAL_TEMPFILE_SIZE_GB                                       20
+USED_DB_SIZE_GB                                              310
+DB_CPU_THREADS_AVERAGE_P99                                   2.8
+DB_CPU_THREADS_PEAKS_50                                      2.2
+DB_CPU_THREADS_PEAKS_90                                      4.0
+DB_HOST_CPU_THREADS_AVERAGE_P99                              5.2
+DB_HOST_CPU_THREADS_PEAKS_50                                 3.8
+DB_HOST_CPU_THREADS_PEAKS_90                                 6.8
+DB_IOPS_AVERAGE_P99                                          2800
+DB_IOPS_PEAKS_P50                                            2200
+DB_IOPS_PEAKS_P90                                            4200
+DB_IOMB_AVERAGE_P99                                          145.5
+DB_IOMB_PEAKS_P50                                            115.2
+DB_IOMB_PEAKS_P90                                            225.8
+DB_SGAPGA_TOTAL                                              48.5
+DB_EXA_CELL_BYTES_ELIG_MB_P99                                0
+DB_EXA_CELL_SI_SAVE_MB_P99                                   0
+DB_EXA_CELL_INT_MB_P99                                       0
+DB_EXA_CELL_INT_SS_MB_P99                                    0
+DB_EXA_CELL_HCC_BYTES_MB_P99                                 0
+DB_EXA_READ_MB_P99                                           0
+DB_EXA_READ_MB_OPT_P99                                       0
+DB_EXA_READ_MULTI_P99                                        0
+DB_EXA_READ_TEMP_P99                                         0
+DB_EXA_WRITE_TEMP_P99                                        0
+COUNT_DB_LINKS                                               2
+COUNT_LINES_PLSQL                                            50000
+COUNT_SCHEMAS                                                18
+COUNT_PDBS                                                   0
+COUNT_FUNCTION                                               25
+COUNT_INDEX                                                  1850
+COUNT_LOB                                                    125
+COUNT_PACKAGE                                                8
+COUNT_PROCEDURE                                              45
+COUNT_SEQUENCE                                               185
+COUNT_TABLE                                                  680
+COUNT_TRIGGER                                                245
+COUNT_TYPE                                                   45
+COUNT_TYPE BODY                                              1
+COUNT_VIEW                                                   285
+COUNT_TABLES_HCC                                             0
+COUNT_BITMAP_INDEX                                           0
+COUNT_MATVIEWS_REWRITE_ENABLED                               8
+COUNT_VPD_POLICIES                                           0
+FEATURE_Parallel SQL Query Execution                         Yes
+FEATURE_Real Application Clusters (RAC)                      No
+DEBUG_MODULE                                                 sqlplus.exe
+DEBUG_PROGRAM                                                sqlplus.exe
+DEBUG_CONTAINER
+DEBUG_SQLPLUS                                                1903000000
+DEBUG_CDB_OR_DBA_COL                                         DBA
+DEBUG_awr_pdb_autoflush_enabled                              FALSE
+DEBUG_control_management_pack_access                         DIAGNOSTIC+TUNING
+MEMORY_TARGET                                                0
+NLS_COMP                                                     BINARY
+NLS_SORT                                                     BINARY
+SGA_TARGET                                                   42949672960
+DEBUG_statistics_level                                       TYPICAL
+DEBUG_timed_statistics                                       TRUE
+~~END-OS-INFORMATION~~
+
+
+..Gathering MEMORY
+
+~~BEGIN-MEMORY~~
+
+   SNAP_ID INSTANCE_NUMBER        SGA        PGA      TOTAL
+---------- --------------- ---------- ---------- ----------
+     40001               1        40.0        8.5       48.5
+     40002               1        40.0        9.8       49.8
+     40003               1        40.0       11.2       51.2
+
+~~END-MEMORY~~
+
+
+..Gathering SIZE-ON-DISK
+
+~~BEGIN-SIZE-ON-DISK~~
+
+   SNAP_ID    SIZE_GB
+---------- ----------
+     40001        380
+     40002        380
+     40003        380
+
+~~END-SIZE-ON-DISK~~
+
+
+..Gathering MAIN-METRICS
+
+~~BEGIN-MAIN-METRICS~~
+
+      snap      dur_m end                                inst     os_cpu os_cpu_max  os_cpu_sd db_wait_ratio db_cpu_ratio  cpu_per_s cpu_per_s_max cpu_per_s_sd        aas     aas_sd    aas_max    db_time db_time_sd sql_res_t_cs bkgd_t_per_s   logons_s logons_total     exec_s   hard_p_s  l_reads_s  commits_s  read_mb_s read_mb_s_max  read_iops read_iops_max   read_bks read_bks_direct write_mb_s write_mb_s_max write_iops write_iops_max  write_bks write_bks_direct read_nt_mb_s read_nt_mb_s_max read_nt_iops read_nt_iops_max write_nt_mb_s write_nt_mb_s_max write_nt_iops write_nt_iops_max  redo_mb_s db_block_gets_s db_block_changes_s gc_cr_rec_s gc_cu_rec_s gc_cr_get_cs gc_cu_get_cs gc_bk_corrupted gc_bk_lost    px_sess    se_sess s_blk_r_lat h_cpu_per_s h_cpu_per_s_max h_cpu_per_s_sd cell_io_int_mb cell_io_int_mb_max network_mb network_mb_max   PDB_IOPS PDB_IOMBPS    PDB_SGA    PDB_PGA PDB_CPU_USAGE_PER_S
+---------- ---------- ---------------------------- ---------- ---------- ---------- ---------- ------------- ------------ ---------- ------------- ------------ ---------- ---------- ---------- ---------- ---------- ------------ ------------ ---------- ------------ ---------- ---------- ---------- ---------- ---------- ------------- ---------- ------------- ---------- --------------- ---------- -------------- ---------- -------------- ---------- ---------------- ------------ ---------------- ------------ ---------------- ------------- ----------------- ------------- ----------------- ---------- --------------- ------------------ ----------- ----------- ------------ ------------ --------------- ---------- ---------- ---------- ----------- ----------- --------------- -------------- -------------- ------------------ ---------- -------------- ---------- ---------- ---------- ---------- -------------------
+     40001         60 26/01/15 09:00                        1       25.5       42.5        5.8          14.5         85.5      1.225         2.150         .285        1.5         .4        3.2      145.5       42.5           .1           .3         .3        265.5      385.5        7.5    72000.5       18.5        3.8          38.5      105.5        2200.5      155.5            22.5        1.0           10.5       38.5          245.5       32.5             10.5          3.2             35.5         95.5           2150.5            .4                8.5          32.5             215.5         .3          1050.5              925.5        10.5        22.5            0            0               0          0          0        2.2          .4       1.925           3.150           .485          105.5              325.5         .4            1.0
+     40002         60 26/01/15 10:00                        1       28.5       48.5        6.8          16.5         83.5      1.425         2.450         .325        1.8         .5        3.8      165.5       52.5           .1           .3         .3        295.5      425.5        8.5    82000.5       22.5        4.5          45.5      125.5        2600.5      185.5            28.5        1.2           12.5       45.5          285.5       38.5             12.5          3.8             42.5        115.5           2550.5            .5               10.5          38.5             255.5         .3          1250.5             1085.5        12.5        28.5            0            0               0          0          0        2.8          .5       2.225           3.550           .565          125.5              385.5         .5            1.2
+     40003         60 26/01/15 11:00                        1       32.5       52.5        7.5          18.5         81.5      1.725         2.850         .385        2.2         .6        4.5      195.5       62.5           .2           .4         .3        325.5      485.5        9.5    92000.5       25.5        5.2          52.5      145.5        2800.5      215.5            32.5        1.5           15.5       52.5          325.5       45.5             15.5          4.5             48.5        135.5           2750.5            .6               12.5          45.5             295.5         .4          1450.5             1285.5        15.5        32.5            0            0               0          0          0        3.2          .6       2.525           3.950           .645          145.5              425.5         .6            1.5
+
+~~END-MAIN-METRICS~~
+
+
+..Gathering TOP-N-TIMED-EVENTS
+
+~~BEGIN-TOP-N-TIMED-EVENTS~~
+
+   SNAP_ID WAIT_CLASS           EVENT_NAME                                                       PCTDBT TOTAL_TIME_S
+---------- -------------------- ------------------------------------------------------------ ---------- ------------
+     40001 DB CPU               DB CPU                                                            85.50   1450000000
+     40001 User I/O             db file sequential read                                            5.50    110000000
+     40001 Commit               log file sync                                                      3.75     75000000
+     40001 Other                PGA memory operation                                               2.25     45000000
+     40001 System I/O           log file parallel write                                            1.50     30000000
+     40002 DB CPU               DB CPU                                                            82.50   1650000000
+     40002 User I/O             db file sequential read                                            7.50    150000000
+     40002 Commit               log file sync                                                      4.25     85000000
+     40002 Other                PGA memory operation                                               2.75     55000000
+     40002 System I/O           log file parallel write                                            1.75     35000000
+     40003 DB CPU               DB CPU                                                            78.50   1950000000
+     40003 User I/O             db file sequential read                                            9.50    190000000
+     40003 Commit               log file sync                                                      5.25    105000000
+     40003 Other                PGA memory operation                                               3.25     65000000
+     40003 System I/O           log file parallel write                                            2.25     45000000
+
+~~END-TOP-N-TIMED-EVENTS~~
+
+
+..Gathering SYSSTAT
+
+~~BEGIN-SYSSTAT~~
+
+   SNAP_ID cell_flash_hits  read_iops write_iops    read_mb read_mb_opt read_nt_iops write_nt_iops read_nt_mb write_nt_mb cell_int_mb cell_int_ss_mb cell_si_save_mb cell_bytes_elig_mb cell_hcc_bytes_mb read_multi_iops read_temp_iops write_temp_iops network_incoming_mb network_outgoing_mb
+---------- --------------- ---------- ---------- ---------- ----------- ------------ ------------- ---------- ----------- ----------- -------------- --------------- ------------------ ----------------- --------------- -------------- --------------- ------------------- -------------------
+     40001               0       2200        600        105           0         2150           585         95          45           0              0               0                  0                 0             285             75              85                  38                  48
+     40002               0       2600        700        125           0         2550           685        115          55           0              0               0                  0                 0             345             85              95                  45                  58
+     40003               0       2800        800        145           0         2750           785        135          65           0              0               0                  0                 0             385             95             105                  52                  68
+
+~~END-SYSSTAT~~
+
+
+..Gathering FEATURES
+
+~~BEGIN-FEATURES~~
+
+NAME                                                             DETECTED_USAGES TOTAL_SAMPLES CURRENTLY_  AUX_COUNT LAST_SAMPLE_DATE                 FEATURE_INFO
+---------------------------------------------------------------- --------------- ------------- ---------- ---------- -------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ADDM                                                                           4            70 TRUE                0 15-1월-2026
+AWR Report                                                                     4            70 TRUE                2 15-1월-2026
+Adaptive Plans                                                                70            70 TRUE                  15-1월-2026
+Automatic Maintenance - Optimizer Statistics Gathering                        70            70 TRUE               75 15-1월-2026
+Automatic SGA Tuning                                                          70            70 TRUE                0 15-1월-2026
+Automatic Undo Management                                                     70            70 TRUE                1 15-1월-2026
+Character Set                                                                 70            70 TRUE                  15-1월-2026                     AL32UTF8
+Internode Parallel Execution                                                  35            70 TRUE                  15-1월-2026
+Job Scheduler                                                                 62            70 TRUE                1 15-1월-2026
+LOB                                                                           68            70 TRUE                  15-1월-2026
+Locally Managed Tablespaces (system)                                          70            70 TRUE               12 15-1월-2026
+Oracle Java Virtual Machine (system)                                          70            70 TRUE             6500 15-1월-2026
+Parallel SQL Query Execution                                                  55            70 TRUE                  15-1월-2026
+Real-Time SQL Monitoring                                                      48            70 TRUE            95000 15-1월-2026
+Recovery Manager (RMAN)                                                       70            70 TRUE                1 15-1월-2026
+Result Cache                                                                  45            70 TRUE               10 15-1월-2026
+SecureFiles (system)                                                          70            70 TRUE               45 15-1월-2026
+SecureFiles (user)                                                            70            70 TRUE              105 15-1월-2026
+Server Parameter File                                                         70            70 TRUE                  15-1월-2026
+
+~~END-FEATURES~~
+
+
+..Gathering IOSTAT-FUNCTION
+
+~~BEGIN-IOSTAT-FUNCTION~~
+
+   SNAP_ID FUNCTION_NAME        megabytes_val_per_s
+---------- -------------------- -------------------
+     40001 Buffer Cache Reads                 105.5
+     40001 Direct Reads                        22.5
+     40001 Direct Writes                       10.5
+     40001 LGWR                                 7.5
+     40002 Buffer Cache Reads                 125.5
+     40002 Direct Reads                        28.5
+     40002 Direct Writes                       12.5
+     40002 LGWR                                 9.5
+     40003 Buffer Cache Reads                 145.5
+     40003 Direct Reads                        32.5
+     40003 Direct Writes                       15.5
+     40003 LGWR                                11.5
+
+~~END-IOSTAT-FUNCTION~~
+
+
+..Gathering PERCENT-CPU
+
+~~BEGIN-PERCENT-CPU~~
+
+      DBID   ORDER_BY METRIC               INSTANCE_NUMBER     ON_CPU ON_CPU_AND_RESMGR RESMGR_CPU_QUANTUM BEGIN_INTERVAL_TIME              END_INTERVAL_TIME                SNAP_SHOTS       DAYS AVG_SNAPS_PER_DAY
+---------- ---------- -------------------- --------------- ---------- ----------------- ------------------ -------------------------------- -------------------------------- ---------- ---------- -----------------
+4567890123          1 Average                            1       28.8              28.8                  0 15-1월-2026 08:00               15-1월-2026 12:00                         3          1                 3
+
+~~END-PERCENT-CPU~~
+
+
+..Gathering PERCENT-IO
+
+~~BEGIN-PERCENT-IO~~
+
+      DBID METRIC               INSTANCE_NUMBER    RW_IOPS     R_IOPS     W_IOPS    RW_MBPS     R_MBPS     W_MBPS BEGIN_INTERVAL_TIME              END_INTERVAL_TIME                SNAP_SHOTS       DAYS AVG_SNAPS_PER_DAY
+---------- -------------------- --------------- ---------- ---------- ---------- ---------- ---------- ---------- -------------------------------- -------------------------------- ---------- ---------- -----------------
+4567890123 Average                            1       2800       2200        600        145        115         30 15-1월-2026 08:00               15-1월-2026 12:00                         3          1                 3
+
+~~END-PERCENT-IO~~
+
+
+..Gathering WORKLOAD
+
+~~BEGIN-WORKLOAD~~
+
+SAMPLESTART                                               TOPN MODULE                                                                                                                           PROGRAM                                                                                                                          EVENT                                                                                                                            TOTAL_DBTIME_SUM        AAS_COMP AAS_CONTRIBUTION_PCT TOT_CONTRIBUTIONS SESSION_TYPE         WAIT_CLASS           DELTA_READ_IO_REQUESTS DELTA_WRITE_IO_REQUESTS DELTA_READ_IO_BYTES DELTA_WRITE_IO_BYTES        RIOR_PCT        WIOR_PCT        RIOB_PCT        WIOB_PCT        RIOR_TOT        WIOR_TOT        RIOB_TOT        WIOB_TOT
+--------------------------------------------------------- ---- -------------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------- -------------------- ---------- -------------------- ----------------- -------------------- -------------------- ---------------------- ----------------------- ------------------- -------------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- ---------------
+15-1월-2026 09:00                                            1 SCM_BATCH_MODULE                                                                                                                 oracle@scmserver1                                                                                                                DB CPU                                                                                                                                      1450000          1.5                   42                 1 FOREGROUND           CPU                                   2200                     600          1150000000            300000000              42              35              48              38            2200             600      1150000000       300000000
+15-1월-2026 09:00                                            2 SCM_ONLINE_MODULE                                                                                                                oracle@scmserver1                                                                                                                db file sequential read                                                                                                                      550000          0.5                   15                 2 FOREGROUND           User I/O                               550                     150           285000000             75000000              15              12              18              14             550             150       285000000        75000000
+
+~~END-WORKLOAD~~
+
+
+..Gathering SGA-ADVICE
+
+~~BEGIN-SGA-ADVICE~~
+
+        INST_ID        SGA_SIZE SGA_SIZE_FACTOR    ESTD_DB_TIME ESTD_DB_TIME_FACTOR ESTD_PHYSICAL_READS ESTD_BUFFER_CACHE_SIZE ESTD_SHARED_POOL_SIZE          CON_ID      SGA_TARGET
+--------------- --------------- --------------- --------------- ------------------- ------------------- ---------------------- --------------------- --------------- ---------------
+              1              30             0.75          165000                1.15            25000000                     24                     5               0              40
+              1              40             1.00          145000                1.00            20000000                     32                     6               0              40
+              1              50             1.25          125000                0.86            16000000                     40                     8               0              40
+
+~~END-SGA-ADVICE~~
+
+
+..Gathering BUFFER-CACHE
+
+~~BEGIN-BUFFER-CACHE~~
+
+        SNAP_ID INSTANCE_NUMBER      BLOCK_SIZE     DB_CACHE_GB       DSK_READS      BLOCK_GETS      CONSISTENT      BUF_GOT_GB       HIT_RATIO
+--------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- ---------------
+          40001               1            8192              32        20000000       720000000       620000000             7.5           97.85
+          40002               1            8192              32        23000000       820000000       720000000             8.5           97.75
+          40003               1            8192              32        26000000       920000000       820000000             9.5           97.65
+
+~~END-BUFFER-CACHE~~

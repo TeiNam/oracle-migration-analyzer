@@ -1,0 +1,82 @@
+============================================================================
+=                                                                          =
+=     AWS ProServe Migration ORACLE to RDS                                 =
+=     Oracle PLSQL Full CHECK SCRIPT Ver.1.0                               =
+=                                                                          =
+=     Made by - Tei Nam                                                    =
+=     Create date. 2026/01/31                                              =
+=     Modify date. 2026/01/31                                              =
+=                                                                          =
+============================================================================
+
+-- ============================================================
+-- Owner: CRM
+-- Type: PROCEDURE
+-- Name: SP_GET_CUSTOMER
+-- ============================================================
+
+CREATE OR REPLACE PROCEDURE "CRM"."SP_GET_CUSTOMER" (
+    p_customer_id IN NUMBER,
+    p_name OUT VARCHAR2
+) IS
+BEGIN
+    SELECT customer_name INTO p_name
+    FROM customers
+    WHERE customer_id = p_customer_id;
+END SP_GET_CUSTOMER;
+/
+
+-- ============================================================
+-- Owner: CRM
+-- Type: PROCEDURE
+-- Name: SP_UPDATE_CUSTOMER
+-- ============================================================
+
+CREATE OR REPLACE PROCEDURE "CRM"."SP_UPDATE_CUSTOMER" (
+    p_customer_id IN NUMBER,
+    p_name IN VARCHAR2
+) IS
+BEGIN
+    UPDATE customers
+    SET customer_name = p_name
+    WHERE customer_id = p_customer_id;
+    COMMIT;
+END SP_UPDATE_CUSTOMER;
+/
+
+-- ============================================================
+-- Owner: CRM
+-- Type: PROCEDURE
+-- Name: SP_INSERT_ORDER
+-- ============================================================
+
+CREATE OR REPLACE PROCEDURE "CRM"."SP_INSERT_ORDER" (
+    p_customer_id IN NUMBER,
+    p_order_id OUT NUMBER
+) IS
+BEGIN
+    SELECT order_seq.NEXTVAL INTO p_order_id FROM dual;
+    INSERT INTO orders (order_id, customer_id, order_date)
+    VALUES (p_order_id, p_customer_id, SYSDATE);
+    COMMIT;
+END SP_INSERT_ORDER;
+/
+
+-- ============================================================
+-- Owner: CRM
+-- Type: FUNCTION
+-- Name: FN_GET_ORDER_COUNT
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION "CRM"."FN_GET_ORDER_COUNT" (
+    p_customer_id IN NUMBER
+) RETURN NUMBER IS
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count
+    FROM orders
+    WHERE customer_id = p_customer_id;
+    RETURN v_count;
+END FN_GET_ORDER_COUNT;
+/
+

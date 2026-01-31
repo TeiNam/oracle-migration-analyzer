@@ -54,23 +54,23 @@ class MigrationAnalysisFormatter:
                 lines.append("")
             
             if complexity.instance_recommendation:
-                rec = complexity.instance_recommendation
+                inst_rec = complexity.instance_recommendation
                 lines.append("**RDS 인스턴스 추천:**\n")
-                lines.append(f"- **인스턴스 타입**: {rec.instance_type}")
-                lines.append(f"- **vCPU**: {rec.vcpu}")
-                lines.append(f"- **메모리**: {rec.memory_gib} GiB")
-                lines.append(f"- **현재 CPU 사용률**: {rec.current_cpu_usage_pct:.2f}%")
-                lines.append(f"- **현재 메모리 사용량**: {rec.current_memory_gb:.2f} GB")
-                lines.append(f"- **CPU 여유분**: {rec.cpu_headroom_pct:.2f}%")
-                lines.append(f"- **메모리 여유분**: {rec.memory_headroom_pct:.2f}%")
-                if rec.estimated_monthly_cost_usd:
-                    lines.append(f"- **예상 월간 비용**: ${rec.estimated_monthly_cost_usd:.2f}")
+                lines.append(f"- **인스턴스 타입**: {inst_rec.instance_type}")
+                lines.append(f"- **vCPU**: {inst_rec.vcpu}")
+                lines.append(f"- **메모리**: {inst_rec.memory_gib} GiB")
+                lines.append(f"- **현재 CPU 사용률**: {inst_rec.current_cpu_usage_pct:.2f}%")
+                lines.append(f"- **현재 메모리 사용량**: {inst_rec.current_memory_gb:.2f} GB")
+                lines.append(f"- **CPU 여유분**: {inst_rec.cpu_headroom_pct:.2f}%")
+                lines.append(f"- **메모리 여유분**: {inst_rec.memory_headroom_pct:.2f}%")
+                if inst_rec.estimated_monthly_cost_usd:
+                    lines.append(f"- **예상 월간 비용**: ${inst_rec.estimated_monthly_cost_usd:.2f}")
                 lines.append("")
             
             if complexity.recommendations:
                 lines.append("**권장사항:**\n")
-                for rec in complexity.recommendations:
-                    lines.append(f"- {rec}")
+                for recommendation in complexity.recommendations:
+                    lines.append(f"- {recommendation}")
                 lines.append("")
             
             if complexity.warnings:
@@ -103,17 +103,17 @@ class MigrationAnalysisFormatter:
             lines.append("")
             
             if complexity.instance_recommendation:
-                rec = complexity.instance_recommendation
+                inst_rec = complexity.instance_recommendation
                 lines.append("**RDS Instance Recommendation:**\n")
-                lines.append(f"- **Instance Type**: {rec.instance_type}")
-                lines.append(f"- **vCPU**: {rec.vcpu}")
-                lines.append(f"- **Memory**: {rec.memory_gib} GiB")
+                lines.append(f"- **Instance Type**: {inst_rec.instance_type}")
+                lines.append(f"- **vCPU**: {inst_rec.vcpu}")
+                lines.append(f"- **Memory**: {inst_rec.memory_gib} GiB")
                 lines.append("")
             
             if complexity.recommendations:
                 lines.append("**Recommendations:**\n")
-                for rec in complexity.recommendations:
-                    lines.append(f"- {rec}")
+                for recommendation in complexity.recommendations:
+                    lines.append(f"- {recommendation}")
                 lines.append("")
             
             if complexity.warnings:

@@ -5,6 +5,7 @@ I/O 함수별 분석 섹션을 생성합니다.
 """
 
 import statistics
+from typing import Dict, List
 
 
 class IOAnalysisMixin:
@@ -31,14 +32,14 @@ class IOAnalysisMixin:
             return "\n".join(md)
         
         # 함수별 I/O 통계 집계
-        function_stats = {}
+        function_stats: Dict[str, List[float]] = {}
         for iostat in awr_data.iostat_functions:
             func_name = iostat.function_name
             if func_name not in function_stats:
                 function_stats[func_name] = []
             function_stats[func_name].append(iostat.megabytes_per_s)
         
-        total_io = sum(sum(values) for values in function_stats.values())
+        total_io: float = sum(sum(values) for values in function_stats.values())
         
         if total_io == 0:
             md.append("I/O 데이터가 충분하지 않습니다.\n" if language == "ko" else "Insufficient I/O data.\n")

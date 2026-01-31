@@ -53,12 +53,6 @@ class MemoryUsageFormatter:
         lines.append(f"- **최소/최대**: {min(total_gbs):.2f} GB / {max(total_gbs):.2f} GB")
         lines.append("")
         
-        # 차트 생성
-        if output_path and len(data.memory_metrics) >= 1:
-            chart_md = MemoryUsageFormatter._generate_chart(data, output_path)
-            if chart_md:
-                lines.append(chart_md)
-        
         # 상세 테이블
         lines.append("**상세 데이터 (최근 10개):**\n")
         lines.append("| Snap ID | Instance | SGA (GB) | PGA (GB) | Total (GB) |")
@@ -103,32 +97,3 @@ class MemoryUsageFormatter:
         
         lines.append("")
         return "\n".join(lines)
-    
-    @staticmethod
-    def _generate_chart(data: StatspackData, output_path: str) -> str:
-        """메모리 사용량 차트 생성"""
-        try:
-            from ..chart_generator import ChartGenerator
-            
-            display_count = min(20, len(data.memory_metrics))
-            snap_ids = [m.snap_id for m in data.memory_metrics[:display_count]]
-            sga_data = [m.sga_gb for m in data.memory_metrics[:display_count]]
-            pga_data = [m.pga_gb for m in data.memory_metrics[:display_count]]
-            total_data = [m.total_gb for m in data.memory_metrics[:display_count]]
-            
-            chart_filename = ChartGenerator.generate_memory_usage_chart(
-                snap_ids=snap_ids,
-                sga_data=sga_data,
-                pga_data=pga_data,
-                total_data=total_data,
-                output_path=output_path,
-                title="Memory Usage Trend",
-                xlabel="Snap ID",
-                ylabel="Memory (GB)"
-            )
-            
-            if chart_filename:
-                return f"**메모리 사용량 추이:**\n\n![Memory Usage]({chart_filename})\n"
-        except Exception:
-            pass
-        return ""

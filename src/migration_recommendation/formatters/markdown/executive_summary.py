@@ -51,7 +51,7 @@ class ExecutiveSummaryFormatterMixin:
             benefits_text = "\n".join([f"- {b}" for b in benefits]) if benefits else "- 정보 없음"
             risks_text = "\n".join([f"- {r}" for r in risks]) if risks else "- 정보 없음"
             
-            return f"""## 요약
+            base_summary = f"""## 요약
 
 | 항목 | 내용 |
 |------|------|
@@ -69,7 +69,7 @@ class ExecutiveSummaryFormatterMixin:
             benefits_text = "\n".join([f"- {b}" for b in benefits]) if benefits else "- No information"
             risks_text = "\n".join([f"- {r}" for r in risks]) if risks else "- No information"
             
-            return f"""## Summary
+            base_summary = f"""## Summary
 
 | Item | Content |
 |------|---------|
@@ -83,6 +83,73 @@ class ExecutiveSummaryFormatterMixin:
 {risks_text}
 
 > See each section in the main report for details."""
+        
+        # Refactoring 전략인 경우 접근 방식 가이드 추가
+        if summary.recommended_strategy in ["refactor_mysql", "refactor_postgresql"]:
+            refactoring_guide = ExecutiveSummaryFormatterMixin._format_refactoring_approach_guide(
+                summary.recommended_strategy, language
+            )
+            return f"{base_summary}\n\n{refactoring_guide}"
+        
+        return base_summary
+    
+    @staticmethod
+    def _format_refactoring_approach_guide(strategy: str, language: str) -> str:
+        """Refactoring 접근 방식 가이드 포맷
+        
+        Args:
+            strategy: 전략 ("refactor_mysql" 또는 "refactor_postgresql")
+            language: 언어 ("ko" 또는 "en")
+            
+        Returns:
+            Markdown 형식 문자열
+        """
+        if language == "ko":
+            if strategy == "refactor_mysql":
+                return """### Refactoring 접근 방식 선택 가이드
+
+Refactoring은 두 가지 접근 방식으로 진행할 수 있습니다:
+
+| 접근 방식 | 개요 | 기간 | 난이도 | 적합한 경우 |
+|----------|------|------|--------|------------|
+| **Code-level Refactoring** | 기존 데이터 모델 유지, PL/SQL을 애플리케이션으로 변환 | 9-12주 | 중간 | 빠른 마이그레이션, 현재 모델 유지 |
+| **Data Model Refactoring** | 데이터 모델 리버스 엔지니어링 후 재설계 | 16-24주 | 높음~매우 높음 | 성능/설계 문제 해결, 장기 유지보수성 |
+
+> **권장**: 대부분의 경우 **Code-level Refactoring**을 먼저 진행하고, 마이그레이션 완료 후 필요시 점진적으로 데이터 모델을 개선하는 것을 권장합니다."""
+            else:  # refactor_postgresql
+                return """### Refactoring 접근 방식 선택 가이드
+
+Refactoring은 두 가지 접근 방식으로 진행할 수 있습니다:
+
+| 접근 방식 | 개요 | 기간 | 난이도 | 적합한 경우 |
+|----------|------|------|--------|------------|
+| **Code-level Refactoring** | 기존 데이터 모델 유지, PL/SQL을 PL/pgSQL로 변환 | 9-12주 | 중간 | 빠른 마이그레이션, DB 로직 유지 |
+| **Data Model Refactoring** | 데이터 모델 리버스 엔지니어링 후 재설계 | 16-24주 | 높음~매우 높음 | 성능/설계 문제 해결, PostgreSQL 기능 활용 |
+
+> **권장**: 대부분의 경우 **Code-level Refactoring**을 먼저 진행하고, 마이그레이션 완료 후 필요시 점진적으로 데이터 모델을 개선하는 것을 권장합니다."""
+        else:  # English
+            if strategy == "refactor_mysql":
+                return """### Refactoring Approach Selection Guide
+
+Refactoring can be done in two approaches:
+
+| Approach | Overview | Duration | Difficulty | Suitable For |
+|----------|----------|----------|------------|--------------|
+| **Code-level Refactoring** | Keep existing data model, convert PL/SQL to application | 9-12 weeks | Medium | Fast migration, maintain current model |
+| **Data Model Refactoring** | Reverse engineer and redesign data model | 16-24 weeks | High~Very High | Fix performance/design issues, long-term maintainability |
+
+> **Recommendation**: In most cases, start with **Code-level Refactoring** first, then gradually improve the data model after migration if needed."""
+            else:  # refactor_postgresql
+                return """### Refactoring Approach Selection Guide
+
+Refactoring can be done in two approaches:
+
+| Approach | Overview | Duration | Difficulty | Suitable For |
+|----------|----------|----------|------------|--------------|
+| **Code-level Refactoring** | Keep existing data model, convert PL/SQL to PL/pgSQL | 9-12 weeks | Medium | Fast migration, keep DB logic |
+| **Data Model Refactoring** | Reverse engineer and redesign data model | 16-24 weeks | High~Very High | Fix performance/design issues, leverage PostgreSQL features |
+
+> **Recommendation**: In most cases, start with **Code-level Refactoring** first, then gradually improve the data model after migration if needed."""
     
     @staticmethod
     def _format_list(items: List[str]) -> str:

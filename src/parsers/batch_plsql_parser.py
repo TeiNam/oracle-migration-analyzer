@@ -55,7 +55,7 @@ class BatchPLSQLParser:
         """
         self.objects = []
         current_object = None
-        ddl_lines = []
+        ddl_lines: List[str] = []
         in_ddl = False
         line_start = 0
         
@@ -128,7 +128,7 @@ class BatchPLSQLParser:
         Returns:
             객체 타입별 개수
         """
-        stats = {}
+        stats: Dict[str, int] = {}
         for obj in self.objects:
             obj_type = obj.object_type
             stats[obj_type] = stats.get(obj_type, 0) + 1

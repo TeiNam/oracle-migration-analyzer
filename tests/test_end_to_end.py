@@ -27,7 +27,7 @@ class TestEndToEnd:
     @pytest.fixture
     def sample_statspack_file(self):
         """실제 샘플 Statspack 파일 경로"""
-        return "sample_code/dbcsi_statspack_sample01.out"
+        return "sample_code/dbcsi_awr/dbcsi_statspack_sample01.out"
     
     @pytest.fixture
     def temp_output_dir(self):

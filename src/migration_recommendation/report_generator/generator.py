@@ -90,6 +90,15 @@ class RecommendationReportGenerator:
         # Replatform 선택 이유 가져오기
         replatform_reasons = self.decision_engine.get_replatform_reasons()
         
+        # Replatform 세부 전략 결정 (Replatform인 경우에만)
+        replatform_sub_strategy = None
+        replatform_sub_strategy_reasons = []
+        if recommended_strategy == MigrationStrategy.REPLATFORM:
+            logger.info("Replatform 세부 전략 결정 중")
+            replatform_sub_strategy, replatform_sub_strategy_reasons = \
+                self.decision_engine.decide_replatform_sub_strategy(metrics)
+            logger.info(f"Replatform 세부 전략: {replatform_sub_strategy.value}")
+        
         # 2. 신뢰도 계산 (신규)
         logger.info("신뢰도 계산 중")
         confidence_assessment = ConfidenceCalculator.calculate(
@@ -148,6 +157,8 @@ class RecommendationReportGenerator:
             confidence_assessment=confidence_assessment,
             data_availability=data_availability,
             replatform_reasons=replatform_reasons,
+            replatform_sub_strategy=replatform_sub_strategy,
+            replatform_sub_strategy_reasons=replatform_sub_strategy_reasons,
         )
         
         # 10. Executive Summary 생성 (recommendation 객체 필요)

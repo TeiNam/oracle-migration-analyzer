@@ -11,6 +11,13 @@ Property-based 테스트를 통해 의사결정 로직의 일관성을 검증합
 - PL/SQL 개수: 500개 이상 → Replatform
 - 코드량 + 복잡도: 20만줄 + 7.5 → Replatform
 - 고위험 Oracle 패키지: 50회 이상 → Replatform
+
+MySQL 조건 (AND 관계):
+- SQL 복잡도: 4.5 이하
+- PL/SQL 복잡도: 4.0 이하
+- PL/SQL 개수: 50개 미만
+- PostgreSQL 선호 점수: 2점 미만
+- BULK 연산: 10개 미만
 """
 
 import pytest
@@ -248,12 +255,12 @@ def test_replatform_condition_high_complexity_count(
 # Property 4: Aurora MySQL 조건 일관성
 @given(
     avg_sql_complexity=st.floats(
-        min_value=0.0, max_value=4.0, allow_nan=False, allow_infinity=False
+        min_value=0.0, max_value=3.49, allow_nan=False, allow_infinity=False
     ),
     avg_plsql_complexity=st.floats(
-        min_value=0.0, max_value=3.5, allow_nan=False, allow_infinity=False
+        min_value=0.0, max_value=4.0, allow_nan=False, allow_infinity=False
     ),
-    total_plsql_count=st.integers(min_value=0, max_value=19),
+    total_plsql_count=st.integers(min_value=0, max_value=49),
     high_complexity_ratio=st.floats(
         min_value=0.0, max_value=0.24, allow_nan=False, allow_infinity=False
     ),
@@ -269,8 +276,10 @@ def test_aurora_mysql_condition_consistency(
     """
     Property 4: Aurora MySQL 조건 일관성
 
-    평균 SQL 복잡도 <= 4.0 and 평균 PL/SQL 복잡도 <= 3.5 and PL/SQL 오브젝트 < 20개이면
+    평균 SQL 복잡도 < 3.5 and 평균 PL/SQL 복잡도 <= 4.0 and PL/SQL 오브젝트 < 50개이면
     Aurora MySQL을 추천해야 합니다.
+    
+    참고: SQL 복잡도 >= 3.5이면 PostgreSQL 선호 점수가 올라가서 MySQL 대신 PostgreSQL 추천
     """
     engine = MigrationDecisionEngine()
 
@@ -300,12 +309,12 @@ def test_aurora_mysql_condition_consistency(
 
 @given(
     avg_sql_complexity=st.floats(
-        min_value=4.01, max_value=7.4, allow_nan=False, allow_infinity=False
+        min_value=4.51, max_value=7.4, allow_nan=False, allow_infinity=False
     ),
     avg_plsql_complexity=st.floats(
-        min_value=0.0, max_value=3.5, allow_nan=False, allow_infinity=False
+        min_value=0.0, max_value=4.0, allow_nan=False, allow_infinity=False
     ),
-    total_plsql_count=st.integers(min_value=0, max_value=19),
+    total_plsql_count=st.integers(min_value=0, max_value=49),
     high_complexity_ratio=st.floats(
         min_value=0.0, max_value=0.24, allow_nan=False, allow_infinity=False
     ),
@@ -316,7 +325,7 @@ def test_aurora_mysql_not_recommended_high_sql_complexity(
     """
     Property 4: Aurora MySQL 조건 일관성 - SQL 복잡도 높을 때 제외
 
-    평균 SQL 복잡도 > 4.0이면 Aurora MySQL을 추천하지 않아야 합니다.
+    평균 SQL 복잡도 > 4.5이면 Aurora MySQL을 추천하지 않아야 합니다.
     """
     engine = MigrationDecisionEngine()
 
@@ -345,12 +354,12 @@ def test_aurora_mysql_not_recommended_high_sql_complexity(
 
 @given(
     avg_sql_complexity=st.floats(
-        min_value=0.0, max_value=4.0, allow_nan=False, allow_infinity=False
+        min_value=0.0, max_value=4.5, allow_nan=False, allow_infinity=False
     ),
     avg_plsql_complexity=st.floats(
-        min_value=3.51, max_value=6.9, allow_nan=False, allow_infinity=False
+        min_value=4.01, max_value=6.9, allow_nan=False, allow_infinity=False
     ),
-    total_plsql_count=st.integers(min_value=0, max_value=19),
+    total_plsql_count=st.integers(min_value=0, max_value=49),
     high_complexity_ratio=st.floats(
         min_value=0.0, max_value=0.24, allow_nan=False, allow_infinity=False
     ),
@@ -361,7 +370,7 @@ def test_aurora_mysql_not_recommended_high_plsql_complexity(
     """
     Property 4: Aurora MySQL 조건 일관성 - PL/SQL 복잡도 높을 때 제외
 
-    평균 PL/SQL 복잡도 > 3.5이면 Aurora MySQL을 추천하지 않아야 합니다.
+    평균 PL/SQL 복잡도 > 4.0이면 Aurora MySQL을 추천하지 않아야 합니다.
     """
     engine = MigrationDecisionEngine()
 
@@ -390,12 +399,12 @@ def test_aurora_mysql_not_recommended_high_plsql_complexity(
 
 @given(
     avg_sql_complexity=st.floats(
-        min_value=0.0, max_value=4.0, allow_nan=False, allow_infinity=False
+        min_value=0.0, max_value=4.5, allow_nan=False, allow_infinity=False
     ),
     avg_plsql_complexity=st.floats(
-        min_value=0.0, max_value=3.5, allow_nan=False, allow_infinity=False
+        min_value=0.0, max_value=4.0, allow_nan=False, allow_infinity=False
     ),
-    total_plsql_count=st.integers(min_value=20, max_value=200),
+    total_plsql_count=st.integers(min_value=50, max_value=200),
     high_complexity_ratio=st.floats(
         min_value=0.0, max_value=0.24, allow_nan=False, allow_infinity=False
     ),
@@ -406,7 +415,7 @@ def test_aurora_mysql_not_recommended_many_plsql_objects(
     """
     Property 4: Aurora MySQL 조건 일관성 - PL/SQL 오브젝트 많을 때 제외
 
-    PL/SQL 오브젝트 >= 20개이면 Aurora MySQL을 추천하지 않아야 합니다.
+    PL/SQL 오브젝트 >= 50개이면 Aurora MySQL을 추천하지 않아야 합니다.
     """
     engine = MigrationDecisionEngine()
 
@@ -487,7 +496,7 @@ def test_aurora_postgresql_condition_many_bulk_operations(
 # Property 5: Aurora PostgreSQL 조건 일관성 - 중간 SQL 복잡도
 @given(
     avg_sql_complexity=st.floats(
-        min_value=4.01, max_value=7.4, allow_nan=False, allow_infinity=False
+        min_value=4.51, max_value=7.4, allow_nan=False, allow_infinity=False
     ),
     avg_plsql_complexity=st.floats(
         min_value=0.0, max_value=6.9, allow_nan=False, allow_infinity=False
@@ -508,7 +517,7 @@ def test_aurora_postgresql_condition_medium_sql_complexity(
     """
     Property 5: Aurora PostgreSQL 조건 일관성 - 중간 SQL 복잡도
 
-    4.0 < 평균 SQL 복잡도 < 7.5이면 Aurora PostgreSQL을 추천해야 합니다.
+    4.5 < 평균 SQL 복잡도 < 7.5이면 Aurora PostgreSQL을 추천해야 합니다.
     """
     engine = MigrationDecisionEngine()
 
@@ -541,7 +550,7 @@ def test_aurora_postgresql_condition_medium_sql_complexity(
         min_value=0.0, max_value=7.4, allow_nan=False, allow_infinity=False
     ),
     avg_plsql_complexity=st.floats(
-        min_value=3.51, max_value=6.9, allow_nan=False, allow_infinity=False
+        min_value=4.01, max_value=6.9, allow_nan=False, allow_infinity=False
     ),
     high_complexity_ratio=st.floats(
         min_value=0.0, max_value=0.24, allow_nan=False, allow_infinity=False
@@ -559,7 +568,7 @@ def test_aurora_postgresql_condition_complex_plsql(
     """
     Property 5: Aurora PostgreSQL 조건 일관성 - 복잡한 PL/SQL
 
-    3.5 < 평균 PL/SQL 복잡도 < 7.0이면 Aurora PostgreSQL을 추천해야 합니다.
+    4.0 < 평균 PL/SQL 복잡도 < 7.0이면 Aurora PostgreSQL을 추천해야 합니다.
     """
     engine = MigrationDecisionEngine()
 
@@ -708,3 +717,93 @@ def test_high_risk_packages_below_threshold():
     
     # 다른 Replatform 조건도 없으므로 PostgreSQL 또는 MySQL
     assert strategy != MigrationStrategy.REPLATFORM
+
+
+# ============================================================================
+# Replatform 세부 전략 테스트
+# ============================================================================
+
+def test_replatform_substrategy_always_rds_oracle():
+    """Replatform 세부 전략은 항상 RDS for Oracle SE2 추천"""
+    from src.migration_recommendation.data_models import ReplatformSubStrategy
+    
+    engine = MigrationDecisionEngine()
+    
+    # 어떤 조건이든 RDS Oracle 추천
+    metrics = AnalysisMetrics(
+        avg_cpu_usage=50.0,
+        avg_io_load=500.0,
+        avg_memory_usage=10.0,
+        avg_sql_complexity=8.0,
+        avg_plsql_complexity=8.0,
+        high_complexity_sql_count=50,
+        high_complexity_plsql_count=50,
+        total_sql_count=100,
+        total_plsql_count=100,
+        high_complexity_ratio=0.5,
+        bulk_operation_count=0,
+        rac_detected=False,
+        awr_plsql_lines=250000,
+    )
+    
+    sub_strategy, reasons = engine.decide_replatform_sub_strategy(metrics)
+    
+    assert sub_strategy == ReplatformSubStrategy.RDS_ORACLE
+    assert any("관리형" in r or "RDS" in r for r in reasons)
+
+
+def test_replatform_substrategy_rac_detected_still_rds():
+    """RAC 감지되어도 RDS Oracle 추천 (Multi-AZ로 대체 가능)"""
+    from src.migration_recommendation.data_models import ReplatformSubStrategy
+    
+    engine = MigrationDecisionEngine()
+    
+    metrics = AnalysisMetrics(
+        avg_cpu_usage=80.0,
+        avg_io_load=1500.0,
+        avg_memory_usage=10.0,
+        avg_sql_complexity=5.0,
+        avg_plsql_complexity=5.0,
+        high_complexity_sql_count=10,
+        high_complexity_plsql_count=10,
+        total_sql_count=150,
+        total_plsql_count=200,
+        high_complexity_ratio=0.2,
+        bulk_operation_count=0,
+        rac_detected=True,
+        awr_plsql_lines=120000,
+    )
+    
+    sub_strategy, reasons = engine.decide_replatform_sub_strategy(metrics)
+    
+    assert sub_strategy == ReplatformSubStrategy.RDS_ORACLE
+    # Multi-AZ 대체 가능 안내가 포함되어야 함
+    assert any("Multi-AZ" in r for r in reasons)
+
+
+def test_replatform_substrategy_rds_oracle_default():
+    """기본 조건에서 RDS for Oracle 추천"""
+    from src.migration_recommendation.data_models import ReplatformSubStrategy
+    
+    engine = MigrationDecisionEngine()
+    
+    # low~medium 난이도
+    metrics = AnalysisMetrics(
+        avg_cpu_usage=50.0,
+        avg_io_load=500.0,
+        avg_memory_usage=10.0,
+        avg_sql_complexity=4.0,
+        avg_plsql_complexity=4.0,
+        high_complexity_sql_count=5,
+        high_complexity_plsql_count=5,
+        total_sql_count=50,
+        total_plsql_count=50,
+        high_complexity_ratio=0.1,
+        bulk_operation_count=0,
+        rac_detected=False,
+    )
+    
+    sub_strategy, reasons = engine.decide_replatform_sub_strategy(metrics)
+    
+    assert sub_strategy == ReplatformSubStrategy.RDS_ORACLE
+    assert any("관리형" in r or "RDS" in r for r in reasons)

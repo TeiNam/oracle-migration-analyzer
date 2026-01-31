@@ -66,8 +66,14 @@ dmypy.json
 
 # Reports (생성된 분석 리포트)
 reports/
-!reports/sample_code/
-!reports/sample_code/**
+!reports/sample_01_replatform/
+!reports/sample_01_replatform/**
+!reports/sample_02_mysql/
+!reports/sample_02_mysql/**
+!reports/sample_03_postgresql/
+!reports/sample_03_postgresql/**
+!reports/sample_04_supply_chain/
+!reports/sample_04_supply_chain/**
 example_reports/
 analysis_results/
 cli_results/

@@ -340,57 +340,15 @@ reports/
 
 ### Decision Tree
 
-The migration strategy follows this decision tree:
+The migration strategy selects one of three options based on complexity and code characteristics:
 
-```
-Start
-  │
-  ▼
-Average SQL Complexity >= 7.0?  ───YES──┐
-  │                                     │
-  NO                                    │
-  │                                     │
-  ▼                                     │
-Average PL/SQL Complexity >= 7.0? ─YES─┤
-  │                                     │
-  NO                                    │
-  │                                     │
-  ▼                                     │
-Complex Object Ratio >= 30%? ──YES─────┤
-  │                                     │
-  NO                                    │
-  │                                     ▼
-  │                                REPLATFORM
-  │                                (RDS Oracle SE2)
-  │
-  ▼
-Average SQL Complexity <= 5.0? ───NO───┐
-  │                                    │
-  YES                                  │
-  │                                    │
-  ▼                                    │
-Average PL/SQL Complexity <= 5.0? ─NO─┤
-  │                                    │
-  YES                                  │
-  │                                    │
-  ▼                                    │
-PL/SQL Objects < 50? ───NO─────────────┤
-  │                                    │
-  YES                                  │
-  │                                    │
-  ▼                                    ▼
-AURORA MYSQL                    AURORA POSTGRESQL
-(Application Migration)         (PL/pgSQL Conversion)
-  │                                    ▲
-  │                                    │
-  ▼                                    │
-BULK Operations >= 10? ───YES──────────┘
-  │
-  NO
-  │
-  ▼
-(Keep Aurora MySQL)
-```
+| Strategy | Condition Summary |
+|----------|-------------------|
+| **Replatform** (RDS Oracle SE2) | Very high complexity or large codebase |
+| **Aurora MySQL** | Low complexity with simple CRUD operations |
+| **Aurora PostgreSQL** | Medium complexity or PostgreSQL-friendly features |
+
+> 📖 For detailed decision logic and diagrams, see the [Decision Engine Documentation](docs/WHAT_IS_ORACLE_MIGRATION_ANALYZER.md#3-마이그레이션-전략-의사결정-트리).
 
 ### Strategy Characteristics
 
@@ -407,8 +365,10 @@ BULK Operations >= 10? ───YES──────────┘
 - High long-term TCO
 
 **Suitable When**:
-- Average complexity >= 7.0
-- Complex object ratio >= 30%
+- Average SQL complexity >= 7.5 or PL/SQL complexity >= 7.0
+- Complex object ratio >= 25% (min 70 objects)
+- High complexity objects >= 50
+- PL/SQL objects >= 500
 - High risk from code changes
 
 #### Refactor to Aurora MySQL
@@ -424,10 +384,11 @@ BULK Operations >= 10? ───YES──────────┘
 - No BULK operation support
 
 **Suitable When**:
-- Average SQL complexity <= 5.0
-- Average PL/SQL complexity <= 5.0
+- Average SQL complexity <= 4.5
+- Average PL/SQL complexity <= 4.0
 - PL/SQL objects < 50
 - BULK operations < 10
+- PostgreSQL preference score < 2
 
 #### Refactor to Aurora PostgreSQL
 
@@ -442,9 +403,11 @@ BULK Operations >= 10? ───YES──────────┘
 - Some Oracle features are not supported
 
 **Suitable When**:
-- Average complexity 5.0-7.0
+- When MySQL conditions are not met (default choice)
 - BULK operations >= 10
-- Average PL/SQL complexity >= 5.0
+- PostgreSQL preference score >= 2
+- Advanced features used (PIPELINED, REF CURSOR, etc.)
+- External package dependencies (DBMS_LOB, UTL_FILE, etc.)
 
 ---
 

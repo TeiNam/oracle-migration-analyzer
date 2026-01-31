@@ -105,6 +105,18 @@ class InstanceFormatterMixin:
         
         # SGA 기반 인스턴스 비교 테이블 추가
         if instance.sga_based_instance_type:
+            # SGA 증가율 계산
+            current_sga = instance.current_sga_gb
+            recommended_sga = instance.recommended_sga_gb
+            if current_sga and recommended_sga and current_sga > 0:
+                sga_increase_rate = f"{((recommended_sga / current_sga - 1) * 100):.1f}%"
+                current_sga_str = f"{current_sga:.1f}"
+                recommended_sga_str = f"{recommended_sga:.1f}"
+            else:
+                sga_increase_rate = "N/A"
+                current_sga_str = f"{current_sga or 0:.1f}"
+                recommended_sga_str = f"{recommended_sga or 0:.1f}"
+            
             result += f"""
 ## 인스턴스 추천 비교
 
@@ -120,9 +132,9 @@ SGA 권장사항을 반영한 인스턴스와 현재 서버 사양 기반 인스
 
 | 항목 | 값 |
 |------|-----|
-| **현재 SGA 크기** | {instance.current_sga_gb:.1f} GB |
-| **권장 SGA 크기** | {instance.recommended_sga_gb:.1f} GB |
-| **SGA 증가율** | {((instance.recommended_sga_gb / instance.current_sga_gb - 1) * 100):.1f}% |
+| **현재 SGA 크기** | {current_sga_str} GB |
+| **권장 SGA 크기** | {recommended_sga_str} GB |
+| **SGA 증가율** | {sga_increase_rate} |
 
 > **참고**: SGA 권장사항은 AWR 리포트의 Buffer Pool Advisory 데이터를 기반으로 
 > Physical Reads가 더 이상 감소하지 않는 최적 지점을 분석한 결과입니다.
@@ -196,6 +208,18 @@ SGA 권장사항을 반영한 인스턴스와 현재 서버 사양 기반 인스
         
         # SGA 기반 인스턴스 비교 테이블 추가
         if instance.sga_based_instance_type:
+            # SGA 증가율 계산
+            current_sga = instance.current_sga_gb
+            recommended_sga = instance.recommended_sga_gb
+            if current_sga and recommended_sga and current_sga > 0:
+                sga_increase_rate = f"{((recommended_sga / current_sga - 1) * 100):.1f}%"
+                current_sga_str = f"{current_sga:.1f}"
+                recommended_sga_str = f"{recommended_sga:.1f}"
+            else:
+                sga_increase_rate = "N/A"
+                current_sga_str = f"{current_sga or 0:.1f}"
+                recommended_sga_str = f"{recommended_sga or 0:.1f}"
+            
             result += f"""
 ## Instance Recommendation Comparison
 
@@ -211,9 +235,9 @@ Comparison between current server specs based instance and SGA recommendation ba
 
 | Item | Value |
 |------|-------|
-| **Current SGA Size** | {instance.current_sga_gb:.1f} GB |
-| **Recommended SGA Size** | {instance.recommended_sga_gb:.1f} GB |
-| **SGA Increase Rate** | {((instance.recommended_sga_gb / instance.current_sga_gb - 1) * 100):.1f}% |
+| **Current SGA Size** | {current_sga_str} GB |
+| **Recommended SGA Size** | {recommended_sga_str} GB |
+| **SGA Increase Rate** | {sga_increase_rate} |
 
 > **Note**: SGA recommendation is based on Buffer Pool Advisory data from AWR report,
 > analyzing the optimal point where Physical Reads no longer decrease.

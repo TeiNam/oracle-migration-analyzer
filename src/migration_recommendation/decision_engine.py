@@ -18,7 +18,12 @@ PostgreSQL vs MySQL 선택 기준 (기술적 근거):
 """
 
 from typing import Optional, List, Tuple, Dict, Any
-from .data_models import IntegratedAnalysisResult, AnalysisMetrics, MigrationStrategy
+from .data_models import (
+    IntegratedAnalysisResult, 
+    AnalysisMetrics, 
+    MigrationStrategy,
+    ReplatformSubStrategy
+)
 
 
 class ReplatformReason:
@@ -144,10 +149,10 @@ class MigrationDecisionEngine:
         'DBMS_ALERT',    # 비동기 알림 - 애플리케이션 레벨 이관 필요
     }
 
-    # MySQL 조건
-    MYSQL_PLSQL_COMPLEXITY = 3.5  # 기존 5.0 → 3.5
-    MYSQL_SQL_COMPLEXITY = 4.0  # 기존 5.0 → 4.0
-    MYSQL_PLSQL_COUNT = 20  # 기존 50 → 20
+    # MySQL 조건 (MySQL 8.0 기준, CTE/윈도우 함수 지원)
+    MYSQL_PLSQL_COMPLEXITY = 4.0  # 중간 복잡도까지 MySQL Stored Procedure로 처리 가능
+    MYSQL_SQL_COMPLEXITY = 4.5  # MySQL 8.0은 CTE, 윈도우 함수 지원
+    MYSQL_PLSQL_COUNT = 50  # 소규모 시스템 기준 (30-50개)
 
     # PostgreSQL 선호 조건 (기술적 근거 기반)
     POSTGRESQL_CTE_THRESHOLD = 3  # CTE 3개 이상이면 PostgreSQL 선호
@@ -556,3 +561,33 @@ class MigrationDecisionEngine:
             return False
 
         return True
+
+    def decide_replatform_sub_strategy(
+        self, 
+        metrics: AnalysisMetrics
+    ) -> Tuple[ReplatformSubStrategy, List[str]]:
+        """
+        Replatform 세부 전략 결정
+        
+        항상 RDS for Oracle SE2를 추천합니다.
+        EC2 Rehost, RDS Custom은 더 이상 추천하지 않습니다.
+        
+        Args:
+            metrics: 분석 메트릭
+            
+        Returns:
+            Tuple[ReplatformSubStrategy, List[str]]: (세부 전략, 선택 이유 목록)
+        """
+        reasons: List[str] = []
+        
+        # 항상 RDS for Oracle 추천
+        reasons.append("표준 Oracle 기능 사용으로 관리형 RDS 적합")
+        reasons.append("AWS 관리형 서비스로 운영 부담 최소화")
+        
+        # RAC 감지된 경우 안내 추가
+        if metrics.rac_detected:
+            reasons.append("현재 RAC 구성이지만 워크로드 분석 결과 Multi-AZ + Read Replica로 대체 가능")
+        
+        return ReplatformSubStrategy.RDS_ORACLE, reasons
+    
+
